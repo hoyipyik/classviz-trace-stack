@@ -3,15 +3,51 @@ body {
     margin: 0;
 }
 
+.icon-upload{
+    width: 16px;
+  }
+  
+  #call-tree-selector{
+    display: none;
+  }
+  
+
+.view-switcher {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    z-index: 10;
+  }
+  
+  .view-dropdown {
+    /* padding: 6px 10px; */
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    /* background-color: white; */
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .view-dropdown:hover {
+    border-color: #999;
+  }
+  
+  .view-dropdown:focus {
+    outline: none;
+    /* border-color: #4d90fe; */
+    box-shadow: 0 0 5px rgba(77, 144, 254, 0.5);
+  }
+  
+
 #calltree {
     margin: 30pt 0 0 0;
-    /* padding: 30pt 0 0 0; */
     font-family: Arial, sans-serif;
     position: relative;
     font-size: 12px;
     height: calc(100vh - 30pt);
     display: flex;
-    overflow: hidden; /* Prevent outer container from scrolling */
+    overflow: hidden;
 }
 
 /* Ensure the layout doesn't scroll */
@@ -20,16 +56,17 @@ body {
     width: 100%;
     height: 100vh;
     display: flex;
-    overflow: hidden; /* Prevent layout from scrolling */
+    overflow: hidden;
 }
 
 /* Cytoscape container */
 #calltree #cy-container {
     width: 100%;
-    height: 100%;  /* Correct */
+    height: 100%;
     transition: margin-right 0.3s ease;
     flex: 1;
 }
+
 /* Sidebar adjustments */
 #calltree #calltree-sidebar {
     width: 270px;
@@ -47,17 +84,17 @@ body {
     box-shadow: -2px 0 5px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Change from auto to hidden */
+    overflow: hidden;
 }
 
 /* Content adjustments */
 #calltree #calltree-sidebar-content {
-    margin-bottom: 30%;
-    flex-grow: 1;;
-    overflow-y: scroll; /* Only this element should scroll */
-    /* height: calc(100% - 40px);  */
-    
+    margin-bottom: 90pt;
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-bottom: 20px;
 }
+
 #calltree #calltree-sidebar.sidebar-hidden {
     transform: translateX(100%);
 }
@@ -96,24 +133,9 @@ body {
     box-sizing: border-box;
 }
 
-/* Section styles */
+/* Section styles - making all sections consistent */
 #calltree .info-section {
     border-bottom: 1px solid #ddd;
-}
-
-#calltree #source-code-section {
-    /* Changed from auto height to use a more flexible approach */
-    max-height: 700px; /* Set a reasonable max height */
-    overflow-y: auto; /* Add scroll when content exceeds max height */
-    background-color: #f9f9f9; /* Changed from dark red to light gray */
-}
-
-#calltree #source-code-section pre {
-    margin: 0;
-    padding: 10px;
-    height: 100%; /* Make pre fill the section */
-    color: #333; /* Better text color for readability */
-    white-space: pre-wrap;
 }
 
 #calltree .section-header {
@@ -130,6 +152,28 @@ body {
     background-color: #fff;
     color: #333;
     word-break: break-word;
+    height: auto !important; /* Override any height restrictions */
+}
+
+/* Source code styling with dynamic height */
+#calltree .source-code-container {
+    background-color: #f9f9f9;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible;
+}
+
+#calltree .source-code-pre {
+    margin: 0 !important;
+    padding: 10px;
+    color: #333;
+    white-space: pre-wrap;
+    font-family: monospace;
+    height: auto !important;
+    max-height: none !important; /* Remove max-height limitation */
+    overflow: visible;
+    border: none;
+    background: transparent;
 }
 
 /* Property row styles */
@@ -151,7 +195,7 @@ body {
     word-break: break-word;
 }
 
-/* Method section styles (orange background) */
+/* Method section styles */
 #calltree .method-section {
     background-color: #ffe6cc;
     border-bottom: 1px solid #ddd;
@@ -183,7 +227,7 @@ body {
 }
 
 /* Code blocks */
-#calltree pre {
+#calltree pre.code-block {
     background-color: #f9f9f9;
     border: 1px solid #ddd;
     padding: 8px;
