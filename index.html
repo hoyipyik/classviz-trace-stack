@@ -5,8 +5,10 @@
   <meta charset="UTF-8" />
   <meta content="width=device-width, initial-scale=1.0" name="viewport" />
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="traceTree.css" />
   <link rel="icon" href="favicon.ico" />
-
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script> -->
+  <script src="https://unpkg.com/lodash@4.17.21/lodash.min.js"></script>
   <script src="https://unpkg.com/cytoscape@3.31.0/dist/cytoscape.min.js"></script>
   <!-- <script src="https://unpkg.com/papaparse@5.3.2/papaparse.min.js"></script> -->
   <script src="https://unpkg.com/whatwg-fetch@3.0.0/dist/fetch.umd.js"></script>
@@ -52,12 +54,31 @@
       <img class="icon icon-download" src="img/upload.png" alt="upload" />
       <input type="file" id="file-selector" accept=".json" />
     </button>
+    <button title="Upload call trace" id="trace-btn" class="toolbutton">
+      <img
+        class="icon icon-upload"
+        src="img/tree.png"
+        alt="tree"
+      />
+      <input
+        type="file"
+        id="call-tree-selector"
+        accept=".xml"
+      />
+    </button>
     <button title="Download as SVG" id="btn-download" class="toolbutton">
       <img class="icon icon-download" src="img/download.png" alt="download" />
     </button>
     <button title="Open SVG in new tab" id="btn-popup" class="toolbutton">
       <img class="icon icon-download" src="img/open-new.png" alt="popout" />
     </button>
+    <div class="view-switcher">
+      <select id="view-mode" class="view-dropdown">
+        <option value="diagram">Class Diagram</option>
+        <option value="calltree">Call Tree</option>
+      </select>
+    </div>
+    
   </div>
 
   <div id="sidebar">
@@ -168,6 +189,9 @@
   </div>
 
   <div id="cy"></div>
+
+  <div id="calltree" style="display: none;">
+  </div>
 
   <script type="module" src="script.js"></script>
 </body>
