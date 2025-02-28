@@ -1,3 +1,4 @@
+// sidebarHandler.js - Functions for sidebar creation and management
 // Function to display node information in the sidebar
 export const displayNodeInfo = (nodeData) => {
     const sidebarContent = document.getElementById('calltree-sidebar-content');
