@@ -1,4 +1,4 @@
-// main.js - Entry point for call tree rendering
+// callTreeRender.js
 import { setupNodeInteractions } from './cytoscapeHandler.js';
 import { createCytoscapeInstance } from './cytoscapeHandler.js';
 import { createSidebar } from './sidebarHandler.js';
@@ -110,5 +110,3 @@ function displayError(container, error) {
         </div>
     `;
 }
-
-
