@@ -1,7 +1,7 @@
 // callTreeRender.js
-import { setupNodeInteractions } from './cytoscapeHandler.js';
-import { createCytoscapeInstance } from './cytoscapeHandler.js';
-import { createSidebar } from './sidebarHandler.js';
+import { createCytoscapeInstance } from './cytoscape/cytoscapeInitialization.js';
+import { setupNodeInteractions } from './cytoscape/nodeInteractions.js';
+import { createSidebar } from './sidebar/sidebarCreation.js';
 
 /**
  * Main function to render the call tree
@@ -11,17 +11,12 @@ export const callTreeRender = (graph) => {
     console.log('callTreeRender called with graph:', !!graph);
     
     // Validate graph data
-    if (!graph) {
-        console.error('No graph data provided to callTreeRender');
+    if (!graph || !graph.nodes || !graph.edges || !graph.style) {
+        console.error('Invalid or missing graph data:', graph);
         return;
     }
     
-    if (!graph.nodes || !graph.edges || !graph.style) {
-        console.error('Invalid graph data structure:', graph);
-        return;
-    }
-    
-    // Get the main container element
+    // Get and validate the main container element
     const callTreeElement = document.getElementById('calltree');
     if (!callTreeElement) {
         console.error('Call tree container element not found');
@@ -29,7 +24,7 @@ export const callTreeRender = (graph) => {
     }
     
     // Clear existing content
-    clearElement(callTreeElement);
+    callTreeElement.innerHTML = '';
     
     // Create layout containers
     const { layoutContainer, cyContainer } = createLayoutContainers();
@@ -37,34 +32,26 @@ export const callTreeRender = (graph) => {
     
     try {
         // Create sidebar elements
-        const sidebar = createSidebar();
-        layoutContainer.appendChild(sidebar);
+        layoutContainer.appendChild(createSidebar());
         
-        console.log('Initializing Cytoscape with:', 
-            graph.nodes.length, 'nodes and', 
-            graph.edges.length, 'edges');
-        
-        // Process and sanitize nodes
+        // Process nodes and initialize Cytoscape
         const safeNodes = sanitizeNodes(graph.nodes);
+        const graphElements = [...safeNodes, ...graph.edges];
+        
+        console.log(`Initializing Cytoscape with: ${safeNodes.length} nodes and ${graph.edges.length} edges`);
         
         // Initialize the Cytoscape instance
-        const cy = createCytoscapeInstance(cyContainer, [...safeNodes, ...graph.edges], graph.style);
+        const cy = createCytoscapeInstance(cyContainer, graphElements, graph.style);
         
         if (!cy) {
             throw new Error('Failed to create Cytoscape instance');
         }
         
         // Setup node interaction handlers
-        setupNodeInteractions(cy, sidebar);
+        setupNodeInteractions(cy, layoutContainer.querySelector('#sidebar'));
         
-        // Only fit the view if this is the first render
-        if (!window.calltreeRendered) {
-            console.log('First call tree render, fitting view');
-            cy.fit();
-            window.calltreeRendered = true;
-        } else {
-            console.log('Subsequent call tree render, preserving view position');
-        }
+        // Handle view management
+        handleViewFitting(cy);
         
         console.log('Call tree rendered successfully');
     } catch (error) {
@@ -74,16 +61,6 @@ export const callTreeRender = (graph) => {
 };
 
 /**
- * Clear all children from an element
- * @param {HTMLElement} element - The element to clear
- */
-function clearElement(element) {
-    while (element.firstChild) {
-        element.removeChild(element.firstChild);
-    }
-}
-
-/**
  * Create the main layout containers
  * @returns {Object} The created container elements
  */
@@ -91,17 +68,25 @@ function createLayoutContainers() {
     // Create main layout container
     const layoutContainer = document.createElement('div');
     layoutContainer.id = 'calltree-layout';
-    layoutContainer.style.width = '100%';
-    layoutContainer.style.height = '800px';
-    layoutContainer.style.position = 'relative';
-    layoutContainer.style.overflow = 'hidden';
+    
+    // Apply styles using classList and CSS variables for better performance
+    Object.assign(layoutContainer.style, {
+        width: '100%',
+        height: '800px',
+        position: 'relative',
+        overflow: 'hidden'
+    });
     
     // Create Cytoscape container
     const cyContainer = document.createElement('div');
     cyContainer.id = 'cy-container';
-    cyContainer.style.width = '100%';
-    cyContainer.style.height = '100%';
-    cyContainer.style.transition = 'margin-right 0.3s ease';
+    
+    Object.assign(cyContainer.style, {
+        width: '100%',
+        height: '100%',
+        transition: 'margin-right 0.3s ease'
+    });
+    
     layoutContainer.appendChild(cyContainer);
     
     return { layoutContainer, cyContainer };
@@ -114,26 +99,44 @@ function createLayoutContainers() {
  */
 function sanitizeNodes(nodes) {
     return nodes.map(node => {
-        // Ensure node.data exists
-        if (!node.data) {
-            node.data = {};
-        }
+        // Create a new node object to avoid mutating the original
+        const safeNode = { ...node };
         
-        // Provide default values for essential properties
-        if (!node.data.className) node.data.className = '';
-        if (!node.data.methodName) node.data.methodName = '';
-        if (!node.data.label) {
-            node.data.label = node.data.className + 
-                (node.data.methodName ? '.' + node.data.methodName + '()' : '');
+        // Ensure data property exists
+        safeNode.data = { ...node.data || {} };
+        
+        const data = safeNode.data;
+        
+        // Set default values for essential properties
+        data.className = data.className || '';
+        data.methodName = data.methodName || '';
+        
+        // Set label if not present
+        if (!data.label) {
+            data.label = data.className + (data.methodName ? '.' + data.methodName + '()' : '');
         }
         
         // Initialize collapsed state
-        if (node.data.collapsed === undefined) {
-            node.data.collapsed = false;
+        if (data.collapsed === undefined) {
+            data.collapsed = false;
         }
         
-        return node;
+        return safeNode;
     });
+}
+
+/**
+ * Handle view fitting based on whether this is the first render
+ * @param {Object} cy - The Cytoscape instance
+ */
+function handleViewFitting(cy) {
+    if (!window.calltreeRendered) {
+        console.log('First call tree render, fitting view');
+        cy.fit();
+        window.calltreeRendered = true;
+    } else {
+        console.log('Subsequent call tree render, preserving view position');
+    }
 }
 
 /**
@@ -143,11 +146,14 @@ function sanitizeNodes(nodes) {
  */
 function displayError(container, error) {
     console.error('Error rendering call tree:', error);
-    container.innerHTML = `
-        <div class="error-message">
-            <h3>Error rendering call tree</h3>
-            <p>${error.message}</p>
-            <p>Please check the console for more details.</p>
-        </div>
+    
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message';
+    errorDiv.innerHTML = `
+        <h3>Error rendering call tree</h3>
+        <p>${error.message}</p>
+        <p>Please check the console for more details.</p>
     `;
+    
+    container.appendChild(errorDiv);
 }
