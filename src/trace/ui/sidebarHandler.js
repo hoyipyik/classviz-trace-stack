@@ -56,7 +56,7 @@ export const displayNodeInfo = (nodeData) => {
         }
     }
 
-    sidebarHeader.innerHTML = `<div style="overflow-wrap: break-word; word-break: break-word;">${headerText}</div>`;
+    sidebarHeader.innerHTML = `<div style="overflow-wrap: break-word; word-break: break-word; width: 100%; padding-right: 20px;">${headerText}</div>`;
 
     // Build sidebar content in the style shown in the image
     let html = '';
@@ -307,7 +307,7 @@ function setupControlButtons(nodeId) {
     // Get the buttons
     const toggleBtn = document.getElementById('toggle-children-btn');
     const expandAllBtn = document.getElementById('expand-all-btn');
-    
+
     if (toggleBtn) {
         toggleBtn.addEventListener('click', () => {
             // Get current Cytoscape instance
@@ -319,7 +319,7 @@ function setupControlButtons(nodeId) {
             }
         });
     }
-    
+
     if (expandAllBtn) {
         expandAllBtn.addEventListener('click', () => {
             // Get current Cytoscape instance
@@ -375,7 +375,7 @@ export function toggleSidebar() {
 export function createSidebar() {
     // Create and save the sidebar controller object
     const sidebarController = toggleSidebar();
-    
+
     // Create the main sidebar container
     const sidebar = document.createElement('div');
     sidebar.id = 'calltree-sidebar';
@@ -432,6 +432,7 @@ function applySidebarStyles(sidebar) {
     });
 }
 
+
 /**
  * Create the close button for the sidebar
  * @returns {HTMLElement} The close button
@@ -444,8 +445,8 @@ function createCloseButton() {
 
     Object.assign(closeButton.style, {
         position: 'absolute',
-        top: '5px',
-        right: '5px',
+        top: '8px',  // Adjusted position
+        right: '8px', // Adjusted position
         zIndex: '101',
         padding: '2px 6px',
         backgroundColor: 'transparent',
@@ -453,16 +454,30 @@ function createCloseButton() {
         fontSize: '16px',
         fontWeight: 'bold',
         cursor: 'pointer',
-        color: '#666'
+        color: '#666',
+        width: '24px',
+        height: '24px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: '3px'
     });
+
+    // Add hover effect
+    closeButton.onmouseover = () => {
+        closeButton.style.backgroundColor = '#e0e0e0';
+    };
+    closeButton.onmouseout = () => {
+        closeButton.style.backgroundColor = 'transparent';
+    };
 
     return closeButton;
 }
 
 /**
- * Create the header for the sidebar
- * @returns {HTMLElement} The sidebar header
- */
+* Create the header for the sidebar
+* @returns {HTMLElement} The sidebar header
+*/
 function createSidebarHeader() {
     const sidebarHeader = document.createElement('div');
     sidebarHeader.id = 'calltree-sidebar-header';
@@ -471,9 +486,12 @@ function createSidebarHeader() {
         backgroundColor: '#e6e6e6',
         padding: '10px',
         borderBottom: '1px solid #ccc',
-        fontWeight: 'bold'
+        fontWeight: 'bold',
+        paddingRight: '30px', // Add padding to the right to make room for the close button
+        position: 'relative', // Ensure positioning context for header contents
+        minHeight: '24px' // Ensure minimum height for header even when empty
     });
 
-    sidebarHeader.innerHTML = '<div>Node Details</div>';
+    sidebarHeader.innerHTML = '<div style="overflow-wrap: break-word; word-break: break-word; width: 100%;">Node Details</div>';
     return sidebarHeader;
 }
