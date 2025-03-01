@@ -128,8 +128,12 @@ export function toggleChildren(cy, nodeId) {
         showDirectChildren(cy, nodeId, directChildren);
     }
 
+    const fitNameSelector = document.getElementById('fit-mode');
+        
+    // Variable to store the current layout name
+    let currentLayoutName = fitNameSelector.value;
     // Re-run layout
-    runLayout(cy);
+    runLayout(cy, currentLayoutName, false);
 
     // forceRender(cy);
 }
@@ -144,12 +148,10 @@ export function toggleChildren(cy, nodeId) {
 export function storeOriginalPositions(cy) {
     const positions = {};
     cy.nodes().forEach(node => {
-        if (!node.hasClass('hidden')) {
-            positions[node.id()] = {
-                x: node.position('x'),
-                y: node.position('y')
-            };
-        }
+        positions[node.id()] = {
+            x: node.position('x'),
+            y: node.position('y')
+        };
     });
     return positions;
 }
@@ -158,15 +160,29 @@ export function storeOriginalPositions(cy) {
  * Restore nodes to their original positions
  * @param {Object} cy - The Cytoscape instance
  * @param {Object} positions - Map of node IDs to positions
+ * @param {boolean} doFit - Whether to fit the graph to view after restoring positions  
  */
-export function restorePositions(cy, positions) {
-    Object.entries(positions).forEach(([id, pos]) => {
-        const node = cy.getElementById(id);
+export function restorePositions(cy, positions, doFit = false) {
+    // Prevent layout transition animation during position restoration
+    cy.elements().removeClass('animated');
+    
+    // Apply the stored positions to each node
+    Object.keys(positions).forEach(nodeId => {
+        const node = cy.getElementById(nodeId);
         if (node.length > 0) {
-            node.position(pos);
+            node.position(positions[nodeId]);
         }
     });
-    cy.fit();
+    
+    // Only fit to view if explicitly requested
+    if (doFit) {
+        cy.fit();
+    }
+    
+    // Re-enable animations for future layout changes
+    setTimeout(() => {
+        cy.elements().addClass('animated');
+    }, 50);
 }
 
 // Now modify your runLayout function to use these new functions
@@ -198,9 +214,8 @@ export function runLayout(cy, layoutName = 'preset', fitToView = false) {
                 maximal: true,
                 avoidOverlap: true,
                 animate: false,
-                fit: true,
                 rankDir: 'TB',          // Top to bottom direction
-                ...layoutOptions
+                ...layoutOptions         // This will apply the correct fitToView value
             }).run();
             break;
         case 'klay':
@@ -230,8 +245,7 @@ export function runLayout(cy, layoutName = 'preset', fitToView = false) {
         case 'cola':
             cy.layout({
                 name: 'cola',
-                ...layoutOptions,
-                fit: true,
+                ...layoutOptions,       // Removed the hardcoded fit: true
                 animate: true,
             }).run();
             break;
@@ -257,7 +271,8 @@ export function runLayout(cy, layoutName = 'preset', fitToView = false) {
             // Use the stored original positions instead of current preset data
             const originalPositions = cy.scratch('originalPositions');
             if (originalPositions) {
-                restorePositions(cy, originalPositions);
+                // Pass the fitToView parameter to restorePositions function
+                restorePositions(cy, originalPositions, fitToView);
             } else {
                 // Fallback to normal preset if no stored positions
                 cy.layout({
@@ -266,7 +281,6 @@ export function runLayout(cy, layoutName = 'preset', fitToView = false) {
                 }).run();
             }
             break;
-
     }
 }
 /**
@@ -372,8 +386,12 @@ export function expandAllDescendants(cy, nodeId) {
         descendant.data('collapsed', false);
     });
 
+    const fitNameSelector = document.getElementById('fit-mode');
+        
+    // Variable to store the current layout name
+    let currentLayoutName = fitNameSelector.value;
     // Re-run layout
-    runLayout(cy);
+    runLayout(cy, currentLayoutName, false);
 
     // force render
     // forceRender(cy);
