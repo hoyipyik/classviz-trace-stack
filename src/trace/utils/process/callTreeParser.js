@@ -155,6 +155,14 @@ export const callTreeParser = (xmlDoc) => {
                     'target-arrow-shape': 'triangle',
                     'curve-style': 'bezier'
                 }
+            },
+            {
+                selector: '.selected',
+                style: {
+                    'border-width': 4,
+                    'border-color': '#FFC107',
+                    'border-opacity': 1
+                }
             }
         ]
     };
