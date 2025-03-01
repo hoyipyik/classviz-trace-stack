@@ -1,172 +1,202 @@
 import { callTreeRender } from "./callTreeRender.js";
 
-// Variables to store graph position state
-let graphPosition = null;
-let graphZoom = null;
-let calltreePosition = null;
-let calltreeZoom = null;
+// View state management
+const viewState = {
+  graph: { position: null, zoom: null },
+  calltree: { position: null, zoom: null }
+};
 
-// Helper function to handle view switching - defined outside to be accessible to multiple functions
-const switchView = (viewType) => {
-    console.log(`Switching view to: ${viewType}`);
+// DOM element cache to avoid repeated lookups
+let elements = null;
 
-    const cyElement = document.getElementById('cy');
-    const callTreeElement = document.getElementById('calltree');
-    const sidebarElement = document.getElementById('sidebar');
-    const infoboxElement = document.getElementById('infobox');
-
-    // Update the selector value if it doesn't match the requested view type
-    const viewModeSelector = document.getElementById('view-mode');
-    if (viewModeSelector.value !== viewType) {
-        viewModeSelector.value = viewType;
-    }
-
-    if (viewType === 'calltree') {
-        console.log('Switching to call tree view');
-        const refitBtn = document.getElementById('btn-fit');
-        refitBtn.style.display = 'inline';
-        const fitSelectionBar = document.getElementsByClassName('fit-switcher')[0];
-        fitSelectionBar.style.display = 'block';
-
-        // Save current graph position and zoom before hiding
-        if (window.cytrace) {
-            // Deep clone the position object to avoid reference issues
-            graphPosition = { ...window.cytrace.pan() };
-            graphZoom = window.cytrace.zoom();
-            console.log('Saved graph position:', JSON.stringify(graphPosition), 'zoom:', graphZoom);
-        }
-
-        // Hide class diagram elements
-        cyElement.style.display = 'none';
-        sidebarElement.style.display = 'none';
-        infoboxElement.style.display = 'none';
-
-        // Show call tree
-        callTreeElement.style.display = 'flex';
-
-        const graph = window.graph;
-        console.log('Graph available:', !!graph);
-
-        if (graph) {
-            try {
-                // Always call callTreeRender when switching to call tree view
-                console.log('Rendering call tree...');
-                callTreeRender(graph);
-
-                // Restore call tree position if available - use a longer timeout to ensure rendering completes
-                if (window.cytrace && calltreePosition && calltreeZoom) {
-                    // setTimeout(() => {
-                    try {
-                        console.log('About to restore calltree position:', JSON.stringify(calltreePosition), 'zoom:', calltreeZoom);
-
-                        // First set zoom
-                        window.cytrace.zoom(calltreeZoom);
-
-                        // Then pan to position - explicitly pass x and y coordinates
-                        window.cytrace.pan({
-                            x: calltreePosition.x,
-                            y: calltreePosition.y
-                        });
-
-                        console.log('Restored calltree position successfully');
-                    } catch (err) {
-                        console.error('Error while restoring calltree position:', err);
-                    }
-                    // }, 1000);
-                }
-            } catch (error) {
-                console.error('Error rendering call tree:', error);
-                callTreeElement.innerHTML = `
-                    <div class="error-message" style="padding: 20px; color: red;">
-                        <h3>Error rendering call tree</h3>
-                        <p>${error.message}</p>
-                    </div>
-                `;
-            }
-        } else {
-            callTreeElement.innerHTML =
-                '<div style="padding: 20px;">Please upload a call trace XML file using the tree icon in the toolbar</div>';
-        }
-    } else {
-        console.log('Switching to graph view');
-        const refitBtn = document.getElementById('btn-fit');
-        refitBtn.style.display = 'none';
-        const fitSelectionBar = document.getElementsByClassName('fit-switcher')[0];
-        fitSelectionBar.style.display = 'none';
-
-        // Save call tree position and zoom if available
-        if (window.cytrace) {
-            // Deep clone the position object to avoid reference issues
-            calltreePosition = { ...window.cytrace.pan() };
-            calltreeZoom = window.cytrace.zoom();
-            console.log('Saved calltree position:', JSON.stringify(calltreePosition), 'zoom:', calltreeZoom);
-        }
-
-        // Show class diagram elements
-        cyElement.style.display = 'block';
-        sidebarElement.style.display = 'block';
-        infoboxElement.style.display = 'block';
-        infoboxElement.removeAttribute('style');
-
-        // Hide call tree
-        callTreeElement.style.display = 'none';
-
-        // Restore graph position and zoom if available - use a longer timeout
-        if (window.cytrace && graphPosition && graphZoom) {
-            try {
-                // setTimeout(() => {
-                try {
-                    console.log('About to restore graph position:', JSON.stringify(graphPosition), 'zoom:', graphZoom);
-
-                    // First set zoom
-                    window.cytrace.zoom(graphZoom);
-
-                    // Then pan to position - explicitly pass x and y coordinates
-                    window.cytrace.pan({
-                        x: graphPosition.x,
-                        y: graphPosition.y
-                    });
-
-                    console.log('Restored graph position successfully');
-                } catch (err) {
-                    console.error('Error while restoring graph position:', err);
-                }
-                // }, 200); // Increased delay to ensure UI has updated
-            } catch (error) {
-                console.error('Error restoring graph position:', error);
-            }
-        }
-    }
-
-    console.log(`View switched to: ${viewType}`);
+/**
+ * Cache DOM elements for faster access
+ * @returns {Object} Object containing DOM elements
+ */
+function cacheElements() {
+  if (elements) return elements;
+  
+  elements = {
+    cy: document.getElementById('cy'),
+    calltree: document.getElementById('calltree'),
+    sidebar: document.getElementById('sidebar'),
+    infobox: document.getElementById('infobox'),
+    viewModeSelector: document.getElementById('view-mode'),
+    refitBtn: document.getElementById('btn-fit'),
+    fitSelectionBar: document.getElementsByClassName('fit-switcher')[0]
+  };
+  
+  return elements;
 }
 
-// Initialize view and set up event listeners
-export const renderView = () => {
-    const viewModeSelector = document.getElementById('view-mode');
+/**
+ * Save current view state
+ * @param {string} viewType - The view type being switched from
+ */
+function saveViewState(viewType) {
+  if (!window.cytrace) return;
+  
+  // Determine which state to save based on the current view
+  const stateKey = viewType === 'calltree' ? 'graph' : 'calltree';
+  
+  // Deep clone position to avoid reference issues
+  viewState[stateKey].position = { ...window.cytrace.pan() };
+  viewState[stateKey].zoom = window.cytrace.zoom();
+  
+  console.log(`Saved ${stateKey} position:`, 
+    JSON.stringify(viewState[stateKey].position), 
+    'zoom:', viewState[stateKey].zoom);
+}
 
-    // Initialize view mode selector event listener
-    viewModeSelector.addEventListener('change', function () {
-        switchView(this.value);
+/**
+ * Restore view state for the target view
+ * @param {string} viewType - The view type to restore
+ */
+function restoreViewState(viewType) {
+  if (!window.cytrace) return;
+  
+  const state = viewState[viewType];
+  if (!state.position || !state.zoom) return;
+  
+  try {
+    console.log(`Restoring ${viewType} position:`, 
+      JSON.stringify(state.position), 'zoom:', state.zoom);
+    
+    // Apply zoom first, then position
+    window.cytrace.zoom(state.zoom);
+    window.cytrace.pan({
+      x: state.position.x,
+      y: state.position.y
     });
-};
+    
+    console.log(`Restored ${viewType} position successfully`);
+  } catch (err) {
+    console.error(`Error restoring ${viewType} position:`, err);
+  }
+}
 
-// Function to trigger re-rendering based on current selection
-export const rerender = (refresh = false) => {
-    const currentViewMode = document.getElementById('view-mode').value;
-    if (refresh) {
-        console.log('Refreshing view...');
-        graphPosition = null;
-        graphZoom = null;
-        calltreePosition = null;
-        calltreeZoom = null;
-    } else {
-        console.log('Re-rendering view...');
+/**
+ * Configure the UI for call tree view
+ */
+function setupCallTreeView() {
+  const { calltree, refitBtn, fitSelectionBar } = cacheElements();
+  
+  // Show call tree controls
+  refitBtn.style.display = 'inline';
+  fitSelectionBar.style.display = 'block';
+  
+  // Render call tree if graph data is available
+  const graph = window.graph;
+  
+  if (graph) {
+    try {
+      console.log('Rendering call tree...');
+      callTreeRender(graph);
+      restoreViewState('calltree');
+    } catch (error) {
+      console.error('Error rendering call tree:', error);
+      calltree.innerHTML = `
+        <div class="error-message" style="padding: 20px; color: red;">
+          <h3>Error rendering call tree</h3>
+          <p>${error.message}</p>
+        </div>
+      `;
     }
-    switchView(currentViewMode);
+  } else {
+    calltree.innerHTML = '<div style="padding: 20px;">Please upload a call trace XML file using the tree icon in the toolbar</div>';
+  }
+}
+
+/**
+ * Configure the UI for graph view
+ */
+function setupGraphView() {
+  const { refitBtn, fitSelectionBar, infobox } = cacheElements();
+  
+  // Hide call tree controls
+  refitBtn.style.display = 'none';
+  fitSelectionBar.style.display = 'none';
+  
+  // Reset infobox style
+  infobox.removeAttribute('style');
+  
+  // Restore graph position
+  restoreViewState('graph');
+}
+
+/**
+ * Switch between different visualization views
+ * @param {string} viewType - The view type to switch to ('calltree' or 'graph')
+ */
+const switchView = (viewType) => {
+  console.log(`Switching view to: ${viewType}`);
+  
+  const els = cacheElements();
+  
+  // Update selector if needed
+  if (els.viewModeSelector.value !== viewType) {
+    els.viewModeSelector.value = viewType;
+  }
+  
+  // Save current view state before switching
+  saveViewState(els.viewModeSelector.value);
+  
+  if (viewType === 'calltree') {
+    // Hide graph elements
+    els.cy.style.display = 'none';
+    els.sidebar.style.display = 'none';
+    els.infobox.style.display = 'none';
+    
+    // Show call tree
+    els.calltree.style.display = 'flex';
+    
+    setupCallTreeView();
+  } else {
+    // Show graph elements
+    els.cy.style.display = 'block';
+    els.sidebar.style.display = 'block';
+    els.infobox.style.display = 'block';
+    
+    // Hide call tree
+    els.calltree.style.display = 'none';
+    
+    setupGraphView();
+  }
+  
+  console.log(`View switched to: ${viewType}`);
 };
 
-// Initialize the view when DOM is loaded
+/**
+ * Initialize view and set up event listeners
+ */
+export const renderView = () => {
+  const viewModeSelector = document.getElementById('view-mode');
+  viewModeSelector.addEventListener('change', function() {
+    switchView(this.value);
+  });
+};
+
+/**
+ * Function to trigger re-rendering based on current selection
+ * @param {boolean} refresh - Whether to reset view states
+ */
+export const rerender = (refresh = false) => {
+  const currentViewMode = document.getElementById('view-mode').value;
+  
+  if (refresh) {
+    console.log('Refreshing view...');
+    viewState.graph = { position: null, zoom: null };
+    viewState.calltree = { position: null, zoom: null };
+  } else {
+    console.log('Re-rendering view...');
+  }
+  
+  switchView(currentViewMode);
+};
+
+/**
+ * Initialize the view when DOM is loaded
+ */
 export const viewSwitcher = () => {
-    document.addEventListener('DOMContentLoaded', renderView);
+  document.addEventListener('DOMContentLoaded', renderView);
 };
