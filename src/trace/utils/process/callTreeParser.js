@@ -1,186 +1,220 @@
 import { nodeDataFetcher } from "../context/nodeDataFetcher.js";
 
-export const callTreeParser = (xmlDoc) => {
-    const nodes = [];  // Array for nodes
-    const edges = [];  // Array for edges
-    let nodeIdCounter = 1;
-    const nodeSize = 40;  // Node size in pixels (Cytoscape uses larger nodes)
-    const verticalSpacing = 120;  // Vertical spacing between hierarchical levels
-    const horizontalSpacing = 20;  // Horizontal spacing between siblings
-    
-    // First pass to calculate the width needed for each subtree
-    const calculateSubtreeWidth = (xmlNode) => {
-        const childNodes = Array.from(xmlNode.childNodes).filter(
-            node => node.nodeType === 1 && node.tagName === 'node'
-        );
-        
-        if (childNodes.length === 0) {
-            return nodeSize;  // Base width for a leaf node
-        }
-        
-        const childWidths = childNodes.map(child => calculateSubtreeWidth(child));
-        return Math.max(
-            nodeSize,
-            childWidths.reduce((sum, width) => sum + width, 0) + 
-            (childNodes.length - 1) * horizontalSpacing
-        );
-    };
-
-    // Second pass to position nodes
-    const traverseNode = (xmlNode, parentId = null, depth = 0, leftBound = 0) => {
-        const nodeId = nodeIdCounter.toString();
-        nodeIdCounter++;
-
-        const methodName = xmlNode.getAttribute('methodName') || '';
-        const className = xmlNode.getAttribute('class') || 'Root';
-        const time = xmlNode.getAttribute('time') || '0';
-        const percent = xmlNode.getAttribute('percent') || '0';
-
-        const childNodes = Array.from(xmlNode.childNodes).filter(
-            node => node.nodeType === 1 && node.tagName === 'node'
-        );
-
-        // Calculate this node's horizontal position
-        let xPos;
-        if (childNodes.length === 0) {
-            xPos = leftBound + nodeSize / 2;  // Center of the leaf node
-        } else {
-            const subtreeWidth = calculateSubtreeWidth(xmlNode);
-            xPos = leftBound + subtreeWidth / 2;  // Center of the subtree
-        }
-
-        const nodeData = nodeDataFetcher(className, methodName);
-        // if not parentid make it dark purple
-        const layerColor = get_layer_color(nodeData ? (nodeData.properties ? nodeData.properties.layer : '') : '', parentId ? false : true);
-        // Create node label (make sure Root node is visibly labeled)
-        const label = parentId ? `${className}.${methodName}()` : 'Root';
-        
-        // Create Cytoscape node
-        nodes.push({
-            data: {
-                id: nodeId,
-                methodName,
-                className,
-                time,
-                percent,
-                label: label,
-                sourceCode: nodeData ? (nodeData.properties ? nodeData.properties.sourceText : '') : '',
-                detailedDescription: "",
-                visibility: nodeData ? (nodeData.properties ? nodeData.properties.visibility : '') : '',
-                simpleName: nodeData ? (nodeData.properties ? nodeData.properties.simpleName : '') : '',
-                qualifiedName: nodeData ? (nodeData.properties ? nodeData.properties.qualifiedName : '') : '',
-                kind: nodeData ? (nodeData.properties ? nodeData.properties.kind : '') : '',
-                docComment: nodeData ? (nodeData.properties ? nodeData.properties.docComment : '') : '',
-                metaSrc: nodeData ? (nodeData.properties ? nodeData.properties.metaSrc : '') : '',
-                description: nodeData ? (nodeData.properties ? nodeData.properties.description : '') : '',
-                returns: nodeData ? (nodeData.properties ? nodeData.properties.returns : '') : '',
-                reason: nodeData ? (nodeData.properties ? nodeData.properties.reason : '') : '',
-                howToUse: nodeData ? (nodeData.properties ? nodeData.properties.howToUse : '') : '',
-                howItWorks: nodeData ? (nodeData.properties ? nodeData.properties.howItWorks : '') : '',
-                assertions: nodeData ? (nodeData.properties ? nodeData.properties.assertions : '') : '',
-                layer: nodeData ? (nodeData.properties ? nodeData.properties.layer : '') : '',
-                color: layerColor,
-                isRoot: parentId ? false : true,  // Explicitly mark root node
-                collapsed: false,
-            },
-            position: { 
-                x: xPos,
-                y: depth * verticalSpacing  // Vertical spacing between levels
-            }
-        });
-
-        // Create edge if there's a parent
-        if (parentId) {
-            edges.push({
-                data: {
-                    id: `e${parentId}-${nodeId}`,
-                    source: parentId,
-                    target: nodeId
-                }
-            });
-        }
-
-        // Process children
-        let currentX = leftBound;
-        childNodes.forEach((childNode) => {
-            const childSubtreeWidth = calculateSubtreeWidth(childNode);
-            traverseNode(childNode, nodeId, depth + 1, currentX);
-            currentX += childSubtreeWidth + horizontalSpacing;  // Horizontal spacing
-        });
-    };
-
-    // Get the root node and start traversal
-    const rootNode = xmlDoc.getElementsByTagName('tree')[0];
-    if (!rootNode) {
-        console.error("Root 'tree' element not found in XML document");
-        return { nodes: [], edges: [] };
-    }
-    
-    traverseNode(rootNode);
-
-    return { 
-        nodes, 
-        edges,
-        // Add Cytoscape style configuration to ensure proper rendering
-        style: [
-            {
-                selector: 'node',
-                style: {
-                    'background-color': 'data(color)',
-                    'label': '',
-                    'text-valign': 'center',
-                    'text-halign': 'center',
-                    'width': nodeSize,
-                    'height': nodeSize,
-                    'shape': 'ellipse',
-                    'border-width': 1,
-                    'border-color': '#333'
-                }
-            },
-            {
-                selector: 'node[?isRoot]',  // Special style for root node
-                style: {
-                    'background-color': '#6B46C1',  // Distinct color for root
-                    'font-weight': 'bold',
-                    'width': nodeSize * 1.2,  // Slightly larger
-                    'height': nodeSize * 1.2
-                }
-            },
-            {
-                selector: 'edge',
-                style: {
-                    'width': 2,
-                    'line-color': '#888',
-                    'target-arrow-color': '#888',
-                    'target-arrow-shape': 'triangle',
-                    'curve-style': 'bezier'
-                }
-            },
-            {
-                selector: '.selected',
-                style: {
-                    'border-width': 4,
-                    'border-color': '#FFC107',
-                    'border-opacity': 1
-                }
-            }
-        ]
-    };
+// Constants for styling and layout
+const LAYOUT = {
+  NODE_SIZE: 40,
+  VERTICAL_SPACING: 120,
+  HORIZONTAL_SPACING: 20
 };
 
-function get_layer_color(layer, isRoot=false) {
-    const layer_colors = {
-        'UI': 'hsl(333,70%,50%)',  // Red for presentation layer
-        'Logic': 'hsl(39,96%,49%)',       // Orange for service layer
-        'Data': 'hsl(143,74%,49%)',         // Green for domain layer
-        'Domain': 'hsl(261, 41.80%, 78.40%)',
-        'Undefined': '#4299E1',  // Blue for undefined layer
-        'Presentation Layer': '#FF0000',  // Red for presentation layer
+// Color map for different layers
+const LAYER_COLORS = {
+  'UI': 'hsl(333,70%,50%)',
+  'Logic': 'hsl(39,96%,49%)',
+  'Data': 'hsl(143,74%,49%)',
+  'Domain': 'hsl(261, 41.80%, 78.40%)',
+  'Presentation Layer': '#FF0000',
+  'Undefined': '#4299E1',
+  'ROOT': '#6B46C1'  // Dark purple for root
+};
 
-    };
-    if (isRoot) {
-        // dark pruple for root
-        return '#6B46C1';
+/**
+ * Gets the color for a specific layer
+ * @param {string} layer - The layer name
+ * @param {boolean} isRoot - Whether this is the root node
+ * @return {string} The color code
+ */
+function getLayerColor(layer, isRoot = false) {
+  if (isRoot) return LAYER_COLORS.ROOT;
+  return LAYER_COLORS[layer] || '#A0AEC0';  // Default gray if layer not found
+}
+
+/**
+ * Parse XML document into a Cytoscape-compatible graph
+ * @param {Document} xmlDoc - XML document to parse
+ * @return {Object} Nodes, edges and style for Cytoscape
+ */
+export const callTreeParser = (xmlDoc) => {
+  const nodes = [];
+  const edges = [];
+  let nodeIdCounter = 1;
+  
+  // First pass: calculate the width needed for each subtree
+  const calculateSubtreeWidth = (xmlNode) => {
+    const childNodes = Array.from(xmlNode.childNodes).filter(
+      node => node.nodeType === 1 && node.tagName === 'node'
+    );
+    
+    if (childNodes.length === 0) {
+      return LAYOUT.NODE_SIZE;  // Base width for a leaf node
     }
-    return layer_colors[layer] || '#A0AEC0';  // Default gray if layer not found
+    
+    const childWidths = childNodes.map(child => calculateSubtreeWidth(child));
+    return Math.max(
+      LAYOUT.NODE_SIZE,
+      childWidths.reduce((sum, width) => sum + width, 0) + 
+      (childNodes.length - 1) * LAYOUT.HORIZONTAL_SPACING
+    );
+  };
+
+  // Extract node attributes safely with default values
+  const getNodeAttributes = (xmlNode) => {
+    return {
+      methodName: xmlNode.getAttribute('methodName') || '',
+      className: xmlNode.getAttribute('class') || 'Root',
+      time: xmlNode.getAttribute('time') || '0',
+      percent: xmlNode.getAttribute('percent') || '0'
+    };
+  };
+
+  // Process node data from the fetcher
+  const processNodeData = (nodeData, isRoot) => {
+    const properties = nodeData?.properties || {};
+    const layerColor = getLayerColor(properties.layer || '', isRoot);
+    
+    return {
+      sourceCode: properties.sourceText || '',
+      visibility: properties.visibility || '',
+      simpleName: properties.simpleName || '',
+      qualifiedName: properties.qualifiedName || '',
+      kind: properties.kind || '',
+      docComment: properties.docComment || '',
+      metaSrc: properties.metaSrc || '',
+      description: properties.description || '',
+      returns: properties.returns || '',
+      reason: properties.reason || '',
+      howToUse: properties.howToUse || '',
+      howItWorks: properties.howItWorks || '',
+      assertions: properties.assertions || '',
+      layer: properties.layer || '',
+      color: layerColor
+    };
+  };
+
+  // Second pass: position nodes and create the graph
+  const traverseNode = (xmlNode, parentId = null, depth = 0, leftBound = 0) => {
+    const nodeId = (nodeIdCounter++).toString();
+    const attributes = getNodeAttributes(xmlNode);
+    const isRoot = !parentId;
+    
+    const childNodes = Array.from(xmlNode.childNodes).filter(
+      node => node.nodeType === 1 && node.tagName === 'node'
+    );
+
+    // Calculate node's horizontal position
+    const subtreeWidth = calculateSubtreeWidth(xmlNode);
+    const xPos = childNodes.length === 0
+      ? leftBound + LAYOUT.NODE_SIZE / 2  // Center of leaf node
+      : leftBound + subtreeWidth / 2;     // Center of subtree
+
+    // Create node label
+    const label = isRoot ? 'Root' : `${attributes.className}.${attributes.methodName}()`;
+    
+    // Fetch and process node data
+    const nodeData = nodeDataFetcher(attributes.className, attributes.methodName);
+    const processedData = processNodeData(nodeData, isRoot);
+    
+    // Create Cytoscape node
+    nodes.push({
+      data: {
+        id: nodeId,
+        ...attributes,
+        ...processedData,
+        label,
+        detailedDescription: "",
+        isRoot,
+        collapsed: false,
+      },
+      position: { 
+        x: xPos,
+        y: depth * LAYOUT.VERTICAL_SPACING
+      }
+    });
+
+    // Create edge if there's a parent
+    if (parentId) {
+      edges.push({
+        data: {
+          id: `e${parentId}-${nodeId}`,
+          source: parentId,
+          target: nodeId
+        }
+      });
+    }
+
+    // Process children
+    let currentX = leftBound;
+    childNodes.forEach((childNode) => {
+      const childSubtreeWidth = calculateSubtreeWidth(childNode);
+      traverseNode(childNode, nodeId, depth + 1, currentX);
+      currentX += childSubtreeWidth + LAYOUT.HORIZONTAL_SPACING;
+    });
+  };
+
+  // Get the root node and start traversal
+  const rootNode = xmlDoc.getElementsByTagName('tree')[0];
+  if (!rootNode) {
+    console.error("Root 'tree' element not found in XML document");
+    return { nodes: [], edges: [] };
+  }
+  
+  traverseNode(rootNode);
+
+  // Return the complete graph with styling
+  return { 
+    nodes, 
+    edges,
+    style: getCytoscapeStyles(LAYOUT.NODE_SIZE)
+  };
+};
+
+/**
+ * Get Cytoscape styles for the graph
+ * @param {number} nodeSize - Base size for nodes
+ * @return {Array} Array of style objects
+ */
+function getCytoscapeStyles(nodeSize) {
+  return [
+    {
+      selector: 'node',
+      style: {
+        'background-color': 'data(color)',
+        'label': '',
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'width': nodeSize,
+        'height': nodeSize,
+        'shape': 'ellipse',
+        'border-width': 1,
+        'border-color': '#333'
+      }
+    },
+    {
+      selector: 'node[?isRoot]',
+      style: {
+        'background-color': LAYER_COLORS.ROOT,
+        'font-weight': 'bold',
+        'width': nodeSize * 1.2,
+        'height': nodeSize * 1.2
+      }
+    },
+    {
+      selector: 'edge',
+      style: {
+        'width': 2,
+        'line-color': '#888',
+        'target-arrow-color': '#888',
+        'target-arrow-shape': 'triangle',
+        'curve-style': 'bezier'
+      }
+    },
+    {
+      selector: '.selected',
+      style: {
+        'border-width': 4,
+        'border-color': '#FFC107',
+        'border-opacity': 1
+      }
+    }
+  ];
 }
