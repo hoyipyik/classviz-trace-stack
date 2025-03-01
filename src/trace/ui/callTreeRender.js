@@ -91,6 +91,11 @@ function sanitizeNodes(nodes) {
                 (node.data.methodName ? '.' + node.data.methodName + '()' : '');
         }
         
+        // Initialize collapsed state
+        if (node.data.collapsed === undefined) {
+            node.data.collapsed = false;
+        }
+        
         return node;
     });
 }
