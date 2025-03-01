@@ -7,16 +7,16 @@ const LAYOUT = {
   HORIZONTAL_SPACING: 20
 };
 
-// Color map for different layers
-const LAYER_COLORS = {
-  'UI': 'hsl(333,70%,50%)',
-  'Logic': 'hsl(39,96%,49%)',
-  'Data': 'hsl(143,74%,49%)',
-  'Domain': 'hsl(261, 41.80%, 78.40%)',
-  'Presentation Layer': '#FF0000',
-  'Undefined': '#4299E1',
-  'ROOT': '#6B46C1'  // Dark purple for root
-};
+// Color map for different layers - using a Map for faster lookups
+const LAYER_COLORS = new Map([
+  ['UI', 'hsl(333,70%,50%)'],
+  ['Logic', 'hsl(39,96%,49%)'],
+  ['Data', 'hsl(143,74%,49%)'],
+  ['Domain', 'hsl(261, 41.80%, 78.40%)'],
+  ['Presentation Layer', '#FF0000'],
+  ['Undefined', '#4299E1'],
+  ['ROOT', '#6B46C1']  // Dark purple for root
+]);
 
 /**
  * Gets the color for a specific layer
@@ -25,8 +25,8 @@ const LAYER_COLORS = {
  * @return {string} The color code
  */
 function getLayerColor(layer, isRoot = false) {
-  if (isRoot) return LAYER_COLORS.ROOT;
-  return LAYER_COLORS[layer] || '#A0AEC0';  // Default gray if layer not found
+  if (isRoot) return LAYER_COLORS.get('ROOT');
+  return LAYER_COLORS.get(layer) || '#A0AEC0';
 }
 
 /**
@@ -49,12 +49,17 @@ export const callTreeParser = (xmlDoc) => {
       return LAYOUT.NODE_SIZE;  // Base width for a leaf node
     }
     
-    const childWidths = childNodes.map(child => calculateSubtreeWidth(child));
-    return Math.max(
-      LAYOUT.NODE_SIZE,
-      childWidths.reduce((sum, width) => sum + width, 0) + 
-      (childNodes.length - 1) * LAYOUT.HORIZONTAL_SPACING
-    );
+    let totalWidth = 0;
+    for (const child of childNodes) {
+      totalWidth += calculateSubtreeWidth(child);
+    }
+    
+    // Add spacing between children
+    if (childNodes.length > 1) {
+      totalWidth += (childNodes.length - 1) * LAYOUT.HORIZONTAL_SPACING;
+    }
+    
+    return Math.max(LAYOUT.NODE_SIZE, totalWidth);
   };
 
   // Extract node attributes safely with default values
@@ -144,11 +149,11 @@ export const callTreeParser = (xmlDoc) => {
 
     // Process children
     let currentX = leftBound;
-    childNodes.forEach((childNode) => {
+    for (const childNode of childNodes) {
       const childSubtreeWidth = calculateSubtreeWidth(childNode);
       traverseNode(childNode, nodeId, depth + 1, currentX);
       currentX += childSubtreeWidth + LAYOUT.HORIZONTAL_SPACING;
-    });
+    }
   };
 
   // Get the root node and start traversal
@@ -192,7 +197,7 @@ function getCytoscapeStyles(nodeSize) {
     {
       selector: 'node[?isRoot]',
       style: {
-        'background-color': LAYER_COLORS.ROOT,
+        'background-color': LAYER_COLORS.get('ROOT'),
         'font-weight': 'bold',
         'width': nodeSize * 1.2,
         'height': nodeSize * 1.2
