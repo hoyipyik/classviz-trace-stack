@@ -14,6 +14,8 @@ import { aggregateLayers, setParents, setStyleClasses, shortenRoots } from './sr
 import { adjustEdgeWidths, cacheNodeStyles, liftEdges, recolorContainers, removeContainmentEdges, removeExtraNodes, setLayerStyles, setRsStyles } from './src/visualTransformations.js';
 import { getScratch } from './src/utils.js';
 import { displayLegend } from './src/legend.js';
+import { contextDataLoader } from './src/trace/utils/context/contextDataLoader.js';
+import { loadTracePlugin } from './src/trace/cmd/tracePlugin.js';
 
 on('DOMContentLoaded', document, async () => {
 
@@ -47,6 +49,8 @@ on('DOMContentLoaded', document, async () => {
 			$("#filename").textContent = `Software Visualization: ${fileName}.json`;
 			clearInfo('#infobody');
 			initCy([prepareGraph(rawGraph), style]);
+			//!!!!!!!! load data context json
+			contextDataLoader(rawGraph);
 		} catch (error) {
 			console.error('Error fetching data:', error);
 		}
@@ -723,6 +727,8 @@ const fileUpload = function () {
 		reader.readAsText(file, "UTF-8");
 		reader.onload = function (e) {
 			const rawGraph = JSON.parse(e.target.result);
+			//!!!!!!!! load data context json
+			contextDataLoader(rawGraph);
 			const graph = prepareGraph(rawGraph);
 			const style = fetch("style.cycss").then(toText);
 			Promise.all([graph, style]).then(initCy);
@@ -1266,3 +1272,6 @@ var homogenizeForest = (isContainment, isTreeNode, isLeaf) => ({ elements: { nod
 
 	return { elements: { nodes: finalNodes, edges: finalEdges }, ...rest };
 };
+
+// !!!!!!!! load trace diagram plugin
+loadTracePlugin();
