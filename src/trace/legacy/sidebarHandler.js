@@ -184,7 +184,7 @@ export const displayNodeInfo = (nodeData) => {
     setupControlButtons(nodeData.id);
 
     // Adjust source code section height after rendering
-    setTimeout(() => {
+    // setTimeout(() => {
         const sourceCodeContainers = document.querySelectorAll('.source-code-container');
         sourceCodeContainers.forEach(container => {
             const pre = container.querySelector('pre');
@@ -196,7 +196,7 @@ export const displayNodeInfo = (nodeData) => {
                 pre.style.overflow = 'visible';
             }
         });
-    }, 10);
+    // }, 10);
 };
 
 /**
