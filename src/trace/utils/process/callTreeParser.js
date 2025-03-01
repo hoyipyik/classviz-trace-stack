@@ -2,8 +2,8 @@ import { nodeDataFetcher } from "../context/nodeDataFetcher.js";
 
 // Constants for styling and layout
 const LAYOUT = {
-  NODE_SIZE: 40,
-  VERTICAL_SPACING: 120,
+  NODE_SIZE: 55, // 40
+  VERTICAL_SPACING: 170, //120
   HORIZONTAL_SPACING: 20
 };
 
