@@ -10,7 +10,7 @@ let selectedNodeId = null;
  */
 export function createCytoscapeInstance(container, elements, style) {
     const updatedStyle = [...style];
-    
+
     // Check if hidden style exists, if not add it
     const hasHiddenStyle = style.some(s => s.selector === '.hidden');
     if (!hasHiddenStyle) {
@@ -22,7 +22,7 @@ export function createCytoscapeInstance(container, elements, style) {
             }
         });
     }
-    
+
     const cy = cytoscape({
         container: container,
         elements: elements,
@@ -31,10 +31,10 @@ export function createCytoscapeInstance(container, elements, style) {
             name: 'preset' // Use the pre-calculated positions
         }
     });
-    
+
     // Store the Cytoscape instance globally for easy access from other modules
-    window.cy = cy;
-    
+    window.cytrace = cy;
+
     return cy;
 }
 
@@ -46,24 +46,24 @@ export function createCytoscapeInstance(container, elements, style) {
  */
 export function setupNodeInteractions(cy, sidebar) {
     const { showSidebar, hideSidebar } = toggleSidebar(cy);
-    
+
     // Node tap event
-    cy.on('tap', 'node', function(evt) {
+    cy.on('tap', 'node', function (evt) {
         const node = evt.target;
         console.log('Tapped node:', node.id(), node.data());
-        selectNode(node.id());
+        selectNode(node.id(), cy);
         // Display node details in the sidebar
         displayNodeInfo(node.data());
-        
+
         // Show sidebar
         showSidebar();
-        
+
         // Prevent event from bubbling to canvas
         evt.originalEvent.stopPropagation();
     });
-    
+
     // Background tap event
-    cy.on('tap', function(evt) {
+    cy.on('tap', function (evt) {
         if (evt.target === cy) {
             hideSidebar();
         }
@@ -71,10 +71,10 @@ export function setupNodeInteractions(cy, sidebar) {
 }
 
 
-function selectNode(nodeId) {
+function selectNode(nodeId, cy) {
     // 清除之前的選擇
-    clearNodeSelection();
-    
+    clearNodeSelection(cy);
+
     // 設置新的選擇
     if (nodeId) {
         const node = cy.getElementById(nodeId);
@@ -86,7 +86,7 @@ function selectNode(nodeId) {
 }
 
 // 清除節點選擇
-function clearNodeSelection() {
+function clearNodeSelection(cy) {
     cy.nodes().removeClass('selected');
     selectedNodeId = null;
 }
@@ -100,24 +100,24 @@ function clearNodeSelection() {
 export function toggleChildren(cy, nodeId) {
     // Get the node
     const node = cy.getElementById(nodeId);
-    
+
     if (node.length === 0) {
         console.error(`Node with ID "${nodeId}" not found`);
         return;
     }
-    
+
     // Get current collapsed state and toggle it
     const currentCollapsed = node.data('collapsed');
     const collapsed = currentCollapsed === undefined ? true : !currentCollapsed;
-    
+
     // console.log(`Toggle node ${nodeId}: collapsed=${collapsed}`);
 
     // Update node's collapsed data
     node.data('collapsed', collapsed);
-    
+
     // Get all descendant nodes
     const descendants = getAllDescendants(cy, nodeId);
-    
+
     if (collapsed) {
         // Collapse: hide all descendants
         hideNodes(cy, descendants);
@@ -127,33 +127,153 @@ export function toggleChildren(cy, nodeId) {
         // console.log(`Showing ${directChildren.length} direct children of node ${nodeId}`);
         showDirectChildren(cy, nodeId, directChildren);
     }
-    
+
     // Re-run layout
     runLayout(cy);
-    
+
     // forceRender(cy);
 }
 
+// Add this new function to your cytoscapeHandler.js file
+
 /**
- * Run the graph layout algorithm
+ * Store the original positions of all visible nodes
  * @param {Object} cy - The Cytoscape instance
+ * @returns {Object} Map of node IDs to their positions
  */
-function runLayout(cy) {
-    // Use preset layout to maintain existing positions
-    cy.layout({
-        name: 'preset',
-        animate: true,
-        animationDuration: 300,
-        fit: false // Prevent zooming to fit which could change the view
-    }).run();
+export function storeOriginalPositions(cy) {
+    const positions = {};
+    cy.nodes().forEach(node => {
+        if (!node.hasClass('hidden')) {
+            positions[node.id()] = {
+                x: node.position('x'),
+                y: node.position('y')
+            };
+        }
+    });
+    return positions;
 }
 
+/**
+ * Restore nodes to their original positions
+ * @param {Object} cy - The Cytoscape instance
+ * @param {Object} positions - Map of node IDs to positions
+ */
+export function restorePositions(cy, positions) {
+    Object.entries(positions).forEach(([id, pos]) => {
+        const node = cy.getElementById(id);
+        if (node.length > 0) {
+            node.position(pos);
+        }
+    });
+    cy.fit();
+}
 
+// Now modify your runLayout function to use these new functions
+export function runLayout(cy, layoutName = 'preset', fitToView = false) {
+    // Store original positions if they're not already stored in the cy instance
+    if (!cy.scratch('originalPositions')) {
+        cy.scratch('originalPositions', storeOriginalPositions(cy));
+    }
+
+    // Common layout options
+    const layoutOptions = {
+        animate: true,
+        animationDuration: 300,
+        fit: fitToView  // Use the fitToView parameter to control fitting
+    };
+
+    // Run the appropriate layout
+    switch (layoutName) {
+        case 'breadthfirst':
+            cy.layout({
+                name: 'breadthfirst',
+                directed: true,
+                padding: 40,
+                spacingFactor: 1.3,     // Increased for better spacing
+                circle: false,
+                grid: true,
+                nodeDimensionsIncludeLabels: true,
+                roots: 'node[?isRoot]',
+                maximal: true,
+                avoidOverlap: true,
+                animate: false,
+                fit: true,
+                rankDir: 'TB',          // Top to bottom direction
+                ...layoutOptions
+            }).run();
+            break;
+        case 'klay':
+            cy.layout({
+                name: 'klay',
+                ...layoutOptions
+            }).run();
+            break;
+        case 'circle':
+            cy.layout({
+                name: 'circle',
+                ...layoutOptions
+            }).run();
+            break;
+        case 'concentric':
+            cy.layout({
+                name: 'concentric',
+                ...layoutOptions
+            }).run();
+            break;
+        case 'dagre':
+            cy.layout({
+                name: 'dagre',
+                ...layoutOptions
+            }).run();
+            break;
+        case 'cola':
+            cy.layout({
+                name: 'cola',
+                ...layoutOptions,
+                fit: true,
+                animate: true,
+            }).run();
+            break;
+        case 'grid':
+            cy.layout({
+                name: 'grid',
+                ...layoutOptions
+            }).run();
+            break;
+        case 'cose':
+            cy.layout({
+                name: 'cose',
+                ...layoutOptions
+            }).run();
+            break;
+        case 'fcose':
+            cy.layout({
+                name: 'fcose',
+                ...layoutOptions
+            }).run();
+            break;
+        default:
+            // Use the stored original positions instead of current preset data
+            const originalPositions = cy.scratch('originalPositions');
+            if (originalPositions) {
+                restorePositions(cy, originalPositions);
+            } else {
+                // Fallback to normal preset if no stored positions
+                cy.layout({
+                    name: 'preset',
+                    ...layoutOptions
+                }).run();
+            }
+            break;
+
+    }
+}
 /**
  * Force re-render all elements in the graph
  * @param {Object} cy - The Cytoscape instance
  */
-function forceRender(cy) {
+export function forceRender(cy) {
     cy.elements().forEach(ele => {
         if (ele.hasClass('hidden')) {
             ele.style('display', 'none');
@@ -161,7 +281,7 @@ function forceRender(cy) {
             ele.style('display', 'element');
         }
     });
-    
+
     // Update style
     cy.style().update();
 }
@@ -176,21 +296,21 @@ function hideNodes(cy, nodes) {
         console.log("No nodes to hide");
         return;
     }
-    
+
     console.log(`Hiding ${nodes.length} nodes`);
-    
+
     nodes.forEach(descendant => {
         // use style to hide
         descendant.style('display', 'none');
-        
+
         // Also add hidden class
         descendant.addClass('hidden');
-        
+
         // Also hide edges connected to these nodes
         const connectedEdges = descendant.connectedEdges();
         connectedEdges.style('display', 'none');
         connectedEdges.addClass('hidden');
-        
+
         // Set all child nodes as collapsed
         descendant.data('collapsed', true);
     });
@@ -206,10 +326,10 @@ function showDirectChildren(cy, parentId, children) {
     children.forEach(child => {
         // 直接使用樣式設置顯示
         child.style('display', 'element');
-        
+
         // 同時移除 hidden 類
         child.removeClass('hidden');
-        
+
         // Find and show the edge between parent and this child
         // Using selector to find edges between the parent and child
         const edgesToChild = cy.edges(`[source = "${parentId}"][target = "${child.id()}"]`);
@@ -226,35 +346,35 @@ function showDirectChildren(cy, parentId, children) {
 export function expandAllDescendants(cy, nodeId) {
     // Get the node
     const node = cy.getElementById(nodeId);
-    
+
     if (node.length === 0) {
         console.error(`Node with ID "${nodeId}" not found`);
         return;
     }
-    
+
     // Set current node as not collapsed
     node.data('collapsed', false);
-    
+
     // Get all descendant nodes
     const descendants = getAllDescendants(cy, nodeId);
-    
+
     // Show all descendants
     descendants.forEach(descendant => {
         descendant.style('display', 'element');
         descendant.removeClass('hidden');
-        
+
         // Show edges connected to these nodes
         const connectedEdges = descendant.connectedEdges();
         connectedEdges.style('display', 'element');
         connectedEdges.removeClass('hidden');
-        
+
         // Set all descendants as not collapsed
         descendant.data('collapsed', false);
     });
-    
+
     // Re-run layout
     runLayout(cy);
-    
+
     // force render
     // forceRender(cy);
 }
@@ -268,10 +388,10 @@ export function expandAllDescendants(cy, nodeId) {
 export function getChildNodes(cy, nodeId) {
     // Get all edges where this node is the source
     const outgoingEdges = cy.edges(`[source = "${nodeId}"]`);
-    
+
     // Create an array to store the child nodes
     const childNodes = cy.collection();
-    
+
     // For each outgoing edge, get the target node
     outgoingEdges.forEach(edge => {
         const targetId = edge.data('target');
@@ -280,7 +400,7 @@ export function getChildNodes(cy, nodeId) {
             childNodes.merge(targetNode);
         }
     });
-    
+
     // console.log(`Found ${childNodes.length} direct children for node ${nodeId}`);
     return childNodes;
 }
@@ -294,11 +414,11 @@ export function getChildNodes(cy, nodeId) {
 export function getAllDescendants(cy, nodeId) {
     const descendants = cy.collection();
     const seen = new Set();
-    
+
     function collectDescendants(id) {
         if (seen.has(id)) return;
         seen.add(id);
-        
+
         const children = getChildNodes(cy, id);
         if (children.length > 0) {
             descendants.merge(children);
@@ -307,7 +427,7 @@ export function getAllDescendants(cy, nodeId) {
             });
         }
     }
-    
+
     collectDescendants(nodeId);
     console.log(`Found ${descendants.length} total descendants for node ${nodeId}`);
     return descendants;
