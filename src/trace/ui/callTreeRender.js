@@ -8,8 +8,25 @@ import { createSidebar } from './sidebarHandler.js';
  * @param {Object} graph - The graph data with nodes and edges
  */
 export const callTreeRender = (graph) => {
+    console.log('callTreeRender called with graph:', !!graph);
+    
+    // Validate graph data
+    if (!graph) {
+        console.error('No graph data provided to callTreeRender');
+        return;
+    }
+    
+    if (!graph.nodes || !graph.edges || !graph.style) {
+        console.error('Invalid graph data structure:', graph);
+        return;
+    }
+    
     // Get the main container element
     const callTreeElement = document.getElementById('calltree');
+    if (!callTreeElement) {
+        console.error('Call tree container element not found');
+        return;
+    }
     
     // Clear existing content
     clearElement(callTreeElement);
@@ -18,21 +35,40 @@ export const callTreeRender = (graph) => {
     const { layoutContainer, cyContainer } = createLayoutContainers();
     callTreeElement.appendChild(layoutContainer);
     
-    // Create sidebar elements
-    const sidebar = createSidebar();
-    layoutContainer.appendChild(sidebar);
-    
-    // Initialize the Cytoscape instance
     try {
+        // Create sidebar elements
+        const sidebar = createSidebar();
+        layoutContainer.appendChild(sidebar);
+        
+        console.log('Initializing Cytoscape with:', 
+            graph.nodes.length, 'nodes and', 
+            graph.edges.length, 'edges');
+        
+        // Process and sanitize nodes
         const safeNodes = sanitizeNodes(graph.nodes);
+        
+        // Initialize the Cytoscape instance
         const cy = createCytoscapeInstance(cyContainer, [...safeNodes, ...graph.edges], graph.style);
+        
+        if (!cy) {
+            throw new Error('Failed to create Cytoscape instance');
+        }
         
         // Setup node interaction handlers
         setupNodeInteractions(cy, sidebar);
         
-        // Fit the view to see all elements
-        cy.fit();
+        // Only fit the view if this is the first render
+        if (!window.calltreeRendered) {
+            console.log('First call tree render, fitting view');
+            cy.fit();
+            window.calltreeRendered = true;
+        } else {
+            console.log('Subsequent call tree render, preserving view position');
+        }
+        
+        console.log('Call tree rendered successfully');
     } catch (error) {
+        console.error('Error in callTreeRender:', error);
         displayError(callTreeElement, error);
     }
 };
