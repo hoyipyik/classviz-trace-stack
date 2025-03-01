@@ -1,4 +1,6 @@
 // sidebarHandler.js - Functions for sidebar creation and management
+import { toggleChildren, expandAllDescendants } from './cytoscapeHandler.js';
+
 // Function to display node information in the sidebar
 export const displayNodeInfo = (nodeData) => {
     const sidebarContent = document.getElementById('calltree-sidebar-content');
@@ -58,6 +60,9 @@ export const displayNodeInfo = (nodeData) => {
 
     // Build sidebar content in the style shown in the image
     let html = '';
+    const hasChildren = cy.getElementById(nodeData.id).outgoers().length > 0;
+    // Add control section with buttons for node manipulation
+    html += createControlSection(nodeData.id, hasChildren);
 
     // Show full ID first
     if (nodeData.id) {
@@ -174,6 +179,9 @@ export const displayNodeInfo = (nodeData) => {
     // Set the HTML content
     sidebarContent.innerHTML = html;
 
+    // Add event listeners to the control buttons
+    setupControlButtons(nodeData.id);
+
     // Adjust source code section height after rendering
     setTimeout(() => {
         const sourceCodeContainers = document.querySelectorAll('.source-code-container');
@@ -188,6 +196,143 @@ export const displayNodeInfo = (nodeData) => {
     }, 10);
 };
 
+/**
+ * Creates a control section with buttons for node manipulation
+ * @param {string} nodeId - The ID of the current node
+ * @param {boolean} hasChildren - Whether the node has children
+ * @returns {string} HTML for the control section
+ */
+function createControlSection(nodeId, hasChildren) {
+    // If node has no children, return empty control section or a message
+    if (!hasChildren) {
+        return `
+        <div class="info-section control-section">
+            <div class="section-header">controls</div>
+            <div class="section-content">
+                <div class="no-children-message">This node has no children</div>
+            </div>
+        </div>
+        <style>
+            .control-section {
+                margin-bottom: 10px;
+            }
+            .no-children-message {
+                font-size: 12px;
+                color: #888;
+                font-style: italic;
+                padding: 6px 0;
+            }
+        </style>
+        `;
+    }
+
+    // If node has children, return buttons
+    return `
+    <div class="info-section control-section">
+        <div class="section-header">controls</div>
+        <div class="section-content">
+            <div class="control-buttons">
+                <button id="toggle-children-btn" class="control-btn primary-btn" data-node-id="${nodeId}">
+                    Toggle Children
+                </button>
+                <button id="expand-all-btn" class="control-btn primary-btn" data-node-id="${nodeId}">
+                    Expand All
+                </button>
+            </div>
+            <div class="control-buttons" style="margin-top: 8px;">
+                <button id="export-subtree-btn" class="control-btn export-btn" data-node-id="${nodeId}">
+                    Export Subtree
+                </button>
+                <button id="explain-subtree-btn" class="control-btn explain-btn" data-node-id="${nodeId}">
+                    Explain Subtree
+                </button>
+            </div>
+        </div>
+    </div>
+    <style>
+        .control-section {
+            margin-bottom: 10px;
+        }
+        .control-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        .control-btn {
+            padding: 6px 12px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            flex: 1;
+            text-align: center;
+            transition: background-color 0.2s;
+        }
+        .primary-btn {
+            background-color: #4682B4;
+        }
+        .primary-btn:hover {
+            background-color: #36648B;
+        }
+        .primary-btn:active {
+            background-color: #2B4F71;
+        }
+        .export-btn {
+            background-color:hsl(143,74%,42%); /* Sea Green */
+        }
+        .export-btn:hover {
+            background-color: hsl(143,74%,39%);
+        }
+        .export-btn:active {
+            background-color:hsl(143,74%,29%);
+        }
+        .explain-btn {
+            background-color: hsl(333, 70%, 50%); /* Pink/Magenta */
+        }
+        .explain-btn:hover {
+            background-color: hsl(333, 70%, 40%); /* Darker */
+        }
+        .explain-btn:active {
+            background-color: hsl(333, 70%, 30%); /* Even darker */
+        }
+    </style>
+    `;
+}
+
+/**
+ * Sets up event listeners for control buttons
+ * @param {string} nodeId - The ID of the current node
+ */
+function setupControlButtons(nodeId) {
+    // Get the buttons
+    const toggleBtn = document.getElementById('toggle-children-btn');
+    const expandAllBtn = document.getElementById('expand-all-btn');
+    
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            // Get current Cytoscape instance
+            const cy = window.cy; // Assuming the Cytoscape instance is stored in window.cy
+            if (cy) {
+                toggleChildren(cy, nodeId);
+            } else {
+                console.error('Cytoscape instance not found');
+            }
+        });
+    }
+    
+    if (expandAllBtn) {
+        expandAllBtn.addEventListener('click', () => {
+            // Get current Cytoscape instance
+            const cy = window.cy; // Assuming the Cytoscape instance is stored in window.cy
+            if (cy) {
+                expandAllDescendants(cy, nodeId);
+            } else {
+                console.error('Cytoscape instance not found');
+            }
+        });
+    }
+}
+
 let sidebarVisible = false;
 /**
  * Functions to toggle sidebar visibility
@@ -195,7 +340,7 @@ let sidebarVisible = false;
  * @returns {Object} Object with show and hide functions
  */
 export function toggleSidebar() {
-    // 函数显示侧边栏
+    //show sidebar function
     const showSidebar = () => {
         const sidebar = document.getElementById('calltree-sidebar');
         if (!sidebarVisible && sidebar) {
@@ -206,7 +351,7 @@ export function toggleSidebar() {
         }
     };
 
-    // 函数隐藏侧边栏
+    // hide sidebar function
     const hideSidebar = () => {
         const sidebar = document.getElementById('calltree-sidebar');
         console.log(sidebarVisible, sidebar);
@@ -226,35 +371,35 @@ export function toggleSidebar() {
  * Create the sidebar element with all its components
  * @returns {HTMLElement} The sidebar container element
  */
-// 修改后的createSidebar函数
+// create sidebar function
 export function createSidebar() {
-    // 先创建并保存sidebar controller对象
+    // Create and save the sidebar controller object
     const sidebarController = toggleSidebar();
     
-    // 创建主侧边栏容器
+    // Create the main sidebar container
     const sidebar = document.createElement('div');
     sidebar.id = 'calltree-sidebar';
     sidebar.className = 'sidebar-hidden';
 
-    // 设置侧边栏样式
+    // Apply styles to the sidebar element
     applySidebarStyles(sidebar);
 
-    // 创建并添加关闭按钮
+    // Create and add the close button
     const closeButton = createCloseButton();
     sidebar.appendChild(closeButton);
 
-    // 创建并添加头部
+    // Create and add the header
     const sidebarHeader = createSidebarHeader();
     sidebar.appendChild(sidebarHeader);
 
-    // 创建并添加内容容器
+    // Create and add the content container
     const sidebarContent = document.createElement('div');
     sidebarContent.id = 'calltree-sidebar-content';
     sidebarContent.style.padding = '0';
     sidebarContent.innerHTML = '<div style="padding: 10px;">Select a node to view details</div>';
     sidebar.appendChild(sidebarContent);
 
-    // 设置关闭按钮事件监听器 - 使用已创建的controller
+    // Add event listener to the close button
     closeButton.addEventListener('click', (e) => {
         e.stopPropagation();
         sidebarController.hideSidebar();
