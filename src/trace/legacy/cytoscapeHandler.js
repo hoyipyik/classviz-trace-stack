@@ -1,5 +1,5 @@
 // cytoscapeHandler.js - Handles Cytoscape initialization and operations
-import { displayNodeInfo, toggleSidebar } from '../ui/sidebar/index.js';
+import { displayNodeInfo, toggleSidebar } from '../ui/components/sidebar/index.js';
 let selectedNodeId = null;
 /**
  * Create and initialize a Cytoscape instance
@@ -180,9 +180,9 @@ export function restorePositions(cy, positions, doFit = false) {
     }
     
     // Re-enable animations for future layout changes
-    setTimeout(() => {
+    // setTimeout(() => {
         cy.elements().addClass('animated');
-    }, 50);
+    // }, 50);
 }
 
 // Now modify your runLayout function to use these new functions
