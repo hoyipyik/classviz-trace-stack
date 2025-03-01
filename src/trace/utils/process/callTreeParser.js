@@ -50,8 +50,8 @@ export const callTreeParser = (xmlDoc) => {
         }
 
         const nodeData = nodeDataFetcher(className, methodName);
-        const layerColor = get_layer_color(nodeData ? (nodeData.properties ? nodeData.properties.layer : '') : '');
-        
+        // if not parentid make it dark purple
+        const layerColor = get_layer_color(nodeData ? (nodeData.properties ? nodeData.properties.layer : '') : '', parentId ? false : true);
         // Create node label (make sure Root node is visibly labeled)
         const label = parentId ? `${className}.${methodName}()` : 'Root';
         
@@ -140,7 +140,7 @@ export const callTreeParser = (xmlDoc) => {
             {
                 selector: 'node[?isRoot]',  // Special style for root node
                 style: {
-                    'background-color': '#4299E1',  // Distinct color for root
+                    'background-color': '#6B46C1',  // Distinct color for root
                     'font-weight': 'bold',
                     'width': nodeSize * 1.2,  // Slightly larger
                     'height': nodeSize * 1.2
@@ -168,15 +168,19 @@ export const callTreeParser = (xmlDoc) => {
     };
 };
 
-function get_layer_color(layer) {
+function get_layer_color(layer, isRoot=false) {
     const layer_colors = {
         'UI': 'hsl(333,70%,50%)',  // Red for presentation layer
         'Logic': 'hsl(39,96%,49%)',       // Orange for service layer
         'Data': 'hsl(143,74%,49%)',         // Green for domain layer
-        'Domain': '#D53F8C',     // Purple for domain layer
+        'Domain': 'hsl(261, 41.80%, 78.40%)',
         'Undefined': '#4299E1',  // Blue for undefined layer
         'Presentation Layer': '#FF0000',  // Red for presentation layer
 
     };
+    if (isRoot) {
+        // dark pruple for root
+        return '#6B46C1';
+    }
     return layer_colors[layer] || '#A0AEC0';  // Default gray if layer not found
 }
