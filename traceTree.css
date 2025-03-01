@@ -105,33 +105,46 @@ body {
 
 #calltree #calltree-sidebar-close {
     position: absolute;
-    top: 5px;
-    right: 5px;
-    cursor: pointer;
-    background: transparent;
-    border: none;
-    font-size: 16px;
-    color: #666;
+    top: 8px;
+    right: 8px;
     z-index: 101;
     padding: 2px 6px;
+    background-color: transparent;
+    border: none;
+    font-size: 16px;
     font-weight: bold;
-}
+    cursor: pointer;
+    color: #666;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+  }
 
 #calltree #calltree-sidebar-close:hover {
     color: #000;
 }
 
 #calltree #calltree-sidebar-header {
-    background-color: #e6e6e6;
+    display: flex;
+    align-items: center;
+    position: relative;
+    min-height: 24px;
     padding: 10px;
+    padding-right: 40px; /* Ensure enough space for the close button */
+    background-color: #e6e6e6;
     border-bottom: 1px solid #ccc;
     font-weight: bold;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    height: 40px;
-    box-sizing: border-box;
 }
+
+#calltree-sidebar-header > div {
+    width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
 
 /* Section styles - making all sections consistent */
 #calltree .info-section {
