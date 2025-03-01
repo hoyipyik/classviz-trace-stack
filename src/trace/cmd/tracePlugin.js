@@ -1,6 +1,6 @@
-import { fitGraphHandler } from "../ui/topbar/fitButton.js";
-import { traceLoader } from "../ui/topbar/traceLoader.js";
-import { viewSwitcher } from "../ui/viewSwitcher.js";
+import { fitGraphHandler } from "../ui/components/topbar/fitButton.js";
+import { traceLoader } from "../ui/components/topbar/traceLoader.js";
+import { viewSwitcher } from "../ui/views/index.js";
 
 export const loadTracePlugin = () => {
     traceLoader();
