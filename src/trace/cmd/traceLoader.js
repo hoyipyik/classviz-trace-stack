@@ -1,8 +1,8 @@
 import { rerender } from "../ui/viewSwitcher.js";
-import { callTreeParser } from "../utils/calltree/callTreeParser.js";
-import { xmlFileReader } from "../utils/calltree/xmlFileReader.js";
+import { callTreeParser } from "../utils/process/callTreeParser.js";
+import { xmlFileReader } from "../utils/process/xmlFileReader.js";
 
-export const traceFileLoader = () => {
+export const traceLoader = () => {
     document.addEventListener('DOMContentLoaded', function () {
         console.log('Trace file loader initialized');
         const traceButton = document.getElementById('trace-btn');
