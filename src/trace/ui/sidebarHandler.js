@@ -60,7 +60,7 @@ export const displayNodeInfo = (nodeData) => {
 
     // Build sidebar content in the style shown in the image
     let html = '';
-    const hasChildren = cy.getElementById(nodeData.id).outgoers().length > 0;
+    const hasChildren = window.cytrace.getElementById(nodeData.id).outgoers().length > 0;
     // Add control section with buttons for node manipulation
     html += createControlSection(nodeData.id, hasChildren);
 
@@ -311,7 +311,7 @@ function setupControlButtons(nodeId) {
     if (toggleBtn) {
         toggleBtn.addEventListener('click', () => {
             // Get current Cytoscape instance
-            const cy = window.cy; // Assuming the Cytoscape instance is stored in window.cy
+            const cy = window.cytrace; // Assuming the Cytoscape instance is stored in window.cytrace
             if (cy) {
                 toggleChildren(cy, nodeId);
             } else {
@@ -323,7 +323,7 @@ function setupControlButtons(nodeId) {
     if (expandAllBtn) {
         expandAllBtn.addEventListener('click', () => {
             // Get current Cytoscape instance
-            const cy = window.cy; // Assuming the Cytoscape instance is stored in window.cy
+            const cy = window.cytrace; // Assuming the Cytoscape instance is stored in window.cytrace
             if (cy) {
                 expandAllDescendants(cy, nodeId);
             } else {
@@ -347,19 +347,19 @@ export function toggleSidebar() {
             sidebar.style.transform = 'translateX(0)';
             sidebar.className = 'sidebar-visible';
             sidebarVisible = true;
-            console.log('Showing sidebar', sidebarVisible);
+            // console.log('Showing sidebar', sidebarVisible);
         }
     };
 
     // hide sidebar function
     const hideSidebar = () => {
         const sidebar = document.getElementById('calltree-sidebar');
-        console.log(sidebarVisible, sidebar);
+        // console.log(sidebarVisible, sidebar);
         if (sidebarVisible && sidebar) {
             sidebar.style.transform = 'translateX(100%)';
             sidebar.className = 'sidebar-hidden';
             sidebarVisible = false;
-            console.log('Hiding sidebar', sidebarVisible);
+            // console.log('Hiding sidebar', sidebarVisible);
         }
     };
 
