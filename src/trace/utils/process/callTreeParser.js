@@ -172,28 +172,3 @@ function get_layer_color(layer) {
     };
     return layer_colors[layer] || '#A0AEC0';  // Default gray if layer not found
 }
-
-// Example usage with Cytoscape:
-/*
-import cytoscape from 'cytoscape';
-
-// After parsing the XML:
-const result = callTreeParser(xmlDocument);
-const { nodes, edges, style } = result;
-
-const cy = cytoscape({
-  container: document.getElementById('cy'), // container to render in
-  elements: [...nodes, ...edges],
-  style: style,  // Use the style provided by the parser
-  layout: {
-    name: 'preset' // Use the positions we calculated
-  }
-});
-
-// You can add interaction handlers:
-cy.on('tap', 'node', function(evt){
-  const node = evt.target;
-  console.log('Tapped', node.id(), node.data());
-  // Display node details in a panel, etc.
-});
-*/
