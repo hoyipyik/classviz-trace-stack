@@ -1,6 +1,6 @@
 // cytoscapeHandler.js - Handles Cytoscape initialization and operations
 import { displayNodeInfo, toggleSidebar } from './sidebarHandler.js';
-
+let selectedNodeId = null;
 /**
  * Create and initialize a Cytoscape instance
  * @param {HTMLElement} container - The container element for Cytoscape
@@ -51,7 +51,7 @@ export function setupNodeInteractions(cy, sidebar) {
     cy.on('tap', 'node', function(evt) {
         const node = evt.target;
         console.log('Tapped node:', node.id(), node.data());
-        
+        selectNode(node.id());
         // Display node details in the sidebar
         displayNodeInfo(node.data());
         
@@ -68,6 +68,27 @@ export function setupNodeInteractions(cy, sidebar) {
             hideSidebar();
         }
     });
+}
+
+
+function selectNode(nodeId) {
+    // 清除之前的選擇
+    clearNodeSelection();
+    
+    // 設置新的選擇
+    if (nodeId) {
+        const node = cy.getElementById(nodeId);
+        if (node.length > 0) {
+            node.addClass('selected');
+            selectedNodeId = nodeId;
+        }
+    }
+}
+
+// 清除節點選擇
+function clearNodeSelection() {
+    cy.nodes().removeClass('selected');
+    selectedNodeId = null;
 }
 
 
