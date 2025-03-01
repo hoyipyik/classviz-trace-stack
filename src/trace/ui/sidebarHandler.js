@@ -1,4 +1,5 @@
 // sidebarHandler.js - Functions for sidebar creation and management
+import { addSourceCodeStyles, applySidebarStyles } from '../style/sidebar.style.js';
 import { toggleChildren, expandAllDescendants } from './cytoscapeHandler.js';
 
 // Function to display node information in the sidebar
@@ -117,7 +118,7 @@ export const displayNodeInfo = (nodeData) => {
         }
     });
 
-    // Source code section with dynamic height
+    // Source code section with horizontal scrolling only
     if (nodeData.sourceCode) {
         html += `<div class="info-section">
             <div class="section-header">sourceCode</div>
@@ -188,9 +189,11 @@ export const displayNodeInfo = (nodeData) => {
         sourceCodeContainers.forEach(container => {
             const pre = container.querySelector('pre');
             if (pre) {
-                // Set container height based on content
-                container.style.height = 'auto';
+                // Allow horizontal scrolling only, maintain original vertical behavior
+                container.style.overflowX = 'auto';
+                container.style.overflowY = 'visible';
                 pre.style.maxHeight = 'none';
+                pre.style.overflow = 'visible';
             }
         });
     }, 10);
@@ -366,12 +369,10 @@ export function toggleSidebar() {
     return { showSidebar, hideSidebar };
 }
 
-// sidebarHandler.js - Functions for sidebar creation and management
 /**
  * Create the sidebar element with all its components
  * @returns {HTMLElement} The sidebar container element
  */
-// create sidebar function
 export function createSidebar() {
     // Create and save the sidebar controller object
     const sidebarController = toggleSidebar();
@@ -405,31 +406,9 @@ export function createSidebar() {
         sidebarController.hideSidebar();
     });
 
+    // Add styles for source code display
+    addSourceCodeStyles();
     return sidebar;
-}
-
-/**
- * Apply styles to the sidebar element
- * @param {HTMLElement} sidebar - The sidebar element
- */
-function applySidebarStyles(sidebar) {
-    Object.assign(sidebar.style, {
-        width: '270px',
-        minWidth: '270px',
-        height: '100%',
-        backgroundColor: '#f5f5f5',
-        border: '1px solid #ddd',
-        borderLeft: '1px solid #ccc',
-        padding: '0',
-        overflowY: 'auto',
-        transition: 'transform 0.3s ease',
-        position: 'absolute',
-        right: '0',
-        top: '0',
-        zIndex: '100',
-        boxShadow: '-2px 0 5px rgba(0,0,0,0.1)',
-        transform: 'translateX(100%)'
-    });
 }
 
 
@@ -475,9 +454,9 @@ function createCloseButton() {
 }
 
 /**
-* Create the header for the sidebar
-* @returns {HTMLElement} The sidebar header
-*/
+ * Create the header for the sidebar
+ * @returns {HTMLElement} The sidebar header
+ */
 function createSidebarHeader() {
     const sidebarHeader = document.createElement('div');
     sidebarHeader.id = 'calltree-sidebar-header';
@@ -495,3 +474,4 @@ function createSidebarHeader() {
     sidebarHeader.innerHTML = '<div style="overflow-wrap: break-word; word-break: break-word; width: 100%;">Node Details</div>';
     return sidebarHeader;
 }
+
