@@ -87,7 +87,7 @@ export function storeOriginalPositions(cy) {
       case 'cola':
         specificOptions = {
           animate: true,
-          fit: true,
+          // fit: true,
         };
         break;
       // No specific options for other layouts - use defaults
