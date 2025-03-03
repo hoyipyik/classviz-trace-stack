@@ -49,3 +49,87 @@ export function getAllDescendants(cy, nodeId) {
     console.log(`Found ${descendants.length} total descendants for node ${nodeId}`);
     return descendants;
 }
+
+
+/**
+ * Get all descendant nodes of a node in a hierarchical cascade format
+ * @param {Object} cy - The Cytoscape instance
+ * @param {string} nodeId - The ID of the parent node
+ * @param {Array<string>} properties - Array of property names to include (default: all properties)
+ * @param {Set} visited - Set of visited node IDs (internal use for recursion)
+ * @returns {Object} Hierarchical tree structure with specified properties and children arrays
+ */
+export function getAllDescendantsAsTree(cy, nodeId, properties = [
+    'id', 
+    'methodName', 
+    'className', 
+    'time', 
+    'percent',
+    'sourceCode',
+    'visibility',
+    'simpleName',
+    'qualifiedName',
+    'kind',
+    'docComment',
+    'metaSrc',
+    'description',
+    'subtreeSummary',
+    'subtreeDetailedExplanation',
+    'returns',
+    'reason',
+    'howToUse',
+    'howItWorks',
+    'assertions',
+    'layer',
+    'color',
+    'label',
+    'detailedDescription',
+    'isRoot',
+    'collapsed'
+], visited = new Set()) {
+    // Check for previously visited nodes to avoid cycles
+    if (visited.has(nodeId)) {
+        return null;
+    }
+    
+    // Get the node and validate
+    const node = cy.getElementById(nodeId);
+    if (!node.length) {
+        return null;
+    }
+    
+    // Mark this node as visited
+    visited.add(nodeId);
+    
+    // Extract node data once
+    const data = node.data();
+    
+    // Create node object efficiently
+    const nodeObj = { id: nodeId};
+    
+    // Add selected properties from node data
+    for (let i = 0; i < properties.length; i++) {
+        const prop = properties[i];
+        if (prop !== 'id') { // Skip ID as we've already added it
+            nodeObj[prop] = data[prop] !== undefined ? data[prop] : '';
+        }
+    }
+    nodeObj.children = [];
+    
+    // Get immediate children as a collection
+    const childNodes = node.outgoers().nodes();
+    
+    // Process children if there are any
+    if (childNodes.length > 0) {
+        // Process each child
+        childNodes.forEach(childNode => {
+            const childId = childNode.id();
+            const childTree = getAllDescendantsAsTree(cy, childId, properties, visited);
+            if (childTree) {
+                nodeObj.children.push(childTree);
+            }
+        });
+    }
+    
+    return nodeObj;
+}
