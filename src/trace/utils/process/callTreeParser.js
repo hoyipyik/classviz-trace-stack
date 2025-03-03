@@ -86,6 +86,8 @@ export const callTreeParser = (xmlDoc) => {
       docComment: properties.docComment || '',
       metaSrc: properties.metaSrc || '',
       description: properties.description || '',
+      subtreeSummary: '',
+      subtreeDetailedExplanation: '',
       returns: properties.returns || '',
       reason: properties.reason || '',
       howToUse: properties.howToUse || '',
