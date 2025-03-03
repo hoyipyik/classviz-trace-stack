@@ -1,6 +1,7 @@
 // sidebar/controlSection.js - Functions for control section creation and handling
 
 import { expandAllDescendants, toggleChildren } from "../cytoscape/nodeVisibility.js";
+import { exportSubTree } from "../cytoscape/subTreeExport.js";
 
 // Common styles extracted to avoid duplication
 const CONTROL_STYLES = `
@@ -120,7 +121,7 @@ export function setupControlButtons(nodeId) {
         },
         {
             id: 'export-subtree-btn',
-            handler: () => console.log('Export subtree action for node:', nodeId)
+            handler: () => executeCytoscapeAction(nodeId, exportSubTree)
         },
         {
             id: 'explain-subtree-btn',
