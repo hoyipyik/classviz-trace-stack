@@ -128,7 +128,6 @@ export const callTreeParser = (xmlDoc) => {
         ...attributes,
         ...processedData,
         label,
-        detailedDescription: "",
         isRoot,
         collapsed: false,
       },
