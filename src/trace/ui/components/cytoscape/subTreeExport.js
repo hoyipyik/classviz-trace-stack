@@ -2,14 +2,14 @@ import { getAllDescendantsAsTree } from "./nodeTraversal.js";
 
 export function exportSubTree(cy, nodeId) {
     const properties = [
-        "id",
-        "methodName",
-        "className",
+        // "id",
+        // "methodName",
+        // "className",
         "label",
         "description",
-        "reason",
-        "subtreeSummary",
-        "subtreeDetailedExplanation",
+        // "reason",
+        // "subtreeSummary",
+        // "subtreeDetailedExplanation",
         // "sourceCode",
     ];
     const subTreeData = getAllDescendantsAsTree(cy, nodeId, properties);
