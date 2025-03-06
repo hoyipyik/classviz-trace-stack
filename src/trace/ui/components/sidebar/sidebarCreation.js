@@ -117,7 +117,8 @@ function createSidebarHeader() {
   // Apply styles
   Object.assign(sidebarHeader.style, STYLES.header);
   
-  sidebarHeader.innerHTML = '<div style="overflow-wrap: break-word; word-break: break-word; width: 100%;">Node Details</div>';
+  // Create a text container without inline styles since they're defined in CSS
+  sidebarHeader.innerHTML = '<div>Node Details</div>';
   
   return sidebarHeader;
 }
