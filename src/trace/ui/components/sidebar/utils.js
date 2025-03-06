@@ -15,24 +15,29 @@ export const escapeHtml = (unsafe) => {
         .replace(/'/g, "&#039;");
 };
 
+
 /**
  * Creates a property row for displaying in the sidebar
  * @param {string} label - Property label
  * @param {string} value - Property value
  * @param {boolean} isCode - Whether the value should be displayed as code
+ * @param {string} [containerId] - Optional ID for the container div
  * @returns {string} HTML string for the property row
  */
-export const createPropertyRow = (label, value, isCode = false) => {
+export const createPropertyRow = (label, value, isCode = false, containerId = '') => {
     if (value === undefined || value === null || value === '') {
         return ''; // Don't display empty properties
     }
 
+    const containerIdAttr = containerId ? ` id="${containerId}"` : '';
+    const valueId = containerId ? `${containerId}-value` : '';
+    
     const valueHtml = isCode
-        ? `<pre class="code-block">${escapeHtml(value)}</pre>`
-        : `<div class="property-value">${escapeHtml(value)}</div>`;
+        ? `<pre class="code-block" ${valueId ? `id="${valueId}"` : ''}>${escapeHtml(value)}</pre>`
+        : `<div class="property-value" ${valueId ? `id="${valueId}"` : ''}>${escapeHtml(value)}</div>`;
 
     return `
-        <div class="property-row">
+        <div class="property-row"${containerIdAttr}>
             <div class="property-label">${label}</div>
             ${valueHtml}
         </div>
