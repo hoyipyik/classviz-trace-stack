@@ -2,7 +2,8 @@
 
 // Import fetch for Node.js environments
 export async function sendPromptToOllama(prompt, model = 'llama3.2') {
-    const url = 'http://localhost:11434/api/generate';
+    // const url = 'http://localhost:11434/api/generate';
+    const url = 'http://172.245.88.195:3000/api/generate';
 
     const payload = {
         model: model,
