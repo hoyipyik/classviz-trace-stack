@@ -1,0 +1,1 @@
+ssh -N -R 0.0.0.0:3000:localhost:11434 hoyipyik@172.245.88.195
