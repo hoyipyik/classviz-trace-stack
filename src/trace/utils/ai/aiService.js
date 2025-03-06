@@ -1,13 +1,13 @@
 
 
 // Import fetch for Node.js environments
-export async function sendPromptToOllama(prompt, model = 'llama3.2', temperature = 0.1) {
+export async function sendPromptToOllama(prompt, model = 'llama3.2') {
     const url = 'http://localhost:11434/api/generate';
 
     const payload = {
         model: model,
         prompt: prompt,
-        temperature: temperature,
+        // temperature: temperature,
         stream: false,
         format: "json" // Some LLM APIs support this parameter
     };
@@ -36,37 +36,30 @@ export async function sendPromptToOllama(prompt, model = 'llama3.2', temperature
 // Your task content
 const taskContent = `Task:
     Given the call trace of a Java method execution, generate an output in JSON format that includes three parts:
+
     1. detailedBehaviour: Provide a comprehensive explanation of the call trace, describing the sequence and role of each step in the call trace.
+
     2. flowRepresentation: Illustrate the sequence of key operations in the trace using a simple linear format (e.g., "Initialize → Process → Validate → Complete"). Each step should represent a functional stage in the execution rather than individual method calls. Focus on capturing the logical progression and purpose of each major stage in the execution flow.
+
+
     3. briefSummary: Summarize the call trace in 1 to 3 sentences focusing on the overall process. The summary should be a shorter version of the detailed explanation, highlighting the core functionality.
 
-    Important: Your output must be VALID JSON only, without any comments, explanations, or text outside the JSON structure.
+    Note: Do not include any details from the underlying call graph data; focus exclusively on the high-level trace summary and explanation.
 
-    Example response format:
+    Below is an example:
     {
     "detailedBehaviour": "This trace starts with the main method being invoked, followed by a series of support methods that prepare the necessary components for execution. Each step represents a distinct operation: initial setup, resource creation, validation, processing, and finally, finalizing the result. The detailed explanation breaks down each call, its role, and how it contributes to the overall method execution.",
     "flowRepresentation": "A (summary of step A) → B (summary of step B) → C (Summary of step C) → D (Summary of step D) → E (summary of step E)",
     "briefSummary": "The execution trace shows..."
     }
 
-    RESPOND WITH VALID JSON ONLY.`;
+    Now please give the output based on the format above, output json only.`;
 
 // Function to execute when you want to add the subtree data
 export async function explainSubTree(subtreeData) {
-    // Format for stronger JSON enforcement
-    const jsonFormatInstructions = `
-        Here is the Java method call trace for analysis:
-
-        ${subtreeData}
-
-        Provide your analysis as a valid JSON object with the three required fields: detailedBehaviour, flowRepresentation, and briefSummary.
-        Your entire response must be a single, properly formatted JSON object.
-        Do not include any text outside the JSON object.
-        Do not use backticks, markdown, or code blocks.
-        Start with { and end with } only.
-        `;
-
-    const fullPrompt = `${taskContent}\n\n${jsonFormatInstructions}`;
+    const subtreeString = JSON.stringify(subtreeData, null, 2);
+    const fullPrompt = `${taskContent}\n\n${subtreeString}`;
+    console.log(fullPrompt)
 
     try {
         console.log('Sending prompt to Ollama...');
