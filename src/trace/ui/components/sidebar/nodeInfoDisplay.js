@@ -27,10 +27,11 @@ export const displayNodeInfo = (nodeData) => {
     
     // Construct HTML using template literals and function composition
     const contentSections = [
-        createControlSection(nodeData.id, hasChildren),
         createIdSection(nodeData),
+        createControlSection(nodeData.id, hasChildren),
         createClassInfoSection(nodeData),
         createBasicInfoSections(nodeData),
+        createSubtreeExplanationSection(nodeData),
         createSourceCodeSection(nodeData),
         createUsageSection(nodeData),
         createMethodDetailsSection(nodeData)
@@ -78,6 +79,31 @@ function createClassInfoSection(nodeData) {
     return `<div class="info-section">
         <div class="section-header">${classType}</div>
         <div class="section-content">${escapeHtml(nodeData.className)}</div>
+    </div>`;
+}
+
+/**
+ * Creates the subtree explanation section
+ * @param {Object} nodeData - Node data
+ * @returns {string} HTML for subtree explanation section
+ */
+function createSubtreeExplanationSection(nodeData) {
+    // Only generate this section if the node has children
+    const hasChildren = window.cytrace.getElementById(nodeData.id).outgoers().length > 0;
+    if (!hasChildren) return '';
+    
+    // Default values or extract from nodeData if available
+    const detailedBehaviour = nodeData.subtreeExplanation?.detailedBehaviour || '';
+    const flowRepresentation = nodeData.subtreeExplanation?.flowRepresentation || '';
+    const briefSummary = nodeData.subtreeExplanation?.briefSummary || '';
+
+    return `<div class="info-section" id="subtree-explanation-container">
+        <div class="section-header">subtree explanation</div>
+        <div class="section-content">
+            ${createPropertyRow('briefSummary', briefSummary || 'No summary available', false, 'briefSummary-container')}
+            ${createPropertyRow('detailedBehaviour', detailedBehaviour || 'No detailed behavior available', false, 'detailedBehaviour-container')}
+            ${createPropertyRow('flowRepresentation', flowRepresentation || 'No flow representation available', false, 'flowRepresentation-container')}
+        </div>
     </div>`;
 }
 
