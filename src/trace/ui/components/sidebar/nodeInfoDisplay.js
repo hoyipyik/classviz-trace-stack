@@ -93,9 +93,9 @@ function createSubtreeExplanationSection(nodeData) {
     if (!hasChildren) return '';
     
     // Default values or extract from nodeData if available
-    const detailedBehaviour = nodeData.subtreeExplanation?.detailedBehaviour || '';
-    const flowRepresentation = nodeData.subtreeExplanation?.flowRepresentation || '';
-    const briefSummary = nodeData.subtreeExplanation?.briefSummary || '';
+    const detailedBehaviour = nodeData.detailedBehavior || '';
+    const flowRepresentation = nodeData.flowRepresentation || '';
+    const briefSummary = nodeData.briefSummary || '';
 
     return `<div class="info-section" id="subtree-explanation-container">
         <div class="section-header">subtree explanation</div>
