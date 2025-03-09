@@ -18,6 +18,19 @@ const LAYER_COLORS = new Map([
   ['ROOT', '#6B46C1']  // Dark purple for root
 ]);
 
+const PACKAGE_COLORS = new Map([
+  ['nl.tudelft.jpacman', '#2C7A7B'],           // Teal
+  ['nl.tudelft.jpacman.board', '#3182CE'],     // Blue
+  ['nl.tudelft.jpacman.game', '#DD6B20'],      // Orange
+  ['nl.tudelft.jpacman.level', '#38A169'],     // Green
+  ['nl.tudelft.jpacman.npc', '#D53F8C'],       // Pink
+  ['nl.tudelft.jpacman.npc.ghost', '#718096'], // Gray
+  ['nl.tudelft.jpacman.points', '#ECC94B'],    // Yellow
+  ['nl.tudelft.jpacman.sprite', '#805AD5'],    // Purple
+  ['nl.tudelft.jpacman.ui', '#E53E3E'],        // Red
+  ['ROOT', '#6B46C1']                          // Dark purple for root
+]);
+
 /**
  * Gets the color for a specific layer
  * @param {string} layer - The layer name
@@ -27,6 +40,11 @@ const LAYER_COLORS = new Map([
 function getLayerColor(layer, isRoot = false) {
   if (isRoot) return LAYER_COLORS.get('ROOT');
   return LAYER_COLORS.get(layer) || '#A0AEC0';
+}
+
+function getPackageColour(packageName, isRoot){
+  if (isRoot) return PACKAGE_COLORS.get('ROOT');
+  return PACKAGE_COLORS.get(packageName) || '#A0AEC0';
 }
 
 /**
@@ -73,11 +91,18 @@ export const callTreeParser = (xmlDoc) => {
   };
 
   // Process node data from the fetcher
-  const processNodeData = (nodeData, isRoot) => {
+  const processNodeData = (nodeData, isRoot, className) => {
     const properties = nodeData?.properties || {};
     const layerColor = getLayerColor(properties.layer || '', isRoot);
+    // nl.tudelft.jpacman.sprite.ImageSprite get from className except the last 
+    const packageName = className.split('.').slice(0, -1).join('.');
+    // console.log(packageName, nodeData)
+    const packageColour = getPackageColour(packageName, isRoot);
     
     return {
+      packageName: packageName || '',
+      layerColor,
+      packageColour,
       sourceCode: properties.sourceText || '',
       visibility: properties.visibility || '',
       simpleName: properties.simpleName || '',
@@ -95,7 +120,7 @@ export const callTreeParser = (xmlDoc) => {
       howItWorks: properties.howItWorks || '',
       assertions: properties.assertions || '',
       layer: properties.layer || '',
-      color: layerColor
+      color: packageColour
     };
   };
 
@@ -120,7 +145,7 @@ export const callTreeParser = (xmlDoc) => {
     
     // Fetch and process node data
     const nodeData = nodeDataFetcher(attributes.className, attributes.methodName);
-    const processedData = processNodeData(nodeData, isRoot);
+    const processedData = processNodeData(nodeData, isRoot, attributes.className);
     
     // Create Cytoscape node
     nodes.push({
