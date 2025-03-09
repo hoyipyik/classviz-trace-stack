@@ -29,9 +29,12 @@ export const displayNodeInfo = (nodeData) => {
     const contentSections = [
         createIdSection(nodeData),
         createControlSection(nodeData.id, hasChildren),
+        createPackageNameSection(nodeData),
+        createSubtreeExplanationSection(nodeData),
         createClassInfoSection(nodeData),
         createBasicInfoSections(nodeData),
-        createSubtreeExplanationSection(nodeData),
+        createStatusSection(nodeData),
+        createTreeMetricsSection(nodeData),
         createSourceCodeSection(nodeData),
         createUsageSection(nodeData),
         createMethodDetailsSection(nodeData)
@@ -62,6 +65,20 @@ function createIdSection(nodeData) {
 }
 
 /**
+ * Creates the package name section
+ * @param {Object} nodeData - Node data
+ * @returns {string} HTML for package name section
+ */
+function createPackageNameSection(nodeData) {
+    if (!nodeData.packageName) return '';
+    
+    return `<div class="info-section">
+        <div class="section-header">package</div>
+        <div class="section-content">${escapeHtml(nodeData.packageName)}</div>
+    </div>`;
+}
+
+/**
  * Creates the class information section
  * @param {Object} nodeData - Node data
  * @returns {string} HTML for class info section
@@ -79,6 +96,71 @@ function createClassInfoSection(nodeData) {
     return `<div class="info-section">
         <div class="section-header">${classType}</div>
         <div class="section-content">${escapeHtml(nodeData.className)}</div>
+    </div>`;
+}
+
+/**
+ * Creates the status section
+ * @param {Object} nodeData - Node data
+ * @returns {string} HTML for status section
+ */
+function createStatusSection(nodeData) {
+    if (!nodeData.status) return '';
+    
+    const status = nodeData.status;
+    const statusItems = [
+        { label: 'Fan Out', value: status.fanOut },
+        { label: 'Implementation Entry Point', value: status.implementationEntryPoint ? 'Yes' : 'No' },
+        { label: 'Chain Start Point', value: status.chainStartPoint ? 'Yes' : 'No' },
+        { label: 'Is Summarised', value: status.isSummarised ? 'Yes' : 'No' },
+        { label: 'Recursive Entry Point', value: status.recursiveEntryPoint ? 'Yes' : 'No' }
+    ];
+
+    const statusContent = statusItems
+        .filter(item => item.value !== undefined)
+        .map(item => `<div class="status-item">
+            <span class="status-label">${item.label}:</span>
+            <span class="status-value">${item.value}</span>
+        </div>`)
+        .join('');
+
+    return `<div class="info-section">
+        <div class="section-header">status</div>
+        <div class="section-content status-container">
+            ${statusContent}
+        </div>
+    </div>`;
+}
+
+/**
+ * Creates the tree metrics section
+ * @param {Object} nodeData - Node data
+ * @returns {string} HTML for tree metrics section
+ */
+function createTreeMetricsSection(nodeData) {
+    if (!nodeData.treeStats) return '';
+    
+    const treeStats = nodeData.treeStats;
+    const metricsItems = [
+        { label: 'Direct Children', value: treeStats.directChildrenCount },
+        { label: 'Total Descendants', value: treeStats.totalDescendants },
+        { label: 'Subtree Depth', value: treeStats.subtreeDepth },
+        { label: 'Level', value: treeStats.level }
+    ];
+
+    const metricsContent = metricsItems
+        .filter(item => item.value !== undefined)
+        .map(item => `<div class="metrics-item">
+            <span class="metrics-label">${item.label}:</span>
+            <span class="metrics-value">${item.value}</span>
+        </div>`)
+        .join('');
+
+    return `<div class="info-section">
+        <div class="section-header">tree metrics</div>
+        <div class="section-content metrics-container">
+            ${metricsContent}
+        </div>
     </div>`;
 }
 
