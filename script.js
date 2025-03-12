@@ -10,23 +10,22 @@ import { blacken, ft_colors, hslString, layer_colors_from, role_stereotype_color
 import { clearInfo, displayInfo } from './src/infoPanel.js';
 import { $, $all, h, on, r, toJson, toText } from './src/shorthands.js';
 
-import { aggregateLayers, setParents, setStyleClasses, shortenRoots } from './src/headlessTransformations.js';
+import { aggregateLayers, homogenizeDepths, homogenizeDepthsOptimized, setParents, setStyleClasses, shortenRoots } from './src/headlessTransformations.js';
 import { adjustEdgeWidths, cacheNodeStyles, liftEdges, recolorContainers, removeContainmentEdges, removeExtraNodes, setLayerStyles, setRsStyles } from './src/visualTransformations.js';
-import { getScratch } from './src/utils.js';
-import { displayLegend } from './src/legend.js';
-import { contextDataLoader } from './src/trace/utils/context/contextDataLoader.js';
-import { loadTracePlugin } from './src/trace/cmd/tracePlugin.js';
+import { arrayIntersection, getScratch, hasLabel, isPureContainer } from './src/utils.js';
+import { displayLegend } from './src/nodesPanel.js';
+import { fillFeatureDropdown } from './src/edgesPanel.js';
+import { highlight, relayout } from './src/graphPanel.js';
+
+window.state = 0;
 
 on('DOMContentLoaded', document, async () => {
 
 	cytoscape.warnings(false);
 
 	on('click', $("#btn-upload"), fileUpload);
-	on('click', $("#btn-relayout"), () => relayout($('#selectlayout').options[$('#selectlayout').selectedIndex].value));
-	on('click', $("#btn-highlight"), () => highlight($('#highlight').value));
 	on('click', $("#btn-download"), () => saveAsSvg('class-diagram.svg'));
 	on('click', $("#btn-popup"), () => window.open(getSvgUrl(), '_blank'));
-	on('click', $("#btn-reset"), () => highlight(''));
 	on('click', $("#btn-toggleVisibility"), toggleVisibility);
 
 	const tablinks = $all(".tablink");
@@ -49,8 +48,6 @@ on('DOMContentLoaded', document, async () => {
 			$("#filename").textContent = `Software Visualization: ${fileName}.json`;
 			clearInfo('#infobody');
 			initCy([prepareGraph(rawGraph), style]);
-			//!!!!!!!! load data context json
-			contextDataLoader(rawGraph);
 		} catch (error) {
 			console.error('Error fetching data:', error);
 		}
@@ -438,13 +435,13 @@ const prepareGraph = function (graphData) {
 		abstract: graphContainsScripts ? abstractize(graphData) : graphData
 	};
 
-	const makeDummyContainers = homogenizeForest(
-		e => e.data.label === "contains",
-		n => n.data.labels.includes("Container"),
-		n => n.data.labels.includes("Structure")
-	);
+	// const makeDummyContainers = homogenizeForest(
+	// 	e => e.data.label === "contains",
+	// 	n => n.data.labels.includes("Container"),
+	// 	n => n.data.labels.includes("Structure")
+	// );
 
-	graph.abstract = makeDummyContainers(graph.abstract);
+	// makeDummyContainers(graph.abstract);
 
 	graph.abstract.elements.nodes.forEach(node => {
 		const { name, shortname, simpleName } = node.data.properties;
@@ -460,7 +457,7 @@ const prepareGraph = function (graphData) {
 	return graph;
 };
 
-let parentRel = "contains";
+export let parentRel = "contains";
 
 function generateExpColOptions(_layoutName = "klay") {
 	let cyExpandCollapseOptions = {
@@ -496,11 +493,20 @@ const initCy = async function (payload) {
 
 	function hcyReady(event) {
 		window.hcy = event.cy;
+1
+		hcy.startBatch();
 
+		homogenizeDepthsOptimized(hcy, 
+			e => hasLabel(e, "contains"),
+			n => hasLabel(n, "Container"),
+			n => hasLabel(n, "Structure"));
+		// console.log(hcy.json());
 		shortenRoots(hcy);
 		setParents(hcy, parentRel, false);
 		setStyleClasses(hcy);
 		aggregateLayers(hcy);
+
+		hcy.endBatch();
 
 		// then create a visualized graph
 		cytoscape({
@@ -548,8 +554,8 @@ const initCy = async function (payload) {
 		// });
 
 		// fillRSFilter();
-		fillRelationshipToggles();
-		fillFeatureDropdown();
+		fillRelationshipToggles(cy);
+		fillFeatureDropdown(cy, showTrace);
 
 		bindRouters();
 
@@ -566,7 +572,7 @@ const initCy = async function (payload) {
 }
 
 function initLayerColors(pCy) {
-	const topLayers = pCy.nodes(n => n.data('labels').includes("Grouping") && n.data('properties.kind') === "architectural layer" && n.incomers(e => e.data('label') === "allowedDependency").empty());
+	const topLayers = pCy.nodes(n => hasLabel(n, "Grouping") && n.data('properties.kind') === "architectural layer" && n.incomers(e => hasLabel(e, "allowedDependency")).empty());
 	window.layers = [...topLayers.map(n => n.data('properties.simpleName')).filter(n => n).map(n => n || "Undefined")];
 	var currentLayers = topLayers;
 	while (!currentLayers.empty()) {
@@ -596,13 +602,17 @@ const colorNodes = (pCy) => function (event) {
 		const style = getScratch(n, selectedColorMode) || getScratch(n, 'style_default');
 		n.style(style);
 	});
-	console.log("color", colorMap, colorOrder);
+	// console.log("color", colorMap, colorOrder);
 	displayLegend('#coloring-legend', colorMap[selectedColorMode], colorOrder[selectedColorMode]);
 }
 
 const bindRouters = function () {
 	// Initiate cyExpandCollapseApi
 	// cy.expandCollapse("get");
+
+	on('click', $("#btn-reset"), () => highlight(cy, ''));
+	on('click', $("#btn-relayout"), () => relayout(cy, $('#selectlayout').options[$('#selectlayout').selectedIndex].value));
+	on('click', $("#btn-highlight"), () => highlight(cy, $('#highlight').value));
 
 	on('change', $('#showPrimitives'), () => showPrimitives(cy, $('#showPrimitives')));
 	// on('change', $('#showPackages'),   () => showPackages(cy, $('#showPackages')));
@@ -611,11 +621,29 @@ const bindRouters = function () {
 	cy.on("select", "node", (event) => {
 		event.target.addClass("selected");
 		displayInfo('#infobody')(event.target);
+		if ($('#infobox').style["display"] !== "flex") {
+			$('#infobox').style["display"] = "flex";
+			$('#cy').style["right"] = "270px";
+			cy.animate({
+				panBy: { x: -135 }
+			}, {
+				duration: 200
+			});
+		}
 	});
 
 	cy.on("unselect", "node", (event) => {
 		event.target.removeClass("selected");
-		clearInfo('#infobody');
+		if (cy.$("node:selected").length === 0) {
+			clearInfo('#infobody');
+			$('#infobox').style["display"] = "none";
+			$('#cy').style["right"] = "0px";
+			cy.animate({
+				panBy: { x: 135 }
+			}, {
+				duration: 200
+			});
+		}
 	});
 
 	// right click dims the element
@@ -634,7 +662,7 @@ const bindRouters = function () {
 	// left click highlights the node and its connected edges and nodes
 	cy.on("tap", "node", (event) => {
 
-		const to_activate = event.target.children().union(event.target.ancestors()).merge(event.target)
+		const to_activate = event.target.children().union(event.target.ancestors()).union(event.target)
 		to_activate.removeClass("dimmed");
 
 		// currently visible relationship types
@@ -642,11 +670,11 @@ const bindRouters = function () {
 			.filter(cb => cb.checked)
 			.map(cb => cb.value);
 
-		const edges = event.target.children().merge(event.target)
+		const edges = event.target.children().union(event.target)
 			.connectedEdges()
 			.filter((e) => interactions.includes(e.data("interaction")));
 		edges.removeClass("dimmed");
-		edges.targets().merge(edges.targets().ancestors()).removeClass("dimmed");
+		edges.targets().union(edges.targets().ancestors()).removeClass("dimmed");
 	});
 
 	// left click highlights the edge and its connected nodes
@@ -654,29 +682,7 @@ const bindRouters = function () {
 		evt.target.removeClass("dimmed");
 		evt.target.connectedNodes().removeClass("dimmed");
 	});
-
-	cy.on("mouseover", "node", (evt) => {
-
-	});
 }
-
-/* Sidebar Utility Functions */
-const relayout = function (layout) {
-	cy.layout({
-		name: layout,
-		animate: true,
-		nodeDimensionsIncludeLabels: true,
-		klay: {
-			direction: "DOWN",
-			edgeRouting: "ORTHOGONAL",
-			routeSelfLoopInside: true,
-			thoroughness: 4,
-			spacing: 32,
-		},
-	}).run();
-	// Re set the expandCollapse options
-	// cy.expandCollapse(generateExpColOptions(layout));
-};
 
 const saveAsSvg = function (filename) {
 	const svgContent = cy.svg({ scale: 1, full: true, bg: 'beige' });
@@ -736,7 +742,7 @@ const fileUpload = function () {
 	});
 };
 
-var flip = true;
+var flip = false;
 const toggleVisibility = function () {
 	cy.style()
 		.selector(".dimmed")
@@ -776,9 +782,9 @@ const fillRSFilter = function () {
 				])]))]);
 }
 
-const fillRelationshipToggles = function () {
+const fillRelationshipToggles = function (pCy) {
 
-	const edgeLabels = cy.edges()
+	const edgeLabels = pCy.edges()
 		.map((e) => e.data("interaction"))
 		.filter((v, i, s) => s.indexOf(v) === i);
 	edgeLabels.sort((a, b) => a.localeCompare(b));
@@ -834,144 +840,56 @@ const fillRelationshipToggles = function () {
 	$all('input[name="showrels"]').forEach(setVisible);
 };
 
-const fillFeatureDropdown = function () {
-	let tracesSet = new Set();
-	cy.nodes().forEach((e) => {
-		const traces = e.data("properties.traces");
-		if (traces) {
-			traces.forEach((trace) => tracesSet.add(trace));
-		}
-	});
-
-	let tracesList = [...tracesSet];
-
-	r("#selectfeature", tracesList.map(trace =>
-		h("div", {}, [
-			h("label", {
-				for: `feature-${trace}`,
-				class: "featurelabel"
-			}, [
-				h("input", {
-					type: "checkbox",
-					id: `feature-${trace}`,
-					name: "showfeatures",
-					value: trace,
-				}, [], {
-					change: (event) => showTrace(event.target)
-				}),
-				trace
-			])
-		])
-	));
-};
-
-const fillBugsDropdown = function () {
-	let bugsSet = new Set();
-	cy.nodes().forEach((e) => {
-		if (e.data()["properties"]["vulnerabilities"]) {
-			e.data()["properties"]["vulnerabilities"]
-				.forEach((bug) => {
-					bugsSet.add(bug["analysis_name"])
-				});
-		}
-	});
-
-	let bugList = [...bugsSet]
-	// console.log(bugList)
-
-	r("#tab-bugs", bugList.map(bug =>
-		h("div", {}, [
-			h("label", {
-				for: `bug-${bug}`,
-				class: "buglabel"
-			}, [
-				h("input", {
-					type: "checkbox",
-					id: `bug-${bug}`,
-					name: "showbugs",
-					value: bug,
-				}, [], {
-					change: (event) => showBug(event.target)
-				}),
-				bug])])));
-};
-
-function arrayIntersection(arr1, arr2) {
-	const set2 = new Set(arr2);
-	const result = arr1.filter(item => set2.has(item));
-	return result;
-}
-
-// Highlight nodes based on query
-const highlight = function (text) {
-	if (text) {
-		const classes = text.split(/[,\s]+/);
-		cy.elements().addClass("dimmed");
-		cy.elements(".hidden").removeClass("hidden").addClass("hidden");
-
-		const cy_classes = cy.nodes((node) => classes.includes(node.data('name')));
-		const cy_edges = cy_classes.edgesWith(cy_classes);
-		cy_classes.removeClass("dimmed");
-		cy_edges.removeClass("dimmed");
-		cy.nodes(n => n.data('labels').includes('Container') && !n.data('labels').includes('Structure')).removeClass("dimmed");
-	} else {
-		cy.elements().removeClass("dimmed");
-	}
-	cy.edges(`[interaction = "${parentRel}"]`).style("display", "none");
-};
-
-const showRS = function (evt) {
-	if (evt.checked) {
-		cy.nodes(`[properties.roleStereotype = "${evt.value}"]`)
+const showRS = function (event, pCy) {
+	if (event.checked) {
+		pCy.nodes(`[properties.roleStereotype = "${event.value}"]`)
 			.removeClass("dimmed")
 			.connectedEdges()
 			.filter((e) => !e.source().hasClass("dimmed") && !e.target().hasClass("dimmed"))
 			.removeClass("dimmed");
 	} else {
-		cy.nodes(`[properties.roleStereotype = "${evt.value}"]`)
+		pCy.nodes(`[properties.roleStereotype = "${event.value}"]`)
 			.addClass("dimmed")
 			.connectedEdges()
 			.addClass("dimmed");
 	}
 };
 
-const showTrace = function (_evt) {
+export const showTrace = function (event, pCy) {
 
-	const trace_names = $all('[name="showfeatures"]')
+	const traceNames = $all('[name="showfeatures"]')
 		.filter((e) => e.checked)
 		.map((e) => e.value);
 
 	$all(".featurelabel").forEach((e) => { e.style.backgroundColor = ""; });
 
-	cy.elements().removeClass("dimmed");
-	cy.elements().removeClass("feature_shown");
-	cy.elements().addClass("feature_reset");
+	pCy.elements().removeClass("dimmed");
+	pCy.elements().removeClass("feature_shown");
+	pCy.elements().addClass("feature_reset");
 
-	if (trace_names.length > 0) {
+	if (traceNames.length > 0) {
 		const traceColorMap = {};
-		trace_names.forEach((trace, i) => {
+		traceNames.forEach((trace, i) => {
 			const label = $(`label[for="feature-${trace}"]`);
 			label.style.backgroundColor = ft_colors[i];
 			traceColorMap[trace] = ft_colors[i];
 		});
 
-		const feature_nodes = cy.nodes().filter(function (node) {
-			return trace_names.some((trace) => node.data("properties.traces") && node.data("properties.traces").includes(trace));
+		const featureNodes = pCy.nodes().filter(function (node) {
+			return traceNames.some((trace) => node.data("properties.traces") && node.data("properties.traces").includes(trace));
 		});
 
-		const feature_edges = cy.edges().filter(function (edge) {
-			return trace_names.some((trace) => edge.data("properties.traces") && edge.data("properties.traces").includes(trace));
-		});
+		const featureEdges = featureNodes.edgesWith(featureNodes).union(featureNodes.ancestors().edgesWith(featureNodes.ancestors()));
 
-		cy.elements().addClass("dimmed");
-		cy.elements(".hidden").removeClass("hidden").addClass("hidden");
-		feature_nodes.removeClass("dimmed");
-		feature_edges.removeClass("dimmed");
-		cy.nodes(n => n.data('labels').includes('Container')).removeClass("dimmed");
+		pCy.elements().addClass("dimmed");
+		pCy.elements(".hidden").removeClass("hidden").addClass("hidden");
+		featureNodes.removeClass("dimmed");
+		featureEdges.removeClass("dimmed");
+		pCy.nodes(isPureContainer).removeClass("dimmed");
 
-		feature_nodes.forEach((node) => {
+		featureNodes.forEach((node) => {
 			const trc = arrayIntersection(
-				trace_names,
+				traceNames,
 				node.data("properties.traces")
 			);
 			node.style({
@@ -982,13 +900,13 @@ const showTrace = function (_evt) {
 			});
 		});
 	} else {
-		applyInitialColor(cy);
+		applyInitialColor(pCy);
 	}
 
-	cy.edges(`[interaction = "${parentRel}"]`).style("display", "none");
+	pCy.edges(`[interaction = "${parentRel}"]`).style("display", "none");
 };
 
-const showBug = function (_evt) {
+export const showBug = function (event, pCy) {
 
 	const bug_names = $all('[name="showbugs"]')
 		.filter((e) => e.checked)
@@ -1005,7 +923,7 @@ const showBug = function (_evt) {
 			bugColorMap[bug] = ft_colors[i];
 		});
 
-		const bug_nodes = cy.nodes().filter(function (node) {
+		const bug_nodes = pCy.nodes().filter(function (node) {
 			return bug_names.some((bug) => {
 				try {
 					return node.data()["properties"]["vulnerabilities"] && node.data()["properties"]["vulnerabilities"].some((e) => e["analysis_name"] === bug);
@@ -1014,11 +932,11 @@ const showBug = function (_evt) {
 			});
 		});
 
-		cy.elements().addClass("dimmed");
-		cy.elements(".hidden").removeClass("hidden").addClass("hidden");
+		pCy.elements().addClass("dimmed");
+		pCy.elements(".hidden").removeClass("hidden").addClass("hidden");
 		bug_nodes.removeClass("dimmed");
 
-		cy.nodes('[properties.kind = "file"]').removeClass("dimmed");
+		pCy.nodes('[properties.kind = "file"]').removeClass("dimmed");
 		bug_nodes.removeClass("bug_reset");
 
 		bug_nodes.addClass("bug_shown");
@@ -1028,11 +946,11 @@ const showBug = function (_evt) {
 			node.style("background-gradient-stop-colors", trc.map((t) => bugColorMap[t]).join(" "));
 		});
 	} else {
-		cy.elements().removeClass("dimmed");
-		cy.elements().removeClass("bug_shown");
-		cy.elements().addClass("bug_reset");
+		pCy.elements().removeClass("dimmed");
+		pCy.elements().removeClass("bug_shown");
+		pCy.elements().addClass("bug_reset");
 	}
-	cy.edges(`[interaction = "${parentRel}"]`).style("display", "none");
+	pCy.edges(`[interaction = "${parentRel}"]`).style("display", "none");
 };
 
 // EXPERIMENTAL!!!!!!!!!!!!!
@@ -1178,6 +1096,7 @@ var homogenizeForest = (isContainment, isTreeNode, isLeaf) => ({ elements: { nod
 	for (const d of subtreeDepth.values()) {
 		if (d > L) L = d;
 	}
+	// console.log('outside', nodeDepth, subtreeDepth);
 
 	// Insert dummy nodes above a node if its subtree doesn't reach the global deepest level
 	function insertDummyChain(parent, node, d) {
@@ -1257,6 +1176,7 @@ var homogenizeForest = (isContainment, isTreeNode, isLeaf) => ({ elements: { nod
 					}
 				}
 			}
+			console.log("outside-new", node, nodeDepth);
 		}
 		// Recurse
 		if (childrenMap.has(node)) {
