@@ -1,6 +1,7 @@
 // sidebar/nodeInfoDisplay.js - Functions for displaying node information
 import { escapeHtml, createPropertyRow, formatHeaderText } from './utils.js';
 import { createControlSection, setupControlButtons } from './controlSection.js';
+import { createStatusSection, setupStatusListeners } from './statusSection.js';
 
 /**
  * Display node information in the sidebar
@@ -45,6 +46,8 @@ export const displayNodeInfo = (nodeData) => {
 
     // Add event listeners to the control buttons
     setupControlButtons(nodeData.id);
+
+    setupStatusListeners(nodeData.id);
 
     // Use requestAnimationFrame for better performance than setTimeout
     requestAnimationFrame(adjustSourceCodeContainers);
@@ -96,39 +99,6 @@ function createClassInfoSection(nodeData) {
     return `<div class="info-section">
         <div class="section-header">${classType}</div>
         <div class="section-content">${escapeHtml(nodeData.className)}</div>
-    </div>`;
-}
-
-/**
- * Creates the status section
- * @param {Object} nodeData - Node data
- * @returns {string} HTML for status section
- */
-function createStatusSection(nodeData) {
-    if (!nodeData.status) return '';
-    
-    const status = nodeData.status;
-    const statusItems = [
-        { label: 'Fan Out', value: status.fanOut },
-        { label: 'Implementation Entry Point', value: status.implementationEntryPoint ? 'Yes' : 'No' },
-        { label: 'Chain Start Point', value: status.chainStartPoint ? 'Yes' : 'No' },
-        { label: 'Is Summarised', value: status.isSummarised ? 'Yes' : 'No' },
-        { label: 'Recursive Entry Point', value: status.recursiveEntryPoint ? 'Yes' : 'No' }
-    ];
-
-    const statusContent = statusItems
-        .filter(item => item.value !== undefined)
-        .map(item => `<div class="status-item">
-            <span class="status-label">${item.label}:</span>
-            <span class="status-value">${item.value}</span>
-        </div>`)
-        .join('');
-
-    return `<div class="info-section">
-        <div class="section-header">status</div>
-        <div class="section-content status-container">
-            ${statusContent}
-        </div>
     </div>`;
 }
 
