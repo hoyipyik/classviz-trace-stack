@@ -9,7 +9,8 @@ export function createStatusSection(nodeData) {
     const booleanStatusItems = [
         { label: 'Fan Out', property: 'fanOut' },
         { label: 'Implementation Entry Point', property: 'implementationEntryPoint' },
-        { label: 'Chain Start Point', property: 'chainStartPoint' },
+        { label: 'Recursive Entry Point', property: 'recursiveEntryPoint' },
+        // { label: 'Chain Start Point', property: 'chainStartPoint' },
         { label: 'Is Summarised', property: 'isSummarised' }
     ];
     
@@ -137,7 +138,7 @@ export function createStatusSection(nodeData) {
  */
 export function setupStatusListeners(nodeId = null) {
     // List of properties to match the IDs we created
-    const properties = ['fanOut', 'implementationEntryPoint', 'chainStartPoint', 'isSummarised'];
+    const properties = ['fanOut', 'implementationEntryPoint', 'recursiveEntryPoint', 'isSummarised'];
     
     // Bind listeners to each checkbox
     properties.forEach(property => {
