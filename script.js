@@ -17,6 +17,9 @@ import { displayLegend } from './src/nodesPanel.js';
 import { fillFeatureDropdown } from './src/edgesPanel.js';
 import { highlight, relayout } from './src/graphPanel.js';
 
+import { contextDataLoader } from './src/trace/utils/context/contextDataLoader.js';
+import { loadTracePlugin } from './src/trace/cmd/tracePlugin.js';
+
 window.state = 0;
 
 on('DOMContentLoaded', document, async () => {
@@ -425,6 +428,8 @@ const prepareGraph = function (graphData) {
 
 	// Create a deep clone of graphData
 	const originalGraph = JSON.parse(JSON.stringify(graphData));
+	//!!!!!!!! load data context json
+	contextDataLoader(originalGraph);
 
 	originalGraph.elements.edges.forEach(edge => {
 		edge.data.label = edge.data.label || edge.data.labels?.join() || 'nolabel';
