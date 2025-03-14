@@ -1,4 +1,4 @@
-// cytoscape/ui/hoverCard.js - Handles hover card creation and management
+// cytoscape/hoverCard.js - Handles hover card creation and management
 
 /**
  * Create a hover card for displaying node information
@@ -81,10 +81,9 @@ export function createHoverCardManager() {
      * Show the hover card with node data
      * @param {Object} nodeData - Data from the node
      * @param {Object} position - The position {x, y} to show the card
-     * @param {Function} onViewDetails - Callback for view details button
-     * @param {Function} onQuickAction - Callback for quick action button
+     * @param {Array} controlButtons - Array of control buttons to add
      */
-    function showCard(nodeData, position, onViewDetails, onQuickAction) {
+    function showCard(nodeData, position, controlButtons = []) {
       // Create card if it doesn't exist
       if (!hoverCard) {
         createCardElement();
@@ -99,14 +98,15 @@ export function createHoverCardManager() {
         <div style="margin-bottom: 8px; font-size: 12px; color: #666;">
           ${nodeData.description || 'No description available'}
         </div>
-        <div style="display: flex; justify-content: space-between;">
-          <button id="view-details-btn" style="padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; background-color: #4285f4; color: white; margin-right: 8px;">
-            View Details
-          </button>
-          <button id="quick-action-btn" style="padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; background-color: #34a853; color: white;">
-            Quick Action
-          </button>
-        </div>
+        ${controlButtons.length > 0 ? `
+          <div class="control-buttons" style="display: flex; flex-wrap: wrap; gap: 6px;">
+            ${controlButtons.map(btn => `
+              <button id="${btn.id}" style="flex: 1; min-width: 115px; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; background-color: #f1f3f4; color: #333; text-align: center; transition: background-color 0.2s;">
+                ${btn.label}
+              </button>
+            `).join('')}
+          </div>
+        ` : ''}
       `;
       
       // Add the pointer element to make it look like a speech bubble
@@ -148,27 +148,19 @@ export function createHoverCardManager() {
         hoverCard.style.top = `${viewportHeight - rect.height - 10}px`;
       }
       
-      // Add click event listeners to buttons
-      const viewDetailsBtn = document.getElementById('view-details-btn');
-      const quickActionBtn = document.getElementById('quick-action-btn');
-      
-      if (viewDetailsBtn) {
-        viewDetailsBtn.addEventListener('click', function(event) {
-          event.stopPropagation();
-          if (onViewDetails) {
-            onViewDetails(nodeData);
-          }
-        });
-      }
-      
-      if (quickActionBtn) {
-        quickActionBtn.addEventListener('click', function(event) {
-          event.stopPropagation();
-          if (onQuickAction) {
-            onQuickAction(nodeData);
-          }
-        });
-      }
+      // Add event listeners for control buttons
+      controlButtons.forEach(btn => {
+        const button = document.getElementById(btn.id);
+        if (button) {
+          button.addEventListener('click', async function(event) {
+            event.stopPropagation();
+            if (btn.handler) {
+              // Call the handler and pass the node ID
+              btn.handler(nodeData.id);
+            }
+          });
+        }
+      });
       
       // Clear any pending hide timeouts
       if (hideTimeout) {
@@ -200,7 +192,6 @@ export function createHoverCardManager() {
         hoverCard = null;
       }
     }
-  
     /**
      * Check if mouse is over the card
      * @returns {boolean} True if mouse is over the card
