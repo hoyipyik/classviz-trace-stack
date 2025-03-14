@@ -4,6 +4,8 @@ import { createHoverCardManager } from "./hoverCard.js";
 import { createNodeSelectionManager } from "./nodeSelection.js";
 import { displayNodeInfo } from "../sidebar/nodeInfoDisplay.js";
 import { toggleSidebar } from "../sidebar/sidebarController.js";
+import { expandAllDescendants, toggleChildren } from "./nodeVisibility.js";
+import { executeCytoscapeAction } from "../sidebar/controlSection.js";
 
 // Manager instances
 let hoverCardManager = null;
@@ -63,23 +65,39 @@ export function setupNodeInteractions(cy, sidebar) {
     const nodeData = node.data();
     const renderedPosition = node.renderedPosition();
     
-    // Show hover card with node data and callbacks
+    // Define control buttons for the hover card
+    const controlButtons = [
+      {
+        id: 'hover-toggle-children-btn',
+        label: 'Toggle Children',
+        handler: async (nodeId) => await executeCytoscapeAction(nodeId, toggleChildren)
+      },
+      {
+        id: 'hover-expand-all-btn',
+        label: 'Expand All',
+        handler: async (nodeId) => await executeCytoscapeAction(nodeId, expandAllDescendants)
+      },
+      {
+        id: 'hover-view-details-btn',
+        label: 'View Details',
+        handler: (nodeId) => {
+          const node = cy.getElementById(nodeId);
+          if (node.length > 0) {
+            const nodeData = node.data();
+            // Select node and update sidebar
+            nodeSelectionManager.selectNode(nodeId, cy);
+            displayNodeInfo(nodeData);
+            showSidebar();
+          }
+        }
+      }
+    ];
+    
+    // Show hover card with node data and control buttons
     hoverCardManager.showCard(
       nodeData, 
       renderedPosition,
-      // View details callback
-      (data) => {
-        console.log('View details clicked for node:', data.id);
-        // Select the node and show sidebar
-        nodeSelectionManager.selectNode(data.id, cy);
-        displayNodeInfo(data);
-        showSidebar();
-      },
-      // Quick action callback
-      (data) => {
-        console.log('Quick action clicked for node:', data.id);
-        // Implement custom quick action here
-      }
+      controlButtons
     );
   });
 
