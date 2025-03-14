@@ -271,3 +271,80 @@ body {
     color: #721c24;
     margin: 10px;
 }
+/* styles/nodeHoverStyles.css */
+
+#node-hover-card {
+    position: absolute;
+    z-index: 999;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    pointer-events: auto; /* Allow interactions with the card */
+    transition: all 0.2s ease;
+    min-width: 250px;
+    max-width: 300px;
+    word-wrap: break-word;
+  }
+  
+  /* Dialog bubble pointer */
+  #node-hover-card[data-position="left-bottom"]::after {
+    content: "";
+    position: absolute;
+    bottom: 15px;
+    left: -10px;
+    border-width: 10px 10px 10px 0;
+    border-style: solid;
+    border-color: transparent white transparent transparent;
+    filter: drop-shadow(-2px 1px 1px rgba(0,0,0,0.1));
+  }
+  
+  #node-hover-card .title {
+    font-weight: bold;
+    margin-bottom: 6px;
+    color: #333;
+  }
+  
+  #node-hover-card .description {
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #666;
+  }
+  
+  #node-hover-card .buttons {
+    display: flex;
+    justify-content: space-between;
+    pointer-events: auto; /* Make buttons clickable */
+  }
+  
+  .hover-card-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  }
+  
+  .hover-card-btn.primary {
+    background-color: #4285f4;
+    color: white;
+  }
+  
+  .hover-card-btn.primary:hover {
+    background-color: #3367d6;
+  }
+  
+  .hover-card-btn.secondary {
+    background-color: #34a853;
+    color: white;
+  }
+  
+  .hover-card-btn.secondary:hover {
+    background-color: #2d8d46;
+  }
