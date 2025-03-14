@@ -207,7 +207,7 @@ export function setupControlButtons(nodeId) {
  * @param {Function} action - The action function to execute
  * @returns {Promise<any>} - Result of the action
  */
-async function executeCytoscapeAction(nodeId, action) {
+export async function executeCytoscapeAction(nodeId, action) {
     const cy = window.cytrace;
     if (!cy) {
         console.error('Cytoscape instance not found');
