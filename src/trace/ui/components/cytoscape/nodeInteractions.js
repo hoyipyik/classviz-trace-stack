@@ -1,12 +1,16 @@
-// cytoscape/nodeInteractions.js - Handles node interactions
+// cytoscape/nodeInteractions.js - Main module that coordinates node interactions
 
+import { createHoverCardManager } from "./hoverCard.js";
+import { createNodeSelectionManager } from "./nodeSelection.js";
 import { displayNodeInfo } from "../sidebar/nodeInfoDisplay.js";
 import { toggleSidebar } from "../sidebar/sidebarController.js";
 
-// Track selected node ID
-let selectedNodeId = null;
-// Cache sidebar controller to avoid recreating it
+// Manager instances
+let hoverCardManager = null;
+let nodeSelectionManager = null;
 let sidebarController = null;
+// Track if mouse is over a node
+let isMouseOverNode = false;
 
 /**
  * Setup interactions for nodes
@@ -14,17 +18,27 @@ let sidebarController = null;
  * @param {HTMLElement} sidebar - The sidebar element
  */
 export function setupNodeInteractions(cy, sidebar) {
-  // Initialize sidebar controller only once
+  // Initialize managers if they don't exist
+  if (!hoverCardManager) {
+    hoverCardManager = createHoverCardManager();
+  }
+  
+  if (!nodeSelectionManager) {
+    nodeSelectionManager = createNodeSelectionManager();
+  }
+  
   if (!sidebarController) {
     sidebarController = toggleSidebar(cy);
   }
   
   const { showSidebar, hideSidebar } = sidebarController;
 
-  // Use event delegation for better performance
-  cy.removeListener('tap'); // Clear any existing listeners
+  // Clear existing listeners
+  cy.removeListener('tap');
+  cy.removeListener('mouseover');
+  cy.removeListener('mouseout');
 
-  // Node tap event
+  // Setup tap event for node selection
   cy.on('tap', 'node', function(evt) {
     const node = evt.target;
     const nodeId = node.id();
@@ -34,7 +48,7 @@ export function setupNodeInteractions(cy, sidebar) {
     console.log('Tapped node:', nodeId, nodeData);
     
     // Select node and update sidebar
-    selectNode(nodeId, cy);
+    nodeSelectionManager.selectNode(nodeId, cy);
     displayNodeInfo(nodeData);
     showSidebar();
     
@@ -42,57 +56,52 @@ export function setupNodeInteractions(cy, sidebar) {
     evt.originalEvent.stopPropagation();
   });
 
-  // Background tap event - use once property for efficiency
+  // Setup hover events for hover card
+  cy.on('mouseover', 'node', function(evt) {
+    isMouseOverNode = true;
+    const node = evt.target;
+    const nodeData = node.data();
+    const renderedPosition = node.renderedPosition();
+    
+    // Show hover card with node data and callbacks
+    hoverCardManager.showCard(
+      nodeData, 
+      renderedPosition,
+      // View details callback
+      (data) => {
+        console.log('View details clicked for node:', data.id);
+        // Select the node and show sidebar
+        nodeSelectionManager.selectNode(data.id, cy);
+        displayNodeInfo(data);
+        showSidebar();
+      },
+      // Quick action callback
+      (data) => {
+        console.log('Quick action clicked for node:', data.id);
+        // Implement custom quick action here
+      }
+    );
+  });
+
+  // Setup mouseout event
+  cy.on('mouseout', 'node', function() {
+    isMouseOverNode = false;
+    
+    // Don't hide immediately, check if mouse moved to the card
+    setTimeout(() => {
+      if (!isMouseOverNode && !hoverCardManager.isMouseOver()) {
+        hoverCardManager.hideCard();
+      }
+    }, 100);
+  });
+  
+  // Background tap event to clear selection
   cy.on('tap', function(evt) {
     if (evt.target === cy) {
       hideSidebar();
-      clearNodeSelection(cy);
+      nodeSelectionManager.clearSelection(cy);
     }
   });
-}
-
-/**
- * Select a node by ID and highlight it
- * @param {string} nodeId - ID of the node to select
- * @param {Object} cy - The Cytoscape instance
- * @returns {boolean} Whether the selection was successful
- */
-export function selectNode(nodeId, cy) {
-  // Skip if already selected
-  if (selectedNodeId === nodeId) return true;
-  
-  // Clear previous selection
-  clearNodeSelection(cy);
-
-  // Set new selection
-  if (nodeId) {
-    const node = cy.getElementById(nodeId);
-    if (node.length > 0) {
-      // Use batch for better performance with styles
-      cy.startBatch();
-      node.addClass('selected');
-      cy.endBatch();
-      
-      selectedNodeId = nodeId;
-      return true;
-    }
-  }
-  
-  return false;
-}
-
-/**
- * Clear all node selections
- * @param {Object} cy - The Cytoscape instance
- */
-export function clearNodeSelection(cy) {
-  if (!selectedNodeId) return; // Skip if nothing selected
-  
-  cy.startBatch();
-  cy.nodes().removeClass('selected');
-  cy.endBatch();
-  
-  selectedNodeId = null;
 }
 
 /**
@@ -100,5 +109,18 @@ export function clearNodeSelection(cy) {
  * @returns {string|null} The selected node ID or null
  */
 export function getSelectedNodeId() {
-  return selectedNodeId;
+  return nodeSelectionManager ? nodeSelectionManager.getSelectedNodeId() : null;
+}
+
+/**
+ * Clean up event listeners and DOM elements
+ * Should be called when unmounting the component
+ */
+export function cleanupNodeInteractions() {
+  if (hoverCardManager) {
+    hoverCardManager.destroy();
+    hoverCardManager = null;
+  }
+  
+  isMouseOverNode = false;
 }
