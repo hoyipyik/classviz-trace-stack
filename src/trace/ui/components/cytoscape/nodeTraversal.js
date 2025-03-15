@@ -239,8 +239,8 @@ export function getSubTreeForSummaryAsTree(cy, nodeId, properties = [
  * @param {Object} cy - The Cytoscape instance
  * @param {string} nodeId - The ID of the starting node (recursive entry point)
  * @param {Array<string>} properties - Array of property names to include
- * @returns {Object} Compressed tree structure with only first and last recursive nodes
- *                   The last recursive node will include all its children with their full subtrees
+ * @returns {Object} Compressed tree structure with entry point and unique subtrees,
+ *                   plus the last recursive node separately
  */
 export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
     // Get the entry point node and validate
@@ -269,10 +269,12 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
     // Process the recursive chain to find the last recursive node
     const lastRecursiveNode = findLastRecursiveNode(cy, entryNode, entryLabel);
     
-    // If we found the last recursive node, add it as the only child of the root
+    // If we found the last recursive node, process it
     if (lastRecursiveNode) {
         // Collect all non-recursive function calls along the way with frequency counting
-        collectNonRecursiveNodes(cy, entryNode, entryLabel, [], properties, subtreeFrequency);
+        // But don't include the last node in the collection
+        collectNonRecursiveNodes(cy, entryNode, entryLabel, [], properties, subtreeFrequency, 
+                                new Set(), lastRecursiveNode.id());
         
         // Create object for the last recursive node
         const lastNodeObj = { id: lastRecursiveNode.id() };
@@ -287,8 +289,6 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
         }
         
         // Process children of the last recursive node using getSubTreeForSummaryAsTree
-        // This is an important part - we want to preserve all children of the last node
-        // even though your example might not have any, we need to handle that case properly
         lastNodeObj.children = [];
         const lastNodeChildren = lastRecursiveNode.outgoers().nodes();
         if (lastNodeChildren.length > 0) {
@@ -301,10 +301,10 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
             });
         }
         
-        // Add the last node as a child of the root
+        // Add the last node to children array
         rootObj.children.push(lastNodeObj);
         
-        // Add all unique subtree patterns to the root's children with frequency count
+        // Add all unique subtree patterns with frequency count
         Array.from(subtreeFrequency.values()).forEach(entry => {
             const subtree = entry.sampleSubtree;
             // Add frequency property to the subtree
@@ -378,15 +378,21 @@ function findLastRecursiveNode(cy, startNode, recursiveLabel, visited = new Set(
  * @param {Array<string>} properties - Properties to include
  * @param {Map} frequency - Map to track frequency of similar subtrees
  * @param {Set} visited - Set to track visited nodes (for cycle detection)
+ * @param {string} lastNodeId - ID of the last recursive node (to exclude from collection)
  */
 function collectNonRecursiveNodes(cy, startNode, recursiveLabel, collectedNodes, properties, 
-                                 frequency = new Map(), visited = new Set()) {
+                                 frequency = new Map(), visited = new Set(), lastNodeId = null) {
     // Check for cycles
     const nodeId = startNode.id();
     if (visited.has(nodeId)) {
         return;
     }
     visited.add(nodeId);
+    
+    // Skip processing if this is the last node
+    if (nodeId === lastNodeId) {
+        return;
+    }
     
     // Get immediate children
     const childNodes = startNode.outgoers().nodes();
@@ -433,7 +439,11 @@ function collectNonRecursiveNodes(cy, startNode, recursiveLabel, collectedNodes,
     
     // Continue down the recursive chain if found
     if (recursiveChild) {
-        collectNonRecursiveNodes(cy, recursiveChild, recursiveLabel, collectedNodes, properties, frequency, visited);
+        // Skip if the next recursive child is the last node
+        if (recursiveChild.id() !== lastNodeId) {
+            collectNonRecursiveNodes(cy, recursiveChild, recursiveLabel, collectedNodes, 
+                                    properties, frequency, visited, lastNodeId);
+        }
     }
 }
 
