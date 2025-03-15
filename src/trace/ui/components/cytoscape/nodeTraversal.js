@@ -233,7 +233,6 @@ export function getSubTreeForSummaryAsTree(cy, nodeId, properties = [
     
     return nodeObj;
 }
-
 /**
  * Get a compressed version of a recursive subtree, collecting all iterations
  * @param {Object} cy - The Cytoscape instance
@@ -242,7 +241,7 @@ export function getSubTreeForSummaryAsTree(cy, nodeId, properties = [
  * @returns {Object} Compressed tree structure with entry point and unique subtrees,
  *                   plus the last recursive node separately
  */
-export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
+function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
     // Get the entry point node and validate
     const entryNode = cy.getElementById(nodeId);
     if (!entryNode.length) {
@@ -254,7 +253,10 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
     const entryLabel = entryData.label || entryData.methodName || entryData.id;
     
     // Create the root node object with properties
-    const rootObj = { id: nodeId };
+    const rootObj = { 
+        id: nodeId,
+        isRecursiveSubtree: true  // Add property to indicate this is a recursive subtree
+    };
     for (let i = 0; i < properties.length; i++) {
         const prop = properties[i];
         if (prop !== 'id') {
@@ -277,7 +279,10 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
                                 new Set(), lastRecursiveNode.id());
         
         // Create object for the last recursive node
-        const lastNodeObj = { id: lastRecursiveNode.id() };
+        const lastNodeObj = { 
+            id: lastRecursiveNode.id(),
+            isRecursiveExit: true  // Add property to indicate this is the recursive exit node
+        };
         const lastNodeData = lastRecursiveNode.data();
         
         // Add properties
