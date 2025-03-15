@@ -263,16 +263,17 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
     }
     rootObj.children = [];
     
-    // Array to collect non-recursive function subtrees
+    // Array to collect non-recursive function subtrees with frequency counting
     const collectedNonRecursives = [];
+    const subtreeFrequency = new Map(); // Map to track frequency of similar subtrees
     
     // Process the recursive chain to find the last recursive node
     const lastRecursiveNode = findLastRecursiveNode(cy, entryNode, entryLabel);
     
     // If we found the last recursive node, add it as the only child of the root
     if (lastRecursiveNode) {
-        // Collect all non-recursive function calls along the way
-        collectNonRecursiveNodes(cy, entryNode, entryLabel, collectedNonRecursives, properties);
+        // Collect all non-recursive function calls along the way with frequency counting
+        collectNonRecursiveNodes(cy, entryNode, entryLabel, collectedNonRecursives, properties, subtreeFrequency);
         
         // Create object for the last recursive node
         const lastNodeObj = { id: lastRecursiveNode.id() };
@@ -305,8 +306,13 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
         rootObj.children.push(lastNodeObj);
     }
     
-    // Log the collected non-recursive functions
+    // Log the collected non-recursive functions with frequency information
     console.log("Collected non-recursive functions in recursive chain:", collectedNonRecursives);
+    console.log("Frequency of subtree patterns:", Array.from(subtreeFrequency.entries()).map(([key, value]) => ({
+        pattern: key,
+        count: value.count,
+        examples: value.examples.slice(0, 3) // Only show up to 3 examples for clarity
+    })));
     
     return rootObj;
 }
@@ -363,9 +369,11 @@ function findLastRecursiveNode(cy, startNode, recursiveLabel, visited = new Set(
  * @param {string} recursiveLabel - The label to identify recursive calls
  * @param {Array} collectedNodes - Array to collect non-recursive nodes
  * @param {Array<string>} properties - Properties to include
+ * @param {Map} frequency - Map to track frequency of similar subtrees
  * @param {Set} visited - Set to track visited nodes (for cycle detection)
  */
-function collectNonRecursiveNodes(cy, startNode, recursiveLabel, collectedNodes, properties, visited = new Set()) {
+function collectNonRecursiveNodes(cy, startNode, recursiveLabel, collectedNodes, properties, 
+                                 frequency = new Map(), visited = new Set()) {
     // Check for cycles
     const nodeId = startNode.id();
     if (visited.has(nodeId)) {
@@ -394,13 +402,76 @@ function collectNonRecursiveNodes(cy, startNode, recursiveLabel, collectedNodes,
             // This is a non-recursive function - collect it
             const subtree = getSubTreeForSummaryAsTree(cy, childId, properties);
             if (subtree) {
+                // Add to the collection
                 collectedNodes.push(subtree);
+                
+                // Create a normalized version of the subtree for comparison (remove IDs)
+                const subtreePattern = createSubtreePattern(subtree);
+                
+                // Update frequency map
+                if (frequency.has(subtreePattern)) {
+                    const entry = frequency.get(subtreePattern);
+                    entry.count++;
+                    entry.examples.push(subtree.id);
+                } else {
+                    frequency.set(subtreePattern, {
+                        count: 1,
+                        examples: [subtree.id],
+                        sampleSubtree: subtree
+                    });
+                }
             }
         }
     });
     
     // Continue down the recursive chain if found
     if (recursiveChild) {
-        collectNonRecursiveNodes(cy, recursiveChild, recursiveLabel, collectedNodes, properties, visited);
+        collectNonRecursiveNodes(cy, recursiveChild, recursiveLabel, collectedNodes, properties, frequency, visited);
     }
+}
+
+/**
+ * Create a pattern string from a subtree that excludes IDs but preserves structure and labels
+ * @param {Object} subtree - The subtree to create a pattern from
+ * @returns {string} A string representation of the subtree pattern
+ */
+function createSubtreePattern(subtree) {
+    // Clone the subtree without the IDs
+    function cloneWithoutIds(node) {
+        if (!node) return null;
+        
+        const clone = {};
+        
+        // Copy all properties except 'id' and 'children'
+        Object.keys(node).forEach(key => {
+            if (key !== 'id' && key !== 'children') {
+                clone[key] = node[key];
+            }
+        });
+        
+        // Process children recursively if they exist
+        if (node.children && node.children.length > 0) {
+            clone.children = node.children.map(child => cloneWithoutIds(child));
+        } else {
+            clone.children = [];
+        }
+        
+        return clone;
+    }
+    
+    const patternObj = cloneWithoutIds(subtree);
+    
+    // Convert to string for comparison, focusing on structure and labels
+    return JSON.stringify(patternObj, (key, value) => {
+        // Only include certain keys that define the structure and behavior
+        if (key === 'label' || key === 'methodName' || key === 'className' || 
+            key === 'children' || key === 'description') {
+            return value;
+        }
+        // Skip other properties like time, percent, etc. which may vary
+        if (typeof key === 'string' && key !== '') {
+            return undefined;
+        }
+        return value;
+    });
 }
