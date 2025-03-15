@@ -1,6 +1,6 @@
 import { explainSubTree } from "../../../utils/ai/aiService.js";
 import { escapeHtml } from "../sidebar/utils.js";
-import { getAllDescendantsAsTree } from "./nodeTraversal.js";
+import { getAllDescendantsAsTree, getSubTreeForSummaryAsTree } from "./nodeTraversal.js";
 
 /**
  * Collects data from a subtree in the graph
@@ -10,7 +10,8 @@ import { getAllDescendantsAsTree } from "./nodeTraversal.js";
  */
 export const collectSubtreeData = (cy, nodeId) => {
   const properties = ["label", "description"];
-  return getAllDescendantsAsTree(cy, nodeId, properties);
+  // return getAllDescendantsAsTree(cy, nodeId, properties);
+  return getSubTreeForSummaryAsTree(cy, nodeId, properties);
 };
 
 /**
