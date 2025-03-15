@@ -40,7 +40,7 @@ const taskContent = `Task:
 
     3. briefSummary: Summarize the call trace in 1 to 3 sentences focusing on the overall process. The summary should be a shorter version of the detailed explanation, highlighting the core functionality.
 
-    Note: Do not include any details from the underlying call graph data; focus exclusively on the high-level trace summary and explanation.
+    Note: Do not include any details from the underlying call graph data; focus exclusively on the high-level trace summary and explanation. If it is a recursive call, please mention in explanation.
 
     Below is an example:
     {
