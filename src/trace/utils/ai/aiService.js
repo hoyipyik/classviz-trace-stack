@@ -1,16 +1,12 @@
-
-
 // Import fetch for Node.js environments
-export async function sendPromptToOllama(prompt, model = 'llama3.2') {
-    // const url = 'http://localhost:11434/api/generate';
-    const url = 'http://172.245.88.195:3000/api/generate';
+export async function sendPromptToOllama(prompt, model = 'gemma3') {
+    const url = 'http://172.245.88.195:9029/api/generate';
 
     const payload = {
         model: model,
         prompt: prompt,
-        // temperature: temperature,
         stream: false,
-        format: "json" // Some LLM APIs support this parameter
+        format: "json" // Request JSON format from the model
     };
 
     try {
@@ -42,7 +38,6 @@ const taskContent = `Task:
 
     2. flowRepresentation: Illustrate the sequence of key operations in the trace using a simple linear format (e.g., "Initialize → Process → Validate → Complete"). Each step should represent a functional stage in the execution rather than individual method calls. Focus on capturing the logical progression and purpose of each major stage in the execution flow.
 
-
     3. briefSummary: Summarize the call trace in 1 to 3 sentences focusing on the overall process. The summary should be a shorter version of the detailed explanation, highlighting the core functionality.
 
     Note: Do not include any details from the underlying call graph data; focus exclusively on the high-level trace summary and explanation.
@@ -54,27 +49,47 @@ const taskContent = `Task:
     "briefSummary": "The execution trace shows..."
     }
 
-    Now please give the output based on the format above, output json only.`;
+    Your response must be in valid JSON format with no additional text. Format your response as a JSON object with the three requested fields.`;
 
 // Function to execute when you want to add the subtree data
 export async function explainSubTree(subtreeData) {
     const subtreeString = JSON.stringify(subtreeData, null, 2);
-    const fullPrompt = `${taskContent}\n\n${subtreeString}`;
+    
+    // Explicitly instruct the model to generate a valid JSON response
+    const fullPrompt = `${taskContent}\n\nAnalyze this call trace:\n${subtreeString}\n\nGenerate a valid JSON response with detailedBehaviour, flowRepresentation, and briefSummary fields.`;
     console.log(fullPrompt)
-
+    console.log('Sending prompt to Ollama...');
+    
     try {
-        console.log('Sending prompt to Ollama...');
-        const response = await sendPromptToOllama(fullPrompt);
+        // Add a timeout to the request
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Request timed out')), 30000)
+        );
+        
+        const responsePromise = sendPromptToOllama(fullPrompt);
+        const response = await Promise.race([responsePromise, timeoutPromise]);
+        
+        console.log("Raw response from Ollama:", response);
 
-        // Try to parse the JSON directly
+        // More robust JSON extraction
         try {
+            // First attempt: Try to parse the raw response directly
+            try {
+                const directParse = JSON.parse(response);
+                console.log('Direct JSON parsing successful');
+                return directParse;
+            } catch (directError) {
+                console.log('Direct parsing failed, trying extraction methods');
+            }
+            
             // Clean up the response to help with parsing
             let cleanedResponse = response.trim();
 
-            // If there are markdown code blocks, extract content between them
-            const codeBlockMatch = cleanedResponse.match(/\`\`\`json\n([\s\S]*?)\n\`\`\`/);
+            // Pattern matching for code blocks (including json, JSON, or no language specified)
+            const codeBlockMatch = cleanedResponse.match(/```(?:json|JSON)?\s*([\s\S]*?)\s*```/);
             if (codeBlockMatch && codeBlockMatch[1]) {
                 cleanedResponse = codeBlockMatch[1].trim();
+                console.log('Extracted from code block:', cleanedResponse.substring(0, 50) + '...');
             }
 
             // Find the first { and last } for a potential JSON object
@@ -83,20 +98,58 @@ export async function explainSubTree(subtreeData) {
 
             if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
                 cleanedResponse = cleanedResponse.substring(firstBrace, lastBrace + 1);
+                console.log('Extracted JSON by braces');
             }
 
-            console.log('Attempting to parse JSON from response:');
+            // If the response is still empty or doesn't appear to be JSON, create a fallback
+            if (!cleanedResponse || !cleanedResponse.trim().startsWith('{')) {
+                console.log('Response doesn\'t look like JSON, creating fallback');
+                return {
+                    detailedBehaviour: "Failed to extract valid JSON from model response. The raw response did not contain properly formatted JSON data.",
+                    flowRepresentation: "Parse Request → Extract JSON → Handle Failure",
+                    briefSummary: "The model failed to provide a valid JSON response for the given call trace."
+                };
+            }
+
+            console.log('Attempting to parse JSON from cleaned response');
             const parsedJson = JSON.parse(cleanedResponse);
-            console.log('Successfully parsed JSON response:');
-            console.log(JSON.stringify(parsedJson, null, 2));
+            console.log('Successfully parsed JSON response');
+            
+            // Verify that the response has the expected structure
+            const hasRequiredFields = 
+                parsedJson.hasOwnProperty('detailedBehaviour') &&
+                parsedJson.hasOwnProperty('flowRepresentation') &&
+                parsedJson.hasOwnProperty('briefSummary');
+                
+            if (!hasRequiredFields) {
+                console.log('Response missing required fields, creating structured response');
+                return {
+                    detailedBehaviour: parsedJson.detailedBehaviour || "Missing detailed behavior in model response",
+                    flowRepresentation: parsedJson.flowRepresentation || "Missing flow representation in model response",
+                    briefSummary: parsedJson.briefSummary || "Missing brief summary in model response"
+                };
+            }
+            
             return parsedJson;
         } catch (jsonError) {
             console.error('Could not parse valid JSON from response:', jsonError);
             console.log('Raw response:', response);
+            
+            // Return a fallback structured response
+            return {
+                detailedBehaviour: "Failed to parse valid JSON from the LLM response for the provided call trace.",
+                flowRepresentation: "Request → Parse Failure → Fallback Response",
+                briefSummary: "The system encountered an error parsing the model's response into valid JSON format."
+            };
         }
-
-        return response;
     } catch (error) {
         console.error('Error in analysis:', error);
+        
+        // Return structured error information
+        return {
+            detailedBehaviour: `Error occurred during analysis: ${error.message}`,
+            flowRepresentation: "Request → Error → Fallback",
+            briefSummary: "An error occurred while processing the call trace data."
+        };
     }
 }
