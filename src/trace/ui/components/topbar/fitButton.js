@@ -1,11 +1,18 @@
+import { getElements } from "../../views/viewState.js";
 import { runLayout } from "../cytoscape/layoutManager.js";
 
 // Now, implement the fitGraphHandler with both button and dropdown listeners
 export const fitGraphHandler = () => {
+    const viewModeSelector = getElements().viewModeSelector;
+    // get value 
+    const viewType = viewModeSelector.value;
+
     document.addEventListener('DOMContentLoaded', function () {
         const fitGraphButton = document.getElementById('btn-fit');
         const fitNameSelector = document.getElementById('fit-mode');
-        
+        console.log(fitGraphButton)
+        if(viewType !== "calltree")
+            return;
         // Variable to store the current layout name
         let currentLayoutName = fitNameSelector.value;
         
