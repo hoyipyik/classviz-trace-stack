@@ -125,8 +125,8 @@ export const isMethodNameEntryPoint = (methodName) => {
         fanOut,
         implementationEntryPoint,
         chainStartPoint,
-        isSummarised: false, // This would be set elsewhere based on user interaction
-        recursiveEntryPoint: isRecursiveEntryPoint
+        recursiveEntryPoint: isRecursiveEntryPoint,
+        isSummarised: false // This would be set elsewhere based on user interaction
       },
       visitedPaths: updatedVisitedPaths
     };
