@@ -133,3 +133,95 @@ export function getAllDescendantsAsTree(cy, nodeId, properties = [
     
     return nodeObj;
 }
+
+/**
+ * Get a node and its descendants for summary purposes, stopping at special nodes
+ * @param {Object} cy - The Cytoscape instance
+ * @param {string} nodeId - The ID of the starting node
+ * @param {Array<string>} properties - Array of property names to include (default: all common properties)
+ * @param {Set} visited - Set of visited node IDs (internal use for recursion)
+ * @returns {Object} Hierarchical tree structure containing the node and its descendants up to special nodes
+ */
+export function getSubTreeForSummaryAsTree(cy, nodeId, properties = [
+    'id', 
+    'methodName', 
+    'className', 
+    'time', 
+    'percent',
+    'sourceCode',
+    'visibility',
+    'simpleName',
+    'qualifiedName',
+    'kind',
+    'docComment',
+    'metaSrc',
+    'description',
+    'subtreeSummary',
+    'subtreeDetailedExplanation',
+    'returns',
+    'reason',
+    'howToUse',
+    'howItWorks',
+    'assertions',
+    'layer',
+    'color',
+    'label',
+    'detailedDescription',
+    'isRoot',
+    'collapsed'
+], visited = new Set()) {
+    // Check for previously visited nodes to avoid cycles
+    if (visited.has(nodeId)) {
+        return null;
+    }
+    
+    // Get the node and validate
+    const node = cy.getElementById(nodeId);
+    if (!node.length) {
+        return null;
+    }
+    
+    // Mark this node as visited
+    visited.add(nodeId);
+    
+    // Extract node data once
+    const data = node.data();
+    
+    // Create node object efficiently
+    const nodeObj = { id: nodeId };
+    
+    // Add selected properties from node data
+    for (let i = 0; i < properties.length; i++) {
+        const prop = properties[i];
+        if (prop !== 'id') { // Skip ID as we've already added it
+            nodeObj[prop] = data[prop] !== undefined ? data[prop] : '';
+        }
+    }
+    nodeObj.children = [];
+    
+    // Check if current node is a special node (without including status in output)
+    const status = data.status || {};
+    const isSpecialNode = status.fanOut || 
+        status.implementationEntryPoint || 
+        status.recursiveEntryPoint;
+    
+    // Only process children if this is not a special node (or if it's the starting node)
+    if (!isSpecialNode || nodeId === visited.values().next().value) { // The second condition checks if this is the starting node
+        // Get immediate children as a collection
+        const childNodes = node.outgoers().nodes();
+        
+        // Process children if there are any
+        if (childNodes.length > 0) {
+            // Process each child
+            childNodes.forEach(childNode => {
+                const childId = childNode.id();
+                const childTree = getSubTreeForSummaryAsTree(cy, childId, properties, visited);
+                if (childTree) {
+                    nodeObj.children.push(childTree);
+                }
+            });
+        }
+    }
+    
+    return nodeObj;
+}
