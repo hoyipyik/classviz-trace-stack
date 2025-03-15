@@ -233,6 +233,7 @@ export function getSubTreeForSummaryAsTree(cy, nodeId, properties = [
     
     return nodeObj;
 }
+
 /**
  * Get a compressed version of a recursive subtree, collecting all iterations
  * @param {Object} cy - The Cytoscape instance
@@ -241,7 +242,7 @@ export function getSubTreeForSummaryAsTree(cy, nodeId, properties = [
  * @returns {Object} Compressed tree structure with entry point and unique subtrees,
  *                   plus the last recursive node separately
  */
-function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
+export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
     // Get the entry point node and validate
     const entryNode = cy.getElementById(nodeId);
     if (!entryNode.length) {
@@ -293,17 +294,26 @@ function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
             }
         }
         
-        // Process children of the last recursive node using getSubTreeForSummaryAsTree
+        // Initialize empty children array
         lastNodeObj.children = [];
-        const lastNodeChildren = lastRecursiveNode.outgoers().nodes();
-        if (lastNodeChildren.length > 0) {
-            lastNodeChildren.forEach(childNode => {
-                // For each child of the last recursive node, get its full subtree
-                const subtree = getSubTreeForSummaryAsTree(cy, childNode.id(), properties);
-                if (subtree) {
-                    lastNodeObj.children.push(subtree);
-                }
-            });
+        
+        // Check if the last node itself is a special node
+        const lastNodeStatus = lastNodeData.status || {};
+        const isLastNodeSpecial = lastNodeStatus.fanOut || 
+            lastNodeStatus.implementationEntryPoint || 
+            lastNodeStatus.recursiveEntryPoint;
+        
+        // Only process children if the last node is NOT a special node
+        if (isLastNodeSpecial) {
+            // If the last node is special, mark it
+            lastNodeObj.isSpecialNode = true;
+        } else {
+            // For each child of the last recursive node, get the subtree using getSubTreeForSummaryAsTree
+            // This will automatically stop at special nodes within the subtree
+            const subtree = getSubTreeForSummaryAsTree(cy, lastRecursiveNode.id(), properties, new Set());
+            if (subtree && subtree.children) {
+                lastNodeObj.children = subtree.children;
+            }
         }
         
         // Add the last node to children array
@@ -418,7 +428,7 @@ function collectNonRecursiveNodes(cy, startNode, recursiveLabel, collectedNodes,
             recursiveChild = childNode;
         } else {
             // This is a non-recursive function - collect it
-            const subtree = getSubTreeForSummaryAsTree(cy, childId, properties);
+            const subtree = getSubTreeForSummaryAsTree(cy, childId, properties, new Set());
             if (subtree) {
                 // Add to the collection
                 collectedNodes.push(subtree);
@@ -471,11 +481,21 @@ function createSubtreePattern(subtree) {
             }
         });
         
-        // Process children recursively if they exist
-        if (node.children && node.children.length > 0) {
+        // Process children recursively if they exist and if this is not a special node
+        const status = node.status || {};
+        const isSpecialNode = status.fanOut || 
+            status.implementationEntryPoint || 
+            status.recursiveEntryPoint;
+            
+        if (node.children && node.children.length > 0 && !isSpecialNode) {
             clone.children = node.children.map(child => cloneWithoutIds(child));
         } else {
             clone.children = [];
+            
+            // Add a marker if this is a special node with children that we're not processing
+            if (isSpecialNode && node.children && node.children.length > 0) {
+                clone.isSpecialNodeWithChildren = true;
+            }
         }
         
         return clone;
@@ -487,7 +507,7 @@ function createSubtreePattern(subtree) {
     return JSON.stringify(patternObj, (key, value) => {
         // Only include certain keys that define the structure and behavior
         if (key === 'label' || key === 'methodName' || key === 'className' || 
-            key === 'children' || key === 'description') {
+            key === 'children' || key === 'description' || key === 'isSpecialNodeWithChildren') {
             return value;
         }
         // Skip other properties like time, percent, etc. which may vary
