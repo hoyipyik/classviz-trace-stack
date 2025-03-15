@@ -263,9 +263,8 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
     }
     rootObj.children = [];
     
-    // Array to collect non-recursive function subtrees with frequency counting
-    const collectedNonRecursives = [];
-    const subtreeFrequency = new Map(); // Map to track frequency of similar subtrees
+    // Map to track frequency of similar subtrees
+    const subtreeFrequency = new Map(); 
     
     // Process the recursive chain to find the last recursive node
     const lastRecursiveNode = findLastRecursiveNode(cy, entryNode, entryLabel);
@@ -273,7 +272,7 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
     // If we found the last recursive node, add it as the only child of the root
     if (lastRecursiveNode) {
         // Collect all non-recursive function calls along the way with frequency counting
-        collectNonRecursiveNodes(cy, entryNode, entryLabel, collectedNonRecursives, properties, subtreeFrequency);
+        collectNonRecursiveNodes(cy, entryNode, entryLabel, [], properties, subtreeFrequency);
         
         // Create object for the last recursive node
         const lastNodeObj = { id: lastRecursiveNode.id() };
@@ -302,17 +301,25 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
             });
         }
         
-        // Add the last node as the only child of the root
+        // Add the last node as a child of the root
         rootObj.children.push(lastNodeObj);
+        
+        // Add all unique subtree patterns to the root's children with frequency count
+        Array.from(subtreeFrequency.values()).forEach(entry => {
+            const subtree = entry.sampleSubtree;
+            // Add frequency property to the subtree
+            subtree.frequency = entry.count;
+            // Add subtree as a child of the root
+            rootObj.children.push(subtree);
+        });
+        
+        // Log the frequency information
+        console.log("Frequency of subtree patterns:", Array.from(subtreeFrequency.entries()).map(([key, value]) => ({
+            pattern: key,
+            count: value.count,
+            example: value.examples[0]
+        })));
     }
-    
-    // Log the collected non-recursive functions with frequency information
-    console.log("Collected non-recursive functions in recursive chain:", collectedNonRecursives);
-    console.log("Frequency of subtree patterns:", Array.from(subtreeFrequency.entries()).map(([key, value]) => ({
-        pattern: key,
-        count: value.count,
-        examples: value.examples.slice(0, 3) // Only show up to 3 examples for clarity
-    })));
     
     return rootObj;
 }
@@ -412,7 +419,7 @@ function collectNonRecursiveNodes(cy, startNode, recursiveLabel, collectedNodes,
                 if (frequency.has(subtreePattern)) {
                     const entry = frequency.get(subtreePattern);
                     entry.count++;
-                    entry.examples.push(subtree.id);
+                    // Don't add more examples, just keep the first one
                 } else {
                     frequency.set(subtreePattern, {
                         count: 1,
