@@ -261,8 +261,8 @@ function createIndicatorBar(parentContainer) {
             background-color: rgba(45, 55, 72, 0.85);
             color: white;
             border: none;
-            border-top-left-radius: 4px;
-            border-bottom-left-radius: 4px;
+            border-top-right-radius: 4px;
+            border-bottom-right-radius: 4px;
             cursor: pointer;
             z-index: 9;
             transition: all 0.3s ease;
