@@ -1,4 +1,4 @@
-import { getAllDescendantsAsTree } from "./nodeTraversal.js";
+import { getAllDescendantsAsTree, getSubTreeForSummaryAsTree } from "./nodeTraversal.js";
 
 export function exportSubTree(cy, nodeId) {
     const properties = [
@@ -12,7 +12,8 @@ export function exportSubTree(cy, nodeId) {
         // "subtreeDetailedExplanation",
         // "sourceCode",
     ];
-    const subTreeData = getAllDescendantsAsTree(cy, nodeId, properties);
+    // const subTreeData = getAllDescendantsAsTree(cy, nodeId, properties);
+    const subTreeData = getSubTreeForSummaryAsTree(cy, nodeId, properties);
     const subTreeId = subTreeData.id + '.' + subTreeData.className + '.' + subTreeData.methodName;
     const subTreeJson = JSON.stringify(subTreeData, null, 2);
     const subTreeBlob = new Blob([subTreeJson], { type: 'application/json' });
