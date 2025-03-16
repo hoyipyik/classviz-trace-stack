@@ -66,7 +66,7 @@ export async function explainSubTree(subtreeData) {
     try {
         // Add a timeout to the request
         const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Request timed out')), 30000)
+            setTimeout(() => reject(new Error('Request timed out')), 60000)
         );
         
         const responsePromise = sendPromptToOllama(fullPrompt);
