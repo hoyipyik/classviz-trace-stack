@@ -178,7 +178,7 @@ export function getSubTreeForSummaryAsTree(cy, nodeId, properties = DEFAULT_PROP
 }
 
 /**
- * Get a compressed version of a recursive subtree, collecting all iterations
+ * 优化版的压缩递归子树函数，在单次遍历中同时完成所有操作
  * @param {Object} cy - The Cytoscape instance
  * @param {string} nodeId - The ID of the starting node (recursive entry point)
  * @param {Array<string>} properties - Array of property names to include
@@ -213,16 +213,13 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
     // Map to track frequency of similar subtrees
     const subtreeFrequency = new Map(); 
     
-    // Process the recursive chain to find the last recursive node
-    const lastRecursiveNode = findLastRecursiveNode(cy, entryNode, entryLabel);
+    // 在单次遍历中同时找到最后一个递归节点并收集路径上的非递归节点
+    const result = traverseRecursiveChainAndCollect(cy, entryNode, entryLabel, properties, subtreeFrequency);
     
     // If we found the last recursive node, process it
-    if (lastRecursiveNode) {
-        // Collect all non-recursive function calls along the way with frequency counting
-        collectNonRecursiveNodes(
-            cy, entryNode, entryLabel, [], properties, 
-            subtreeFrequency, new Set(), lastRecursiveNode.id()
-        );
+    if (result.lastNode) {
+        const lastRecursiveNode = result.lastNode;
+        const lastNodeData = lastRecursiveNode.data();
         
         // Create object for the last recursive node
         const lastNodeObj = { 
@@ -230,8 +227,6 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
             isRecursiveExit: true,
             children: []
         };
-        
-        const lastNodeData = lastRecursiveNode.data();
         
         // Add properties
         for (let i = 0; i < properties.length; i++) {
@@ -276,29 +271,41 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
 }
 
 /**
- * Find the last recursive node in a chain
+ * 在单次遍历中找到最后递归节点并收集路径上的非递归节点
  * @param {Object} cy - The Cytoscape instance
- * @param {Object} startNode - The starting node
+ * @param {Object} currentNode - The current node being processed
  * @param {string} recursiveLabel - The label to identify recursive calls
+ * @param {Array<string>} properties - Properties to include
+ * @param {Map} frequency - Map to track frequency of similar subtrees
  * @param {Set} visited - Set to track visited nodes (for cycle detection)
- * @returns {Object|null} The last recursive node or null if not found
+ * @param {Set} allVisited - Set to track all visited nodes across the recursion
+ * @param {Object|null} lastNodeFound - 已找到的最后递归节点 (用于避免收集它的子节点)
+ * @returns {Object} Object containing the last recursiveNode and collected data
  */
-function findLastRecursiveNode(cy, startNode, recursiveLabel, visited = new Set()) {
+function traverseRecursiveChainAndCollect(cy, currentNode, recursiveLabel, properties, frequency, visited = new Set(), allVisited = new Set(), lastNodeFound = null) {
     // Check for cycles
-    const nodeId = startNode.id();
+    const nodeId = currentNode.id();
     if (visited.has(nodeId)) {
-        return null;
+        return { lastNode: null };
     }
     visited.add(nodeId);
+    allVisited.add(nodeId);
+    
+    // 检查这个节点是否是最后的递归节点
+    // 如果是最后的递归节点，我们不应收集它的子节点
+    const isLastNode = lastNodeFound && lastNodeFound.id() === nodeId;
     
     // Get immediate children
-    const childNodes = startNode.outgoers().nodes();
+    const childNodes = currentNode.outgoers().nodes();
     if (!childNodes || childNodes.length === 0) {
-        return startNode; // This is a leaf node, so it's the last one
+        return { lastNode: currentNode }; // Leaf node, end of chain
     }
     
-    // Find the recursive child among the children
+    // Find recursive child and collect non-recursive nodes in one pass
     let recursiveChild = null;
+    let foundLastNode = false;
+    
+    // 首先检查是否存在递归子节点
     for (let i = 0; i < childNodes.length; i++) {
         const childNode = childNodes[i];
         const childData = childNode.data();
@@ -310,83 +317,50 @@ function findLastRecursiveNode(cy, startNode, recursiveLabel, visited = new Set(
         }
     }
     
-    // If we found a recursive child, continue down the chain
-    if (recursiveChild) {
-        const lastNode = findLastRecursiveNode(cy, recursiveChild, recursiveLabel, visited);
-        return lastNode || recursiveChild;
+    // 如果没有找到递归子节点，说明当前节点是递归链的最后一个节点
+    if (!recursiveChild) {
+        foundLastNode = true;
+        lastNodeFound = currentNode;
     }
     
-    // No recursive children, so this is the last one
-    return startNode;
-}
-
-/**
- * Collect non-recursive nodes along the recursive chain
- * @param {Object} cy - The Cytoscape instance
- * @param {Object} startNode - The current node
- * @param {string} recursiveLabel - The label to identify recursive calls
- * @param {Array} collectedNodes - Array to collect non-recursive nodes
- * @param {Array<string>} properties - Properties to include
- * @param {Map} frequency - Map to track frequency of similar subtrees
- * @param {Set} visited - Set to track visited nodes (for cycle detection)
- * @param {string} lastNodeId - ID of the last recursive node (to exclude from collection)
- */
-function collectNonRecursiveNodes(cy, startNode, recursiveLabel, collectedNodes, properties, 
-                                 frequency, visited, lastNodeId) {
-    // Check for cycles
-    const nodeId = startNode.id();
-    if (visited.has(nodeId) || nodeId === lastNodeId) {
-        return;
-    }
-    visited.add(nodeId);
-    
-    // Get immediate children
-    const childNodes = startNode.outgoers().nodes();
-    if (!childNodes || childNodes.length === 0) {
-        return;
-    }
-    
-    // Process each child
-    let recursiveChild = null;
-    
-    for (let i = 0; i < childNodes.length; i++) {
-        const childNode = childNodes[i];
-        const childId = childNode.id();
-        const childData = childNode.data();
-        const childLabel = childData.label || childData.methodName || childData.id;
-        
-        // Check if this is a recursive call
-        if (childLabel === recursiveLabel) {
-            recursiveChild = childNode;
-        } else {
-            // This is a non-recursive function - collect it
-            const subtree = getSubTreeForSummaryAsTree(cy, childId, properties, new Set());
-            if (subtree) {
-                // Add to the collection
-                collectedNodes.push(subtree);
-                
-                // Create a normalized version of the subtree for comparison (remove IDs)
-                const subtreePattern = createSubtreePattern(subtree);
-                
-                // Update frequency map
-                if (frequency.has(subtreePattern)) {
-                    frequency.get(subtreePattern).count++;
-                } else {
-                    frequency.set(subtreePattern, {
-                        count: 1,
-                        examples: [subtree.id],
-                        sampleSubtree: subtree
-                    });
+    // 如果这个节点不是最后节点，收集它的非递归子节点
+    if (!isLastNode && !foundLastNode) {
+        for (let i = 0; i < childNodes.length; i++) {
+            const childNode = childNodes[i];
+            const childId = childNode.id();
+            const childData = childNode.data();
+            const childLabel = childData.label || childData.methodName || childData.id;
+            
+            // 只处理非递归调用
+            if (childLabel !== recursiveLabel) {
+                // 收集非递归子节点
+                const subtree = getSubTreeForSummaryAsTree(cy, childId, properties, new Set(allVisited));
+                if (subtree) {
+                    // 创建无ID的规范化子树用于比较
+                    const subtreePattern = createSubtreePattern(subtree);
+                    
+                    // 更新频率映射
+                    if (frequency.has(subtreePattern)) {
+                        frequency.get(subtreePattern).count++;
+                    } else {
+                        frequency.set(subtreePattern, {
+                            count: 1,
+                            examples: [subtree.id],
+                            sampleSubtree: subtree
+                        });
+                    }
                 }
             }
         }
     }
     
-    // Continue down the recursive chain if found
-    if (recursiveChild && recursiveChild.id() !== lastNodeId) {
-        collectNonRecursiveNodes(cy, recursiveChild, recursiveLabel, collectedNodes, 
-                                properties, frequency, visited, lastNodeId);
+    // If we found a recursive child, continue traversing the chain
+    if (recursiveChild) {
+        return traverseRecursiveChainAndCollect(cy, recursiveChild, recursiveLabel, properties, frequency, visited, allVisited, lastNodeFound);
     }
+    
+    // No recursive children, so this is the last node in the chain
+    return { lastNode: currentNode };
 }
 
 /**
