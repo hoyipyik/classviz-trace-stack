@@ -7,8 +7,6 @@
  * @returns {Array} The child nodes
  */
 export function getChildNodes(cy, nodeId) {
-    // Use Cytoscape's built-in selector to directly get child nodes
-    // This is more efficient than manually traversing edges
     return cy.getElementById(nodeId).outgoers().nodes();
 }
 
@@ -19,74 +17,51 @@ export function getChildNodes(cy, nodeId) {
  * @returns {Array} All descendant nodes
  */
 export function getAllDescendants(cy, nodeId) {
-    // Use a more efficient approach with Cytoscape's built-in traversal
     const rootNode = cy.getElementById(nodeId);
-    
-    // Use breadth-first search (bfs) to find all descendants
     const descendants = rootNode.outgoers().nodes();
-    
-    // Track visited nodes to avoid duplicates in cyclic graphs
     const visited = new Set([nodeId]);
     
-    // Process each level of descendants
+    // Process each level of descendants using breadth-first search
     let currentLevel = descendants;
     while (currentLevel.length > 0) {
         const nextLevel = cy.collection();
         
-        currentLevel.forEach(node => {
+        for (let i = 0; i < currentLevel.length; i++) {
+            const node = currentLevel[i];
             const id = node.id();
             if (!visited.has(id)) {
                 visited.add(id);
-                const children = node.outgoers().nodes();
-                nextLevel.merge(children);
+                nextLevel.merge(node.outgoers().nodes());
             }
-        });
+        }
         
         descendants.merge(nextLevel);
         currentLevel = nextLevel;
     }
     
-    console.log(`Found ${descendants.length} total descendants for node ${nodeId}`);
     return descendants;
 }
 
+/**
+ * Common node properties used across tree functions
+ */
+const DEFAULT_PROPERTIES = [
+    'id', 'methodName', 'className', 'time', 'percent', 'sourceCode', 'visibility',
+    'simpleName', 'qualifiedName', 'kind', 'docComment', 'metaSrc', 'description',
+    'subtreeSummary', 'subtreeDetailedExplanation', 'returns', 'reason', 'howToUse',
+    'howItWorks', 'assertions', 'layer', 'color', 'label', 'detailedDescription',
+    'isRoot', 'collapsed'
+];
 
 /**
  * Get all descendant nodes of a node in a hierarchical cascade format
  * @param {Object} cy - The Cytoscape instance
  * @param {string} nodeId - The ID of the parent node
- * @param {Array<string>} properties - Array of property names to include (default: all properties)
+ * @param {Array<string>} properties - Array of property names to include
  * @param {Set} visited - Set of visited node IDs (internal use for recursion)
  * @returns {Object} Hierarchical tree structure with specified properties and children arrays
  */
-export function getAllDescendantsAsTree(cy, nodeId, properties = [
-    'id', 
-    'methodName', 
-    'className', 
-    'time', 
-    'percent',
-    'sourceCode',
-    'visibility',
-    'simpleName',
-    'qualifiedName',
-    'kind',
-    'docComment',
-    'metaSrc',
-    'description',
-    'subtreeSummary',
-    'subtreeDetailedExplanation',
-    'returns',
-    'reason',
-    'howToUse',
-    'howItWorks',
-    'assertions',
-    'layer',
-    'color',
-    'label',
-    'detailedDescription',
-    'isRoot',
-    'collapsed'
-], visited = new Set()) {
+export function getAllDescendantsAsTree(cy, nodeId, properties = DEFAULT_PROPERTIES, visited = new Set()) {
     // Check for previously visited nodes to avoid cycles
     if (visited.has(nodeId)) {
         return null;
@@ -104,8 +79,8 @@ export function getAllDescendantsAsTree(cy, nodeId, properties = [
     // Extract node data once
     const data = node.data();
     
-    // Create node object efficiently
-    const nodeObj = { id: nodeId};
+    // Create node object with only necessary properties
+    const nodeObj = { id: nodeId, children: [] };
     
     // Add selected properties from node data
     for (let i = 0; i < properties.length; i++) {
@@ -114,21 +89,20 @@ export function getAllDescendantsAsTree(cy, nodeId, properties = [
             nodeObj[prop] = data[prop] !== undefined ? data[prop] : '';
         }
     }
-    nodeObj.children = [];
     
     // Get immediate children as a collection
     const childNodes = node.outgoers().nodes();
     
     // Process children if there are any
     if (childNodes.length > 0) {
-        // Process each child
-        childNodes.forEach(childNode => {
+        for (let i = 0; i < childNodes.length; i++) {
+            const childNode = childNodes[i];
             const childId = childNode.id();
             const childTree = getAllDescendantsAsTree(cy, childId, properties, visited);
             if (childTree) {
                 nodeObj.children.push(childTree);
             }
-        });
+        }
     }
     
     return nodeObj;
@@ -138,43 +112,15 @@ export function getAllDescendantsAsTree(cy, nodeId, properties = [
  * Get a node and its descendants for summary purposes, stopping at special nodes
  * @param {Object} cy - The Cytoscape instance
  * @param {string} nodeId - The ID of the starting node
- * @param {Array<string>} properties - Array of property names to include (default: all common properties)
+ * @param {Array<string>} properties - Array of property names to include
  * @param {Set} visited - Set of visited node IDs (internal use for recursion)
  * @returns {Object} Hierarchical tree structure containing the node and its descendants up to special nodes
  */
-export function getSubTreeForSummaryAsTree(cy, nodeId, properties = [
-    'id', 
-    'methodName', 
-    'className', 
-    'time', 
-    'percent',
-    'sourceCode',
-    'visibility',
-    'simpleName',
-    'qualifiedName',
-    'kind',
-    'docComment',
-    'metaSrc',
-    'description',
-    'subtreeSummary',
-    'subtreeDetailedExplanation',
-    'returns',
-    'reason',
-    'howToUse',
-    'howItWorks',
-    'assertions',
-    'layer',
-    'color',
-    'label',
-    'detailedDescription',
-    'isRoot',
-    'collapsed'
-], visited = new Set()) {
+export function getSubTreeForSummaryAsTree(cy, nodeId, properties = DEFAULT_PROPERTIES, visited = new Set()) {
     // Check for previously visited nodes to avoid cycles
     if (visited.has(nodeId)) {
         return null;
     }
-
     
     // Get the node and validate
     const node = cy.getElementById(nodeId);
@@ -186,17 +132,16 @@ export function getSubTreeForSummaryAsTree(cy, nodeId, properties = [
     const data = node.data();
     const status = data.status || {};
 
-    // if status.recursiveEntryPoint and visited is empty
+    // Check for recursive entry point
     if (status.recursiveEntryPoint && visited.size === 0) {
         return getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties);
     }
     
-
-     // Mark this node as visited
-     visited.add(nodeId);
+    // Mark this node as visited
+    visited.add(nodeId);
     
-    // Create node object efficiently
-    const nodeObj = { id: nodeId };
+    // Create node object with only necessary properties
+    const nodeObj = { id: nodeId, children: [] };
     
     // Add selected properties from node data
     for (let i = 0; i < properties.length; i++) {
@@ -205,29 +150,27 @@ export function getSubTreeForSummaryAsTree(cy, nodeId, properties = [
             nodeObj[prop] = data[prop] !== undefined ? data[prop] : '';
         }
     }
-    nodeObj.children = [];
     
-    // Check if current node is a special node (without including status in output)
-   
+    // Check if current node is a special node
     const isSpecialNode = status.fanOut || 
         status.implementationEntryPoint || 
         status.recursiveEntryPoint;
     
     // Only process children if this is not a special node (or if it's the starting node)
-    if (!isSpecialNode || nodeId === visited.values().next().value) { // The second condition checks if this is the starting node
+    if (!isSpecialNode || nodeId === visited.values().next().value) {
         // Get immediate children as a collection
         const childNodes = node.outgoers().nodes();
         
         // Process children if there are any
         if (childNodes.length > 0) {
-            // Process each child
-            childNodes.forEach(childNode => {
+            for (let i = 0; i < childNodes.length; i++) {
+                const childNode = childNodes[i];
                 const childId = childNode.id();
                 const childTree = getSubTreeForSummaryAsTree(cy, childId, properties, visited);
                 if (childTree) {
                     nodeObj.children.push(childTree);
                 }
-            });
+            }
         }
     }
     
@@ -256,15 +199,16 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
     // Create the root node object with properties
     const rootObj = { 
         id: nodeId,
-        isRecursiveSubtree: true  // Add property to indicate this is a recursive subtree
+        isRecursiveSubtree: true,
+        children: []
     };
+    
     for (let i = 0; i < properties.length; i++) {
         const prop = properties[i];
         if (prop !== 'id') {
             rootObj[prop] = entryData[prop] !== undefined ? entryData[prop] : '';
         }
     }
-    rootObj.children = [];
     
     // Map to track frequency of similar subtrees
     const subtreeFrequency = new Map(); 
@@ -275,15 +219,18 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
     // If we found the last recursive node, process it
     if (lastRecursiveNode) {
         // Collect all non-recursive function calls along the way with frequency counting
-        // But don't include the last node in the collection
-        collectNonRecursiveNodes(cy, entryNode, entryLabel, [], properties, subtreeFrequency, 
-                                new Set(), lastRecursiveNode.id());
+        collectNonRecursiveNodes(
+            cy, entryNode, entryLabel, [], properties, 
+            subtreeFrequency, new Set(), lastRecursiveNode.id()
+        );
         
         // Create object for the last recursive node
         const lastNodeObj = { 
             id: lastRecursiveNode.id(),
-            isRecursiveExit: true  // Add property to indicate this is the recursive exit node
+            isRecursiveExit: true,
+            children: []
         };
+        
         const lastNodeData = lastRecursiveNode.data();
         
         // Add properties
@@ -294,22 +241,18 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
             }
         }
         
-        // Initialize empty children array
-        lastNodeObj.children = [];
-        
         // Check if the last node itself is a special node
         const lastNodeStatus = lastNodeData.status || {};
         const isLastNodeSpecial = lastNodeStatus.fanOut || 
             lastNodeStatus.implementationEntryPoint || 
             lastNodeStatus.recursiveEntryPoint;
         
-        // Only process children if the last node is NOT a special node
+        // Handle special nodes and normal nodes differently
         if (isLastNodeSpecial) {
             // If the last node is special, mark it
             lastNodeObj.isSpecialNode = true;
         } else {
-            // For each child of the last recursive node, get the subtree using getSubTreeForSummaryAsTree
-            // This will automatically stop at special nodes within the subtree
+            // Get the subtree using getSubTreeForSummaryAsTree
             const subtree = getSubTreeForSummaryAsTree(cy, lastRecursiveNode.id(), properties, new Set());
             if (subtree && subtree.children) {
                 lastNodeObj.children = subtree.children;
@@ -320,20 +263,13 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
         rootObj.children.push(lastNodeObj);
         
         // Add all unique subtree patterns with frequency count
-        Array.from(subtreeFrequency.values()).forEach(entry => {
+        for (const entry of subtreeFrequency.values()) {
             const subtree = entry.sampleSubtree;
             // Add frequency property to the subtree
             subtree.frequency = entry.count;
             // Add subtree as a child of the root
             rootObj.children.push(subtree);
-        });
-        
-        // Log the frequency information
-        console.log("Frequency of subtree patterns:", Array.from(subtreeFrequency.entries()).map(([key, value]) => ({
-            pattern: key,
-            count: value.count,
-            example: value.examples[0]
-        })));
+        }
     }
     
     return rootObj;
@@ -396,18 +332,13 @@ function findLastRecursiveNode(cy, startNode, recursiveLabel, visited = new Set(
  * @param {string} lastNodeId - ID of the last recursive node (to exclude from collection)
  */
 function collectNonRecursiveNodes(cy, startNode, recursiveLabel, collectedNodes, properties, 
-                                 frequency = new Map(), visited = new Set(), lastNodeId = null) {
+                                 frequency, visited, lastNodeId) {
     // Check for cycles
     const nodeId = startNode.id();
-    if (visited.has(nodeId)) {
+    if (visited.has(nodeId) || nodeId === lastNodeId) {
         return;
     }
     visited.add(nodeId);
-    
-    // Skip processing if this is the last node
-    if (nodeId === lastNodeId) {
-        return;
-    }
     
     // Get immediate children
     const childNodes = startNode.outgoers().nodes();
@@ -418,7 +349,8 @@ function collectNonRecursiveNodes(cy, startNode, recursiveLabel, collectedNodes,
     // Process each child
     let recursiveChild = null;
     
-    childNodes.forEach(childNode => {
+    for (let i = 0; i < childNodes.length; i++) {
+        const childNode = childNodes[i];
         const childId = childNode.id();
         const childData = childNode.data();
         const childLabel = childData.label || childData.methodName || childData.id;
@@ -438,9 +370,7 @@ function collectNonRecursiveNodes(cy, startNode, recursiveLabel, collectedNodes,
                 
                 // Update frequency map
                 if (frequency.has(subtreePattern)) {
-                    const entry = frequency.get(subtreePattern);
-                    entry.count++;
-                    // Don't add more examples, just keep the first one
+                    frequency.get(subtreePattern).count++;
                 } else {
                     frequency.set(subtreePattern, {
                         count: 1,
@@ -450,15 +380,12 @@ function collectNonRecursiveNodes(cy, startNode, recursiveLabel, collectedNodes,
                 }
             }
         }
-    });
+    }
     
     // Continue down the recursive chain if found
-    if (recursiveChild) {
-        // Skip if the next recursive child is the last node
-        if (recursiveChild.id() !== lastNodeId) {
-            collectNonRecursiveNodes(cy, recursiveChild, recursiveLabel, collectedNodes, 
-                                    properties, frequency, visited, lastNodeId);
-        }
+    if (recursiveChild && recursiveChild.id() !== lastNodeId) {
+        collectNonRecursiveNodes(cy, recursiveChild, recursiveLabel, collectedNodes, 
+                                properties, frequency, visited, lastNodeId);
     }
 }
 
@@ -473,22 +400,29 @@ function createSubtreePattern(subtree) {
         if (!node) return null;
         
         const clone = {};
-        
-        // Copy all properties except 'id' and 'children'
-        Object.keys(node).forEach(key => {
-            if (key !== 'id' && key !== 'children') {
-                clone[key] = node[key];
-            }
-        });
-        
-        // Process children recursively if they exist and if this is not a special node
         const status = node.status || {};
         const isSpecialNode = status.fanOut || 
             status.implementationEntryPoint || 
             status.recursiveEntryPoint;
-            
+        
+        // Only copy relevant properties that define the structure
+        const keysToKeep = ['label', 'methodName', 'className', 'description'];
+        for (let i = 0; i < keysToKeep.length; i++) {
+            const key = keysToKeep[i];
+            if (node[key] !== undefined) {
+                clone[key] = node[key];
+            }
+        }
+        
+        // Process children recursively if they exist and if this is not a special node
         if (node.children && node.children.length > 0 && !isSpecialNode) {
-            clone.children = node.children.map(child => cloneWithoutIds(child));
+            clone.children = [];
+            for (let i = 0; i < node.children.length; i++) {
+                const childClone = cloneWithoutIds(node.children[i]);
+                if (childClone) {
+                    clone.children.push(childClone);
+                }
+            }
         } else {
             clone.children = [];
             
@@ -503,17 +437,6 @@ function createSubtreePattern(subtree) {
     
     const patternObj = cloneWithoutIds(subtree);
     
-    // Convert to string for comparison, focusing on structure and labels
-    return JSON.stringify(patternObj, (key, value) => {
-        // Only include certain keys that define the structure and behavior
-        if (key === 'label' || key === 'methodName' || key === 'className' || 
-            key === 'children' || key === 'description' || key === 'isSpecialNodeWithChildren') {
-            return value;
-        }
-        // Skip other properties like time, percent, etc. which may vary
-        if (typeof key === 'string' && key !== '') {
-            return undefined;
-        }
-        return value;
-    });
+    // Convert to string for comparison
+    return JSON.stringify(patternObj);
 }
