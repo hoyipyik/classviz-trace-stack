@@ -178,7 +178,7 @@ export function getSubTreeForSummaryAsTree(cy, nodeId, properties = DEFAULT_PROP
 }
 
 /**
- * 优化版的压缩递归子树函数，在单次遍历中同时完成所有操作
+ * Optimized version of compressed recursive subtree function, completing all operations in a single traversal
  * @param {Object} cy - The Cytoscape instance
  * @param {string} nodeId - The ID of the starting node (recursive entry point)
  * @param {Array<string>} properties - Array of property names to include
@@ -213,7 +213,7 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
     // Map to track frequency of similar subtrees
     const subtreeFrequency = new Map(); 
     
-    // 在单次遍历中同时找到最后一个递归节点并收集路径上的非递归节点
+    // Find the last recursive node and collect non-recursive nodes on the path in a single traversal
     const result = traverseRecursiveChainAndCollect(cy, entryNode, entryLabel, properties, subtreeFrequency);
     
     // If we found the last recursive node, process it
@@ -271,7 +271,7 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
 }
 
 /**
- * 在单次遍历中找到最后递归节点并收集路径上的非递归节点
+ * Find the last recursive node and collect non-recursive nodes on the path in a single traversal
  * @param {Object} cy - The Cytoscape instance
  * @param {Object} currentNode - The current node being processed
  * @param {string} recursiveLabel - The label to identify recursive calls
@@ -279,7 +279,7 @@ export function getCompressedRecursiveSubTreeAsTree(cy, nodeId, properties) {
  * @param {Map} frequency - Map to track frequency of similar subtrees
  * @param {Set} visited - Set to track visited nodes (for cycle detection)
  * @param {Set} allVisited - Set to track all visited nodes across the recursion
- * @param {Object|null} lastNodeFound - 已找到的最后递归节点 (用于避免收集它的子节点)
+ * @param {Object|null} lastNodeFound - Last recursive node found (to avoid collecting its children)
  * @returns {Object} Object containing the last recursiveNode and collected data
  */
 function traverseRecursiveChainAndCollect(cy, currentNode, recursiveLabel, properties, frequency, visited = new Set(), allVisited = new Set(), lastNodeFound = null) {
@@ -291,8 +291,8 @@ function traverseRecursiveChainAndCollect(cy, currentNode, recursiveLabel, prope
     visited.add(nodeId);
     allVisited.add(nodeId);
     
-    // 检查这个节点是否是最后的递归节点
-    // 如果是最后的递归节点，我们不应收集它的子节点
+    // Check if this node is the last recursive node
+    // If it is the last recursive node, we should not collect its children
     const isLastNode = lastNodeFound && lastNodeFound.id() === nodeId;
     
     // Get immediate children
@@ -305,7 +305,7 @@ function traverseRecursiveChainAndCollect(cy, currentNode, recursiveLabel, prope
     let recursiveChild = null;
     let foundLastNode = false;
     
-    // 首先检查是否存在递归子节点
+    // First check if there is a recursive child node
     for (let i = 0; i < childNodes.length; i++) {
         const childNode = childNodes[i];
         const childData = childNode.data();
@@ -317,13 +317,13 @@ function traverseRecursiveChainAndCollect(cy, currentNode, recursiveLabel, prope
         }
     }
     
-    // 如果没有找到递归子节点，说明当前节点是递归链的最后一个节点
+    // If no recursive child node is found, the current node is the last node in the recursive chain
     if (!recursiveChild) {
         foundLastNode = true;
         lastNodeFound = currentNode;
     }
     
-    // 如果这个节点不是最后节点，收集它的非递归子节点
+    // If this node is not the last node, collect its non-recursive children
     if (!isLastNode && !foundLastNode) {
         for (let i = 0; i < childNodes.length; i++) {
             const childNode = childNodes[i];
@@ -331,15 +331,15 @@ function traverseRecursiveChainAndCollect(cy, currentNode, recursiveLabel, prope
             const childData = childNode.data();
             const childLabel = childData.label || childData.methodName || childData.id;
             
-            // 只处理非递归调用
+            // Only process non-recursive calls
             if (childLabel !== recursiveLabel) {
-                // 收集非递归子节点
+                // Collect non-recursive child nodes
                 const subtree = getSubTreeForSummaryAsTree(cy, childId, properties, new Set(allVisited));
                 if (subtree) {
-                    // 创建无ID的规范化子树用于比较
+                    // Create normalized subtree without IDs for comparison
                     const subtreePattern = createSubtreePattern(subtree);
                     
-                    // 更新频率映射
+                    // Update frequency map
                     if (frequency.has(subtreePattern)) {
                         frequency.get(subtreePattern).count++;
                     } else {
