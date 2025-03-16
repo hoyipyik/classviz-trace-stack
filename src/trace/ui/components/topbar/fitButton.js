@@ -10,7 +10,7 @@ export const fitGraphHandler = () => {
     document.addEventListener('DOMContentLoaded', function () {
         const fitGraphButton = document.getElementById('btn-fit');
         const fitNameSelector = document.getElementById('fit-mode');
-        console.log(fitGraphButton)
+        // console.log(fitGraphButton)
         if(viewType !== "calltree")
             return;
         // Variable to store the current layout name
