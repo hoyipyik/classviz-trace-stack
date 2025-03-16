@@ -2,6 +2,8 @@
 export async function sendPromptToOllama(prompt, model = 'gemma3') {
     const url = 'http://172.245.88.195:9029/api/generate';
 
+    const API_KEY = 'uM8p2K7tJxLzQ9vHgF5eRbN3dA6cY1sW';
+
     const payload = {
         model: model,
         prompt: prompt,
@@ -13,7 +15,8 @@ export async function sendPromptToOllama(prompt, model = 'gemma3') {
         const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API_KEY}` // Add authorization header
             },
             body: JSON.stringify(payload)
         });
