@@ -19,7 +19,6 @@ import { highlight, relayout } from './src/graphPanel.js';
 
 import { contextDataLoader } from './src/trace/utils/context/contextDataLoader.js';
 import { loadTracePlugin } from './src/trace/cmd/tracePlugin.js';
-import { addEssentialMethods } from './src/trace/utils/nodeAdder/addNodesToAbstraction.js';
 
 window.state = 0;
 
