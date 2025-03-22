@@ -11,7 +11,7 @@ import { clearInfo, displayInfo } from './src/infoPanel.js';
 import { $, $all, h, on, r, toJson, toText } from './src/shorthands.js';
 
 import { aggregateLayers, homogenizeDepths, homogenizeDepthsOptimized, setParents, setStyleClasses, shortenRoots } from './src/headlessTransformations.js';
-import { adjustEdgeWidths, cacheNodeStyles, liftEdges, recolorContainers, removeContainmentEdges, removeExtraNodes, setLayerStyles, setRsStyles } from './src/visualTransformations.js';
+import { adjustEdgeWidths, cacheNodeStyles, liftEdges, recolorContainers, removeContainmentEdges, removeExtraNodes, setLayerStyles, setRsStyles, showNeighborhood } from './src/visualTransformations.js';
 import { arrayIntersection, getScratch, hasLabel, isPureContainer } from './src/utils.js';
 import { displayLegend } from './src/nodesPanel.js';
 import { fillFeatureDropdown } from './src/edgesPanel.js';
@@ -19,6 +19,7 @@ import { highlight, relayout } from './src/graphPanel.js';
 
 import { contextDataLoader } from './src/trace/utils/context/contextDataLoader.js';
 import { loadTracePlugin } from './src/trace/cmd/tracePlugin.js';
+import { addEssentialMethods } from './src/trace/utils/nodeAdder/addNodesToAbstraction.js';
 
 window.state = 0;
 
@@ -564,9 +565,9 @@ const initCy = async function (payload) {
 
 		bindRouters();
 
-		const cbShowPrimitives = $("#showPrimitives");
-		cbShowPrimitives.checked = false;
-		showPrimitives(cy, cbShowPrimitives);
+		// const cbShowPrimitives = $("#showPrimitives");
+		// cbShowPrimitives.checked = false;
+		showPrimitives(cy, {checked: false});
 
 		// const cbShowPackages = $("#showPackages");
 		// cbShowPackages.checked = true;
@@ -619,16 +620,22 @@ const bindRouters = function () {
 	on('click', $("#btn-relayout"), () => relayout(cy, $('#selectlayout').options[$('#selectlayout').selectedIndex].value));
 	on('click', $("#btn-highlight"), () => highlight(cy, $('#highlight').value));
 
-	on('change', $('#showPrimitives'), () => showPrimitives(cy, $('#showPrimitives')));
+	// on('change', $('#showPrimitives'), () => showPrimitives(cy, $('#showPrimitives')));
 	// on('change', $('#showPackages'),   () => showPackages(cy, $('#showPackages')));
 	on('change', $all('.coloringlabel'), colorNodes(cy));
+
+	const cy_div = $('#cy');
 
 	cy.on("select", "node", (event) => {
 		event.target.addClass("selected");
 		displayInfo('#infobody')(event.target);
 		if ($('#infobox').style["display"] !== "flex") {
 			$('#infobox').style["display"] = "flex";
-			$('#cy').style["right"] = "270px";
+			const w1 = cy_div.offsetWidth;
+			cy_div.style["right"] = "270px";
+			const w2 = cy_div.offsetWidth;
+			const z = cy.zoom();
+			const rw = (w2 - w1) / w1;
 			cy.animate({
 				panBy: { x: -135 }
 			}, {
@@ -639,16 +646,23 @@ const bindRouters = function () {
 
 	cy.on("unselect", "node", (event) => {
 		event.target.removeClass("selected");
-		if (cy.$("node:selected").length === 0) {
-			clearInfo('#infobody');
-			$('#infobox').style["display"] = "none";
-			$('#cy').style["right"] = "0px";
-			cy.animate({
-				panBy: { x: 135 }
-			}, {
-				duration: 200
-			});
-		}
+		setTimeout(() => {
+			if (cy.$("node:selected").length === 0) {
+				event.target.cy().nodes().removeClass('highlight');
+				clearInfo('#infobody');
+				$('#infobox').style["display"] = "none";
+				const w1 = cy_div.offsetWidth;
+				cy_div.style["right"] = "0px";
+				const w2 = cy_div.offsetWidth;
+				const z = cy.zoom();
+				const rw = (w2 - w1) / w1;
+				cy.animate({ 
+					panBy: { x: 135 }
+				}, {
+					duration: 200
+				});
+				}
+		}, 1);
 	});
 
 	// right click dims the element
@@ -666,20 +680,7 @@ const bindRouters = function () {
 
 	// left click highlights the node and its connected edges and nodes
 	cy.on("tap", "node", (event) => {
-
-		const to_activate = event.target.children().union(event.target.ancestors()).union(event.target)
-		to_activate.removeClass("dimmed");
-
-		// currently visible relationship types
-		const interactions = $all('input[name="showrels"]')
-			.filter(cb => cb.checked)
-			.map(cb => cb.value);
-
-		const edges = event.target.children().union(event.target)
-			.connectedEdges()
-			.filter((e) => interactions.includes(e.data("interaction")));
-		edges.removeClass("dimmed");
-		edges.targets().union(edges.targets().ancestors()).removeClass("dimmed");
+		showNeighborhood(event.target);
 	});
 
 	// left click highlights the edge and its connected nodes
