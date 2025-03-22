@@ -204,11 +204,11 @@ function createNodeTypeSection(legendEl) {
     const nodeTypes = [
         {
             label: 'Normal Node',
-            style: `background-color: #A0AEC0; width: ${nodeSize}px; height: ${nodeSize}px; border: 1px solid #333; border-radius: 50%;`
+            style: `background-color: #A0AEC0; width: ${nodeSize}px; height: ${nodeSize}px;  border-radius: 50%;`
         },
         {
             label: 'Fan Out Node',
-            style: `background-color: #A0AEC0; width: ${nodeSize * 1.25}px; height: ${nodeSize * 1.25}px; border: 2px solid #000; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);`
+            style: `background-color: #A0AEC0; width: ${nodeSize * 1.25}px; height: ${nodeSize * 1.25}px; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);`
         },
         {
             label: 'Recursive Entry Point',
@@ -216,7 +216,7 @@ function createNodeTypeSection(legendEl) {
         },
         {
             label: 'Implementation Entry Point',
-            style: `background-color: #A0AEC0; width: ${nodeSize * 1.25}px; height: ${nodeSize * 1.25}px; border: 4px solid #000; border-radius: 50%;`
+            style: `background-color: #A0AEC0; width: ${nodeSize * 1.25}px; height: ${nodeSize * 1.25}px;  border-radius: 50%;`
         },
         {
             label: 'Selected Node',

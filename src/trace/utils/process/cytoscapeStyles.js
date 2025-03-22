@@ -31,8 +31,8 @@ export function getCytoscapeStyles(nodeSize) {
         'border-width': 2, // 統一的較粗邊框
         'border-color': '#000',
         'background-opacity': 0.95,
-        'width': nodeSize * 1.15, // 稍微放大，但不要差異太大
-        'height': nodeSize * 1.15
+        'width': nodeSize * 1.25, // 稍微放大，但不要差異太大
+        'height': nodeSize * 1.25
       }
     },
 
@@ -52,7 +52,8 @@ export function getCytoscapeStyles(nodeSize) {
       selector: 'node[?status.recursiveEntryPoint]',
       style: {
         'shape': 'diamond', // 改為菱形
-        'border-width': 3
+        'border-width': 3,
+        'border-color': '#333',
       }
     },
 
@@ -60,7 +61,8 @@ export function getCytoscapeStyles(nodeSize) {
     {
       selector: 'node[?status.implementationEntryPoint]',
       style: {
-        'border-width': 4,
+        'border-width': 3,
+        'border-color': '#333',
         'border-opacity': 0.9
       }
     },
