@@ -24,6 +24,7 @@ export const rerender = (refresh = false) => {
   } else {
     console.log('Re-rendering view...');
   }
-  
+
   switchView(currentViewMode);
+  
 };
