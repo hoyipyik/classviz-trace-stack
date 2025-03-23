@@ -7,6 +7,12 @@ import { calculateNodePosition, calculateChildrenLayouts } from './layoutCalcula
 import { createNodeFilter, getFilteredChildNodes } from './nodeFilter.js';
 import { createCytoscapeNode, createCytoscapeEdge, createGraph } from './graphBuilder.js';
 
+
+export const EXCEPT_METHODS = [
+  'java.awt.EventDispatchThread.run()', 
+  'java.util.concurrent.ThreadPoolExecutor$Worker.run()'
+];
+
 /**
  * Parse XML document into a Cytoscape-compatible graph
  * @param {Document} xmlDoc - XML document to parse
@@ -25,10 +31,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     allowExcludedMethodsAtRoot: false,
     onlyPackages: true,
     includedPackages: ['nl.tudelft.jpacman'],
-    exceptMethods: [
-      'java.awt.EventDispatchThread.run()', 
-      'java.util.concurrent.ThreadPoolExecutor$Worker.run()'
-    ],
+    exceptMethods: EXCEPT_METHODS,
     ...options
   };
 
