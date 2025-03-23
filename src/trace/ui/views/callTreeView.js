@@ -1,7 +1,7 @@
 // ui/views/callTreeView.js
 // Handles call tree view specific functionality
 
-import { renderCallTree } from "../renderers/callTree/index.js";
+import { fitViewIfNeeded, renderCallTree } from "../renderers/callTree/index.js";
 import { getElements, restoreViewState } from "./viewState.js";
 import { displayError, displayLoadingMessage } from "../components/error/errorMessages.js";
 
@@ -76,10 +76,19 @@ function renderCallTreeView() {
 export function setupCallTreeView() {
   showCallTreeElements();
   showCallTreeControls();
-  renderCallTreeView();
+  if(!window.cytrace) {
+    renderCallTreeView();
+  }else{
+    restoreViewState('calltree');
+    setTimeout(() => {
+      fitViewIfNeeded(window.cytrace);
+    }, 150);
+    // fitViewIfNeeded(window.cytrace);
+  }
+ 
   
   // Restore view state after a short delay to ensure the call tree is rendered
 //   setTimeout(() => {
-    restoreViewState('calltree');
+    
 //   }, 100);
 }
