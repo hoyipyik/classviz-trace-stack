@@ -1,8 +1,8 @@
 // sidebar/controlSection.js - Functions for control section creation and handling
 
 import { expandAllDescendants, toggleChildren } from "../cytoscape/nodeVisibility.js";
-import { explainSubTreeFromEnterPoint } from "../cytoscape/subTreeExplain.js";
-import { exportSubTree } from "../cytoscape/subTreeExport.js";
+import { explainSubTreeFromEnterPoint, explainWholeTreeFromEnterPoint } from "../cytoscape/subTreeExplain.js";
+import { exportRegion, exportSubTree } from "../cytoscape/subTreeExport.js";
 
 // Common styles extracted to avoid duplication
 const CONTROL_STYLES = `
@@ -133,13 +133,14 @@ function createControlButtons(nodeId) {
             </button>
         </div>
         <div class="control-buttons" style="margin-top: 8px;">
-            <button id="export-subtree-btn" class="control-btn export-btn" data-node-id="${nodeId}">
-                Export Subtree
+            <button id="export-region-btn" class="control-btn export-btn" data-node-id="${nodeId}">
+                Export Region
             </button>
-            <button id="explain-subtree-btn" class="control-btn explain-btn" data-node-id="${nodeId}">
-                Explain Subtree
+            <button id="explain-region-btn" class="control-btn explain-btn" data-node-id="${nodeId}">
+                Explain Region
             </button>
         </div>
+       
         <div id="explain-loading-container" class="loading-container">
             <div class="loading-text">Explaining subtree...</div>
             <div class="loading-bar">
@@ -148,6 +149,15 @@ function createControlButtons(nodeId) {
         </div>
     `;
 }
+
+ // <div class="control-buttons" style="margin-top: 8px;">
+        //     <button id="export-subtree-btn" class="control-btn export-btn" data-node-id="${nodeId}">
+        //         Export Subtree
+        //     </button>
+        //     <button id="explain-subtree-btn" class="control-btn explain-btn" data-node-id="${nodeId}">
+        //         Explain Subtree
+        //     </button>
+        // </div>
 
 /**
  * Sets up event listeners for control buttons
@@ -165,13 +175,21 @@ export function setupControlButtons(nodeId) {
             handler: async () => await executeCytoscapeAction(nodeId, expandAllDescendants)
         },
         {
-            id: 'export-subtree-btn',
-            handler: async () => await executeCytoscapeAction(nodeId, exportSubTree)
+            id: 'export-region-btn',
+            handler: async () => await executeCytoscapeAction(nodeId, exportRegion)
         },
         {
-            id: 'explain-subtree-btn',
+            id: 'explain-region-btn',
             handler: async () => await executeCytoscapeAction(nodeId, explainSubTreeFromEnterPoint)
-        }
+        },
+        // {
+        //     id: 'export-subtree-btn',
+        //     handler: async () => await executeCytoscapeAction(nodeId, exportSubTree)
+        // },
+        // {
+        //     id: 'explain-subtree-btn',
+        //     handler: async () => await executeCytoscapeAction(nodeId, explainWholeTreeFromEnterPoint)
+        // }
     ];
 
     // Attach event listeners to all buttons that exist
