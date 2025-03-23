@@ -39,7 +39,7 @@ export const processNodeData = (nodeData, isRoot, className) => {
     docComment: properties.docComment || '',
     metaSrc: properties.metaSrc || '',
     description: properties.description || '',
-    detailedBehaviour: '',
+    detailedBehavior: '',
     flowRepresentation: '',
     briefSummary: '',
     returns: properties.returns || '',
