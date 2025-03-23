@@ -20,6 +20,7 @@ export function switchView(viewType) {
   }
   
   // Save current view state before switching
+  if(window.cytrace)
   saveViewState(els.viewModeSelector.value);
   
   // Set up the appropriate view
