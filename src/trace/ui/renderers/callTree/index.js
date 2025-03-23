@@ -55,7 +55,7 @@ export function renderCallTree(graph) {
         setupNodeInteractions(cy, layoutContainer.querySelector('#sidebar'));
         
         // Handle view fitting
-        fitViewIfNeeded(cy);
+        // fitViewIfNeeded(cy);
         
         // Store Cytoscape instance for global access
         window.cytrace = cy;
@@ -73,7 +73,7 @@ export function renderCallTree(graph) {
  * Handle view fitting based on whether this is the first render
  * @param {Object} cy - The Cytoscape instance
  */
-function fitViewIfNeeded(cy) {
+export function fitViewIfNeeded(cy) {
     if (!window.calltreeRendered) {
         console.log('First call tree render, fitting view');
         cy.fit();
