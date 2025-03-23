@@ -1,3 +1,6 @@
+import { updateTraceNodesOnClassviz } from "../../../utils/traceNodeOnClassviz/nodeManager.js";
+import { removeEssentialMethods } from "../../../utils/traceNodeOnClassviz/removeEssentialMethod.js";
+
 /**
  * Creates the status section with toggle buttons and assigns IDs to checkboxes
  * @param {Object} nodeData - Node data containing status information
@@ -172,9 +175,31 @@ export function setupStatusListeners(nodeId = null) {
                     targetNode.data('status', status);
                     
                     console.log(`Updated node ${nodeId || 'selected'} - ${property} to ${isChecked}`);
+                    removeEssentialMethods(window.cy);
+                    // Update window.cytrace explicitly with the changes
+                    if (nodeId) {
+                        // Get all data from the node
+                        const nodeData = targetNode.data();
+                        // Update the specific node in window.cytrace
+                        window.cytrace.$id(nodeId).data(nodeData);
+                    } else {
+                        // For selected nodes, update each one in window.cytrace
+                        targetNode.forEach(node => {
+                            const nodeData = node.data();
+                            window.cytrace.$id(nodeData.id).data(nodeData);
+                        });
+                    }
+                    
+                    // Call extractWholeSpecialNodesTree() to update the special nodes tree
+                    if (typeof window.extractWholeSpecialNodesTree === 'function') {
+                        window.extractWholeSpecialNodesTree();
+                    }
+                    
+                    // Call updateTraceNodesOnClassviz at the end
+                    updateTraceNodesOnClassviz();
                     
                     // Optional: Save graph changes
-                    saveGraphChanges();
+                    // saveGraphChanges();
                 }
             });
         } else {
