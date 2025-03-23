@@ -1,5 +1,7 @@
 import { callTreeParser } from "../../../utils/process/callTreeParser.js";
 import { xmlFileReader } from "../../../utils/process/xmlFileReader.js";
+import { updateTraceNodesOnClassviz } from "../../../utils/traceNodeOnClassviz/nodeManager.js";
+import { renderCallTree } from "../../renderers/callTree/index.js";
 import { rerender } from "../../views/index.js";
 
 export const traceLoader = () => {
@@ -24,6 +26,8 @@ export const traceLoader = () => {
                 const graph = { nodes: parsedNodes, edges: parsedEdges, style };
                 window.graph = graph;
                 rerender(true);
+                renderCallTree(graph);
+                updateTraceNodesOnClassviz();
                 // console.log("parseXML", parsedXml);
             }
         });
