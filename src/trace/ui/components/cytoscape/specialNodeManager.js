@@ -24,11 +24,11 @@ export function extractWholeSpecialNodesTree(cy = window.cytrace) {
     const label = node.data('label');
 
     // Check if this is a special node
-    if (status.fanOut ||
-      status.implementationEntryPoint ||
-      status.recursiveEntryPoint ||
-      className === "Root") {
-    // if(true){
+    // if (status.fanOut ||
+    //   status.implementationEntryPoint ||
+    //   status.recursiveEntryPoint ||
+    //   className === "Root") {
+    if(true){
       
       const methodId = label;
       const lastDotBeforeParens = methodId.lastIndexOf(".", methodId.indexOf("("));
