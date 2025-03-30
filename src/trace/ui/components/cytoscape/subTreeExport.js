@@ -2,15 +2,25 @@ import { getAllDescendantsAsTree, getSubTreeForSummaryAsTree } from "./nodeTrave
 
 export function exportSubTree(cy, nodeId) {
     const properties = [
-        // "id",
-        // "methodName",
-        // "className",
+        "id",
+        "methodName",
+        "className",
+        "visibility",
         "label",
+        'packageName',
         "description",
-        // "reason",
-        // "subtreeSummary",
-        // "subtreeDetailedExplanation",
-        // "sourceCode",
+        "reason",
+        "detailedBehavior",
+        'flowRepresentation',
+        "briefSummary",
+        "sourceCode",
+        "layer",
+        "returns",
+        "time",
+        "value",
+        "percent",
+        "selfTime",
+        "color"
     ];
     const subTreeData = getAllDescendantsAsTree(cy, nodeId, properties);
     // const subTreeData = getSubTreeForSummaryAsTree(cy, nodeId, properties);
