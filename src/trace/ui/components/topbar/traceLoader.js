@@ -27,8 +27,7 @@ export const traceLoader = () => {
                 window.graph = graph;
                 rerender(true);
                 renderCallTree(graph);
-                updateTraceNodesOnClassviz();
-                // console.log("parseXML", parsedXml);
+                // updateTraceNodesOnClassviz();
             }
         });
     });
