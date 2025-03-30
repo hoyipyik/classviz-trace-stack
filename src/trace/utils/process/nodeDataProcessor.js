@@ -61,8 +61,10 @@ export const getNodeAttributes = (xmlNode) => {
   return {
     methodName: xmlNode.getAttribute('methodName') || '',
     className: xmlNode.getAttribute('class') || 'Root',
+    value: xmlNode.getAttribute('time') || '0',
     time: xmlNode.getAttribute('time') || '0',
-    percent: xmlNode.getAttribute('percent') || '0'
+    percent: xmlNode.getAttribute('percent') || '0',
+    selfTime: xmlNode.getAttribute('selfTime') || '0',
   };
 };
 
