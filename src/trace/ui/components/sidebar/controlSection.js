@@ -176,7 +176,7 @@ export function setupControlButtons(nodeId) {
         },
         {
             id: 'export-region-btn',
-            handler: async () => await executeCytoscapeAction(nodeId, exportRegion)
+            handler: async () => await executeCytoscapeAction(nodeId, exportSubTree)
         },
         {
             id: 'explain-region-btn',
