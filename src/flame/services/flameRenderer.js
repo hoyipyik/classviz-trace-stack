@@ -33,6 +33,7 @@ export class FlameGraphRenderer {
             .transitionDuration(CONSTANTS.TRANSITION_DURATION)
             .minFrameSize(CONSTANTS.MIN_FRAME_SIZE)
             .transitionEase(d3.easeCubic)
+            .inverted(true)
             .sort(true)
             .title("")
             .onClick(d => this.handleNodeClick(d))
