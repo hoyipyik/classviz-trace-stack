@@ -5,7 +5,7 @@ export const colorUtils = {
      * @param {number} factor - The factor to darken by (default: 0.3)
      * @return {string} The darkened color
      */
-    darkenColor(color, factor = 0.3) {
+    darkenColor(color, factor = 0.35) {
         let r, g, b;
         if (color.startsWith('#')) {
             // Handle hex color
@@ -39,7 +39,7 @@ export const colorUtils = {
      * @param {number} factor - The factor to lighten by (default: 0.3)
      * @return {string} The lightened color
      */
-    lightenColor(color, factor = 0.5) {
+    lightenColor(color, factor = 0.35) {
         let r, g, b;
         if (color.startsWith('#')) {
             // Handle hex color
