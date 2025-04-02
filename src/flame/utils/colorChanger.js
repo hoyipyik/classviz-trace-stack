@@ -39,7 +39,7 @@ export const colorUtils = {
      * @param {number} factor - The factor to lighten by (default: 0.3)
      * @return {string} The lightened color
      */
-    lightenColor(color, factor = 0.3) {
+    lightenColor(color, factor = 0.5) {
         let r, g, b;
         if (color.startsWith('#')) {
             // Handle hex color
