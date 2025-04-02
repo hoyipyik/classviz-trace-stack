@@ -1,12 +1,149 @@
 import { colorUtils } from "./colorChanger.js";
 
+/**
+ * Maps method call data to flame graph compatible format
+ * Ensures strict hierarchical consistency with guaranteed parent-child size relationships
+ * 
+ * @param {Object} methodNode - The method call data node
+ * @param {boolean} useTimeTotals - Whether to use total time (true) or self time (false) for node values
+ * @param {number} minValue - Minimum value for any node (default: 1)
+ * @param {number} scalingFactor - Factor to scale child nodes relative to parents (default: 0.95)
+ * @return {Object} A flame graph compatible data structure
+ */
+export function mapMethodDataToFlameGraph(methodNode, useTimeTotals = true, minValue = 8, scalingFactor = 0.95) {
+  if (!methodNode) return null;
+  
+  // Step 1: Build the complete tree and calculate raw values
+  function buildInitialTree(node) {
+    if (!node) return null;
+    
+    const rawValue = parseInt(useTimeTotals ? node.time : node.selfTime) || 0;
+    const treeNode = {
+      originalNode: node,
+      rawValue: rawValue,
+      depth: 0,
+      children: [],
+      parent: null
+    };
+    
+    if (node.children && node.children.length > 0) {
+      node.children.forEach(child => {
+        const childNode = buildInitialTree(child);
+        if (childNode) {
+          childNode.parent = treeNode;
+          childNode.depth = treeNode.depth + 1;
+          treeNode.children.push(childNode);
+        }
+      });
+    }
+    
+    return treeNode;
+  }
+  
+  const rootNode = buildInitialTree(methodNode);
+  
+  // Step 2: Identify all tree nodes and calculate max depth
+  const allNodes = [];
+  let maxDepth = 0;
+  
+  function collectNodes(node) {
+    if (!node) return;
+    
+    allNodes.push(node);
+    maxDepth = Math.max(maxDepth, node.depth);
+    
+    node.children.forEach(child => collectNodes(child));
+  }
+  
+  collectNodes(rootNode);
+  
+  // Step 3: Calculate strict hierarchical values from top down
+  // First, assign the root node value
+  rootNode.value = Math.max(rootNode.rawValue, minValue);
+  
+  // Then process by depth level to ensure consistent parent-child relationships
+  for (let depth = 1; depth <= maxDepth; depth++) {
+    const nodesAtDepth = allNodes.filter(node => node.depth === depth);
+    
+    nodesAtDepth.forEach(node => {
+      if (!node.parent) return; // Skip orphaned nodes
+      
+      // Calculate the max possible value based on parent
+      const parentValue = node.parent.value;
+      const maxChildValue = parentValue * scalingFactor;
+      
+      // Apply minimum value, but cap at the parent-determined maximum
+      node.value = Math.min(
+        maxChildValue,
+        Math.max(node.rawValue, minValue)
+      );
+      
+      // Important: Ensure this node's value is visibly smaller than its parent
+      if (Math.abs(node.value - parentValue) < 0.1) {
+        node.value = parentValue * scalingFactor;
+      }
+    });
+  }
+  
+  // Step 4: Perform a final check to enforce strict parent > child relationship
+  allNodes.forEach(node => {
+    if (node.parent && node.value >= node.parent.value) {
+      node.value = node.parent.value * scalingFactor;
+    }
+  });
+  
+  // Step 5: Build the final flame graph structure
+  function buildFlameGraph(treeNode) {
+    if (!treeNode) return null;
+    
+    const originalNode = treeNode.originalNode;
+    
+    const node = {
+      name: originalNode.label || `${originalNode.className}.${originalNode.methodName}()`,
+      value: treeNode.value,
+      selected: false,
+      _originalValue: treeNode.rawValue,
+      _depth: treeNode.depth // Store depth for debugging
+    };
+    
+    // Process children if any, sort by value
+    if (treeNode.children && treeNode.children.length > 0) {
+      // Sort children by their values in descending order
+      const sortedChildren = [...treeNode.children].sort((a, b) => 
+        b.value - a.value
+      );
+      
+      node.children = sortedChildren.map(child => buildFlameGraph(child));
+    }
+    
+    // Copy all properties from originalNode to the transformed node for metadata
+    Object.keys(originalNode).forEach(key => {
+      if (key !== 'children' && !(key in node)) {
+        node[key] = originalNode[key];
+      }
+    });
+    
+    // Ensure key timing properties are correctly formatted as integers
+    if (originalNode.time) node.totalTime = parseInt(originalNode.time);
+    if (originalNode.selfTime) node.selfTime = parseInt(originalNode.selfTime);
+    
+    // Lighten color
+    if (originalNode.color) node.color = colorUtils.lightenColor(originalNode.color);
+    
+    return node;
+  }
+  
+  return buildFlameGraph(rootNode);
+}
+
+
   /**
    * Maps method call data to flame graph compatible format
    * @param {Object} methodNode - The method call data node
    * @param {boolean} useTimeTotals - Whether to use total time (true) or self time (false) for node values
    * @return {Object} A flame graph compatible data structure
    */
-  export function mapMethodDataToFlameGraph(methodNode, useTimeTotals = true) {
+  export function classicMapMethodDataToFlameGraph(methodNode, useTimeTotals = true) {
     if (!methodNode) return null;
 
     const node = {
