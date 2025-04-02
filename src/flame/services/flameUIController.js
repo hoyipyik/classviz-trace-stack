@@ -8,75 +8,22 @@ export class FlameGraphUIController {
         this.container = document.getElementById(containerId);
         this.renderer = renderer;
         this.selectionManager = selectionManager;
-        this.containerState = CONSTANTS.STATES.MINIMIZED;
+        this.containerState = CONSTANTS.STATES.MINIMIZED; // Start minimized (hidden)
         
         // Bind methods to preserve 'this' context
         this.toggleSelectionMode = this.toggleSelectionMode.bind(this);
         this.clearSelection = this.clearSelection.bind(this);
-        this.toggleScrollableMode = this.toggleScrollableMode.bind(this);
         this.handleDragHandleDblClick = this.handleDragHandleDblClick.bind(this);
-        this.cycleContainerState = this.cycleContainerState.bind(this);
     }
 
     initialize() {
-        this.ensureContainer();
+        if (!this.container) {
+            console.error("Flame graph container not found");
+            return;
+        }
+        
         this.setupEventHandlers();
         this.setupDraggableContainer();
-    }
-
-    ensureContainer() {
-        if (!this.container) {
-            console.log("Creating flame graph container");
-            this.createContainer();
-        }
-    }
-
-    createContainer() {
-        const container = document.createElement('div');
-        container.id = CONSTANTS.CONTAINER_ID;
-        container.className = 'flame-container';
-
-        // Create elements using a more efficient approach
-        const elements = {
-            dragHandle: this._createElement('div', { id: 'drag-handle', className: 'drag-handle' }),
-            dragIndicator: this._createElement('div', { className: 'drag-indicator' }),
-            controls: this._createElement('div', { id: 'controls', className: 'controls' }),
-            content: this._createElement('div', { className: 'content' }),
-            chart: this._createElement('div', { id: 'chart' }),
-            details: this._createElement('div', { id: 'details' })
-        };
-
-        // Add controls content
-        elements.controls.innerHTML = `
-          <input type="text" id="term" class="search-box" placeholder="Search...">
-          <button class="control-btn" id="search-btn">Search</button>
-          <button class="control-btn" id="clear-btn">Clear</button>
-          <button class="control-btn" id="reset-zoom-btn">Reset Zoom</button>
-          <button class="control-btn" id="selection-btn">Enable Selection</button>
-          <button class="control-btn" id="clear-selection-btn">Clear Selection</button>
-          <span id="selection-count">0 node(s) selected</span>
-        `;
-
-        // Assemble the structure efficiently
-        elements.dragHandle.appendChild(elements.dragIndicator);
-        elements.content.appendChild(elements.chart);
-        elements.content.appendChild(elements.details);
-
-        container.appendChild(elements.dragHandle);
-        container.appendChild(elements.controls);
-        container.appendChild(elements.content);
-
-        document.body.appendChild(container);
-        
-        this.container = container;
-    }
-
-    _createElement(tagName, attributes = {}) {
-        const element = document.createElement(tagName);
-        Object.entries(attributes).forEach(([key, value]) => {
-            element[key] = value;
-        });
-        return element;
     }
 
     setupEventHandlers() {
@@ -141,6 +88,7 @@ export class FlameGraphUIController {
         }
     }
 
+    // DETAILS PANEL METHODS
     updateDetailsElement(nodeData) {
         if (!nodeData) return;
         
@@ -170,6 +118,20 @@ export class FlameGraphUIController {
         const table = document.createElement('table');
         const tbody = document.createElement('tbody');
         
+        this.addDetailsProperties(tbody, nodeData);
+        
+        // Assemble the DOM structure
+        table.appendChild(tbody);
+        contentDiv.appendChild(table);
+        container.appendChild(contentDiv);
+        fragment.appendChild(container);
+        
+        // Clear and update the details element (more efficient than innerHTML)
+        details.innerHTML = '';
+        details.appendChild(fragment);
+    }
+    
+    addDetailsProperties(tbody, nodeData) {
         // Properties to exclude from display
         const excludedProperties = ['children', 'name', 'value', '_selected', '_originalColor', 'parent'];
         
@@ -182,16 +144,6 @@ export class FlameGraphUIController {
         
         // Add selection status
         this._addPropertyRow(tbody, 'Selection Status', this.selectionManager.isNodeSelected(nodeData) ? 'Selected' : 'Not Selected');
-        
-        // Assemble the DOM structure
-        table.appendChild(tbody);
-        contentDiv.appendChild(table);
-        container.appendChild(contentDiv);
-        fragment.appendChild(container);
-        
-        // Clear and update the details element (more efficient than innerHTML)
-        details.innerHTML = '';
-        details.appendChild(fragment);
     }
     
     _addPropertyRow(tbody, key, value) {
@@ -250,6 +202,7 @@ export class FlameGraphUIController {
         tbody.appendChild(row);
     }
 
+    // CONTAINER STATE METHODS
     setupDraggableContainer() {
         const container = this.container;
         const dragHandle = document.getElementById('drag-handle');
@@ -259,37 +212,23 @@ export class FlameGraphUIController {
             return;
         }
 
-        // Initialize container state
+        // Initialize container state - scrollable but minimized (hidden)
         container.style.display = 'flex';
-
-        // Create state indicator
-        const stateIndicator = this._createElement('div', {
-            className: 'flame-state-indicator',
-            textContent: 'Minimized'
-        });
-        container.appendChild(stateIndicator);
-
-        // Create toggle button
-        const toggleScrollBtn = this._createElement('button', {
-            id: 'toggle-scroll-btn',
-            className: 'control-btn toggle-scroll',
-            textContent: 'Enable Scrolling'
-        });
-
-        // Add the toggle button to controls
-        const controls = document.getElementById('controls');
-        if (controls) {
-            controls.insertBefore(toggleScrollBtn, controls.firstChild);
-            toggleScrollBtn.addEventListener('click', () => this.toggleScrollableMode(stateIndicator, toggleScrollBtn));
-        }
+        container.classList.add('scrollable');
+        this.setMinimizedState(); // Start with minimized state
 
         // Set up drag handle events
+        this.setupDragHandleEvents(dragHandle);
+    }
+
+    setupDragHandleEvents(dragHandle) {
+        // Set up double-click event
         dragHandle.addEventListener('dblclick', (e) => {
             e.preventDefault();
-            this.handleDragHandleDblClick(stateIndicator, toggleScrollBtn);
+            this.handleDragHandleDblClick();
         });
 
-        // Variables for drag functionality (use a state object for better organization)
+        // Variables for drag functionality
         const dragState = {
             isDragging: false,
             startY: 0,
@@ -304,156 +243,74 @@ export class FlameGraphUIController {
             
             dragState.isDragging = true;
             dragState.startY = e.clientY;
-            dragState.startHeight = container.offsetHeight;
+            dragState.startHeight = this.container.offsetHeight;
             
-            container.style.transition = 'none';
+            this.container.style.transition = 'none';
             
-            // Use the more efficient passive event listeners where appropriate
-            document.addEventListener('mousemove', handleDragMove, { passive: false });
-            document.addEventListener('mouseup', handleDragEnd);
+            // Use passive event listeners where appropriate
+            document.addEventListener('mousemove', 
+                (ev) => this.handleDragMove(ev, dragState), 
+                { passive: false });
+            document.addEventListener('mouseup', 
+                () => this.handleDragEnd(dragState));
         });
-
-        // Handle drag movement
-        const handleDragMove = (ev) => {
-            if (!dragState.isDragging) return;
-            
-            ev.preventDefault();
-            
-            const deltaY = dragState.startY - ev.clientY;
-            const maxHeight = window.innerHeight - 36;
-            
-            // Use requestAnimationFrame for smoother UI updates
-            requestAnimationFrame(() => {
-                // Update height within constraints
-                const newHeight = Math.max(CONSTANTS.MIN_HEIGHT, 
-                    Math.min(dragState.startHeight + deltaY, maxHeight));
-                container.style.height = `${newHeight}px`;
-                
-                // Update indicator text
-                if (newHeight <= 50) {
-                    stateIndicator.textContent = 'Minimized (dragging)';
-                } else if (newHeight >= maxHeight - 100) {
-                    stateIndicator.textContent = 'Expanded (dragging)';
-                } else {
-                    stateIndicator.textContent = 'Scrollable (dragging)';
-                }
-            });
-        };
-
-        // Handle end of drag
-        const handleDragEnd = () => {
-            if (!dragState.isDragging) return;
-            
-            dragState.isDragging = false;
-            container.style.transition = '';
-            
-            // Determine final state
-            const currentHeight = container.offsetHeight;
-            const maxHeight = window.innerHeight - 36;
-            
-            if (currentHeight <= 50) {
-                this.setMinimizedState(stateIndicator, toggleScrollBtn);
-            } else if (currentHeight >= maxHeight - 100) {
-                this.setExpandedState(stateIndicator, toggleScrollBtn);
-            } else {
-                this.setScrollableState(stateIndicator, toggleScrollBtn);
-            }
-            
-            document.removeEventListener('mousemove', handleDragMove);
-            document.removeEventListener('mouseup', handleDragEnd);
-        };
-
-        // Handle wheel event for expanding from minimized state
-        dragHandle.addEventListener('wheel', (e) => {
-            if (this.containerState === CONSTANTS.STATES.MINIMIZED) {
-                e.preventDefault();
-                this.toggleScrollableMode(stateIndicator, toggleScrollBtn);
-            }
-        });
-
-        // Add keyboard shortcuts (use a more efficient approach)
-        const keydownHandler = (e) => {
-            if (e.altKey && e.key === 'f') {
-                e.preventDefault();
-                this.cycleContainerState(stateIndicator, toggleScrollBtn);
-            }
-        };
-        
-        document.addEventListener('keydown', keydownHandler);
     }
 
-    toggleScrollableMode(stateIndicator, toggleScrollBtn) {
-        const isScrollable = this.containerState === CONSTANTS.STATES.SCROLLABLE;
+    handleDragMove(ev, dragState) {
+        if (!dragState.isDragging) return;
         
-        // Use classList methods for better performance
-        if (isScrollable) {
-            this.container.classList.remove('scrollable');
+        ev.preventDefault();
+        
+        const deltaY = dragState.startY - ev.clientY;
+        const maxHeight = window.innerHeight - 36;
+        
+        // Use requestAnimationFrame for smoother UI updates
+        requestAnimationFrame(() => {
+            // Update height within constraints
+            const newHeight = Math.max(CONSTANTS.MIN_HEIGHT, 
+                Math.min(dragState.startHeight + deltaY, maxHeight));
+            this.container.style.height = `${newHeight}px`;
+        });
+    }
+
+    handleDragEnd(dragState) {
+        if (!dragState.isDragging) return;
+        
+        dragState.isDragging = false;
+        this.container.style.transition = '';
+        
+        // Determine final state
+        const currentHeight = this.container.offsetHeight;
+        
+        if (currentHeight <= 50) {
+            this.setMinimizedState();
         } else {
-            this.container.classList.add('scrollable');
+            // If dragged to a custom height, keep that height
+            // and just update the state
+            this.containerState = CONSTANTS.STATES.EXPANDED;
+            this.container.classList.add('active');
         }
-        this.container.classList.remove('active');
         
-        this.containerState = isScrollable ? CONSTANTS.STATES.MINIMIZED : CONSTANTS.STATES.SCROLLABLE;
-        
-        stateIndicator.textContent = isScrollable ? 'Minimized' : 'Scrollable';
-        toggleScrollBtn.textContent = isScrollable ? 'Enable Scrolling' : 'Disable Scrolling';
-        
-        toggleScrollBtn.classList.toggle('active', !isScrollable);
-        
-        if (isScrollable) {
-            this.container.scrollTop = 0;
-        }
+        document.removeEventListener('mousemove', this.handleDragMove);
+        document.removeEventListener('mouseup', this.handleDragEnd);
     }
 
-    handleDragHandleDblClick(stateIndicator, toggleScrollBtn) {
+    handleDragHandleDblClick() {
         if (this.containerState === CONSTANTS.STATES.EXPANDED) {
-            this.setMinimizedState(stateIndicator, toggleScrollBtn);
+            this.setMinimizedState();
         } else {
-            this.setExpandedState(stateIndicator, toggleScrollBtn);
+            // Set to a reasonable default size instead of maximum
+            this.container.style.height = `${Math.floor(window.innerHeight / 2)}px`;
+            this.container.classList.add('active');
+            this.containerState = CONSTANTS.STATES.EXPANDED;
         }
     }
 
-    cycleContainerState(stateIndicator, toggleScrollBtn) {
-        switch (this.containerState) {
-            case CONSTANTS.STATES.MINIMIZED:
-                this.setScrollableState(stateIndicator, toggleScrollBtn);
-                break;
-            case CONSTANTS.STATES.SCROLLABLE:
-                this.setExpandedState(stateIndicator, toggleScrollBtn);
-                break;
-            case CONSTANTS.STATES.EXPANDED:
-                this.setMinimizedState(stateIndicator, toggleScrollBtn);
-                break;
-        }
-    }
-
-    setMinimizedState(stateIndicator, toggleScrollBtn) {
+    setMinimizedState() {
         this.container.style.height = `${CONSTANTS.MIN_HEIGHT}px`;
-        this.container.classList.remove('active', 'scrollable');
-        this.containerState = CONSTANTS.STATES.MINIMIZED;
-        stateIndicator.textContent = 'Minimized';
-        toggleScrollBtn.textContent = 'Enable Scrolling';
-        toggleScrollBtn.classList.remove('active');
-        this.container.scrollTop = 0;
-    }
-
-    setScrollableState(stateIndicator, toggleScrollBtn) {
-        this.container.style.height = `${Math.floor(window.innerHeight / 2)}px`;
-        this.container.classList.add('scrollable');
         this.container.classList.remove('active');
-        this.containerState = CONSTANTS.STATES.SCROLLABLE;
-        stateIndicator.textContent = 'Scrollable';
-        toggleScrollBtn.textContent = 'Disable Scrolling';
-        toggleScrollBtn.classList.add('active');
-    }
-
-    setExpandedState(stateIndicator, toggleScrollBtn) {
-        this.container.style.height = `${window.innerHeight - 36}px`;
-        this.container.classList.add('active');
-        this.container.classList.remove('scrollable');
-        this.containerState = CONSTANTS.STATES.EXPANDED;
-        stateIndicator.textContent = 'Expanded';
-        toggleScrollBtn.textContent = 'Enable Scrolling';
-        toggleScrollBtn.classList.remove('active');
+        // Always keep scrollable class
+        this.containerState = CONSTANTS.STATES.MINIMIZED;
+        this.container.scrollTop = 0;
     }
 }
