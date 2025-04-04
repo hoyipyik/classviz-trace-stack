@@ -52,7 +52,7 @@ export class FlameGraphSelectionManager {
         if (!nodeData) return;
         
         nodeData._originalColor = nodeData._originalColor || nodeData.color || null;
-        nodeData._selected = isSelected;
+        nodeData.selected = isSelected;
     }
 
     getSelectionCount() {
