@@ -13,13 +13,9 @@
   <link rel="icon" href="favicon.ico" />
 
 
-  <script src="https://d3js.org/d3.v4.min.js" charset="utf-8"></script>
-  
-  <!-- d3-tip -->
-  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3-tip/0.9.1/d3-tip.min.js"></script>
-
-  <!-- d3-flamegraph -->
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/gh/spiermar/d3-flame-graph@2.0.3/dist/d3-flamegraph.min.js"></script>
+  <script type="text/javascript" src="https://d3js.org/d3.v7.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/d3-flame-graph@4.1.3/dist/d3-flamegraph.min.js"></script>
+</body>
 
 
   <link
@@ -119,6 +115,9 @@
           </li>
           <li>
             <a class="tabs tablink" data-tab="tab-features"> Features </a>
+          </li>
+          <li>
+            <a class="tabs tablink" data-tab="tab-traces"> Trace </a>
           </li>
         </ul>
       </div>
@@ -232,6 +231,12 @@
         <div class="menu">
           <h2>Feature highlight</h2>
           <div id="selectfeature"></div>
+        </div>
+      </div>
+
+      <div class="sidebar-tab" id="tab-traces" style="display: none">
+        <div id="flame-sidebar-container" class="menu">
+          Please click the second button on the top bar to upload trace file to show trace info.
         </div>
       </div>
       <!-- <div class="sidebar-tab" id="tab-bugs" style="display:none;"></div> -->
