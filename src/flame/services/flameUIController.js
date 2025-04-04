@@ -9,7 +9,7 @@ export class FlameGraphUIController {
         this.renderer = renderer;
         this.selectionManager = selectionManager;
         this.containerState = CONSTANTS.STATES.MINIMIZED; // Start minimized (hidden)
-        
+
         // Bind methods to preserve 'this' context
         this.toggleSelectionMode = this.toggleSelectionMode.bind(this);
         this.clearSelection = this.clearSelection.bind(this);
@@ -21,7 +21,7 @@ export class FlameGraphUIController {
             console.error("Flame graph container not found");
             return;
         }
-        
+
         this.setupEventHandlers();
         this.setupDraggableContainer();
     }
@@ -44,13 +44,13 @@ export class FlameGraphUIController {
 
     toggleSelectionMode() {
         const enabled = this.selectionManager.toggleSelectionMode();
-        
+
         const button = document.getElementById('selection-btn');
         if (button) {
             button.textContent = enabled ? 'Disable Selection' : 'Enable Selection';
             button.classList.toggle('active', enabled);
         }
-        
+
         this.updateSelectionCountDisplay();
         console.log(`Selection mode ${enabled ? 'enabled' : 'disabled'}`);
     }
@@ -60,7 +60,7 @@ export class FlameGraphUIController {
         if (this.renderer.flameGraph) {
             d3.select(CONSTANTS.CHART_SELECTOR).selectAll("rect").each(d => {
                 if (d && d.data) {
-                    d.data._selected = false;
+                    d.data.selected = false;
                 }
             });
         }
@@ -68,16 +68,12 @@ export class FlameGraphUIController {
         // Then clear the data state
         this.selectionManager.clearSelection();
 
-        // Update the visuals
+        // refresh the data to reflect the cleared selection
+        // (Can't fix the texture color disappearing issue)
         if (this.renderer.flameGraph) {
-            d3.select(CONSTANTS.CHART_SELECTOR).selectAll("rect").style("fill", d => {
-                if (d && d.data) {
-                    return this.renderer.getNodeColor(d.data);
-                }
-                return "#cccccc"; // Default color
-            });
+            this.renderer.updateData(this.renderer.data, false);
         }
-        
+
         this.updateSelectionCountDisplay();
     }
 
@@ -91,7 +87,7 @@ export class FlameGraphUIController {
     // DETAILS PANEL METHODS
     updateDetailsElement(nodeData) {
         if (!nodeData) return;
-        
+
         const details = document.getElementById("details");
         if (!details) return;
 
@@ -104,56 +100,56 @@ export class FlameGraphUIController {
         // Use DocumentFragment for better performance
         const fragment = document.createDocumentFragment();
         const container = document.createElement('div');
-        
+
         // Create the header
         const header = document.createElement('h4');
         header.textContent = nodeData.name || 'Unnamed Node';
         container.appendChild(header);
-        
+
         // Create the content wrapper
         const contentDiv = document.createElement('div');
         contentDiv.className = 'details-content';
-        
+
         // Create the properties table
         const table = document.createElement('table');
         const tbody = document.createElement('tbody');
-        
+
         this.addDetailsProperties(tbody, nodeData);
-        
+
         // Assemble the DOM structure
         table.appendChild(tbody);
         contentDiv.appendChild(table);
         container.appendChild(contentDiv);
         fragment.appendChild(container);
-        
+
         // Clear and update the details element (more efficient than innerHTML)
         details.innerHTML = '';
         details.appendChild(fragment);
     }
-    
+
     addDetailsProperties(tbody, nodeData) {
         // Properties to exclude from display
-        const excludedProperties = ['children', 'name', 'value', '_selected', '_originalColor', 'parent'];
-        
+        const excludedProperties = ['children', 'name', 'value', 'selected', '_originalColor', 'parent'];
+
         // Add properties to table
         Object.keys(nodeData).sort().forEach(key => {
             if (!excludedProperties.includes(key) && nodeData[key] !== undefined && nodeData[key] !== null) {
                 this._addPropertyRow(tbody, key, nodeData[key]);
             }
         });
-        
+
         // Add selection status
         this._addPropertyRow(tbody, 'Selection Status', this.selectionManager.isNodeSelected(nodeData) ? 'Selected' : 'Not Selected');
     }
-    
+
     _addPropertyRow(tbody, key, value) {
         // Format property name for display
         const formattedKey = key.replace(/([A-Z])/g, ' $1')
             .replace(/^./, str => str.toUpperCase());
-            
+
         // Format the value safely
         let formattedValue = value;
-        
+
         if (typeof value === 'object' && value !== null) {
             try {
                 // Handle circular references
@@ -169,24 +165,24 @@ export class FlameGraphUIController {
                         return v;
                     };
                 };
-                
+
                 formattedValue = JSON.stringify(value, getCircularReplacer());
             } catch (e) {
                 formattedValue = "[Complex Object: Cannot Display]";
             }
         }
-        
+
         // Create the table row
         const row = document.createElement('tr');
-        
+
         // Add header cell
         const th = document.createElement('th');
         th.textContent = formattedKey;
         row.appendChild(th);
-        
+
         // Add value cell
         const td = document.createElement('td');
-        
+
         // Special handling for source code
         if (key === 'sourceCode') {
             const pre = document.createElement('pre');
@@ -197,7 +193,7 @@ export class FlameGraphUIController {
         } else {
             td.textContent = formattedValue;
         }
-        
+
         row.appendChild(td);
         tbody.appendChild(row);
     }
@@ -215,7 +211,7 @@ export class FlameGraphUIController {
         // Initialize container state - scrollable but minimized (hidden)
         container.style.display = 'flex';
         container.classList.add('scrollable');
-        this.setMinimizedState(); // Start with minimized state
+        this.setContainerMinimized(); // Start with minimized state
 
         // Set up drag handle events
         this.setupDragHandleEvents(dragHandle);
@@ -238,36 +234,36 @@ export class FlameGraphUIController {
         // Mouse down handler
         dragHandle.addEventListener('mousedown', (e) => {
             if (e.detail > 1) return; // Skip double-clicks
-            
+
             e.preventDefault();
-            
+
             dragState.isDragging = true;
             dragState.startY = e.clientY;
             dragState.startHeight = this.container.offsetHeight;
-            
+
             this.container.style.transition = 'none';
-            
+
             // Use passive event listeners where appropriate
-            document.addEventListener('mousemove', 
-                (ev) => this.handleDragMove(ev, dragState), 
+            document.addEventListener('mousemove',
+                (ev) => this.handleDragMove(ev, dragState),
                 { passive: false });
-            document.addEventListener('mouseup', 
+            document.addEventListener('mouseup',
                 () => this.handleDragEnd(dragState));
         });
     }
 
     handleDragMove(ev, dragState) {
         if (!dragState.isDragging) return;
-        
+
         ev.preventDefault();
-        
+
         const deltaY = dragState.startY - ev.clientY;
         const maxHeight = window.innerHeight - 36;
-        
+
         // Use requestAnimationFrame for smoother UI updates
         requestAnimationFrame(() => {
             // Update height within constraints
-            const newHeight = Math.max(CONSTANTS.MIN_HEIGHT, 
+            const newHeight = Math.max(CONSTANTS.MIN_HEIGHT,
                 Math.min(dragState.startHeight + deltaY, maxHeight));
             this.container.style.height = `${newHeight}px`;
         });
@@ -275,38 +271,57 @@ export class FlameGraphUIController {
 
     handleDragEnd(dragState) {
         if (!dragState.isDragging) return;
-        
+
         dragState.isDragging = false;
         this.container.style.transition = '';
-        
+
         // Determine final state
         const currentHeight = this.container.offsetHeight;
-        
+
         if (currentHeight <= 50) {
-            this.setMinimizedState();
+            this.setContainerMinimized();
         } else {
             // If dragged to a custom height, keep that height
             // and just update the state
             this.containerState = CONSTANTS.STATES.EXPANDED;
             this.container.classList.add('active');
         }
-        
+
         document.removeEventListener('mousemove', this.handleDragMove);
         document.removeEventListener('mouseup', this.handleDragEnd);
     }
 
     handleDragHandleDblClick() {
-        if (this.containerState === CONSTANTS.STATES.EXPANDED) {
-            this.setMinimizedState();
-        } else {
-            // Set to a reasonable default size instead of maximum
-            this.container.style.height = `${Math.floor(window.innerHeight / 2)}px`;
-            this.container.classList.add('active');
-            this.containerState = CONSTANTS.STATES.EXPANDED;
+        if (this.containerState === CONSTANTS.STATES.MINIMIZED) {
+            // If minimized, expand to half height
+            this.setContainerHalfExpand();
+        } else if (this.containerState === CONSTANTS.STATES.EXPANDED) {
+            const currentHeight = this.container.offsetHeight;
+            if (currentHeight <= Math.ceil(window.innerHeight / 2)) {
+                // If more than half height, set to half height
+               
+                this.setContainerMinimized();
+            } else {
+                // If at half height or less, minimize
+                this.setContainerHalfExpand();
+            }
         }
     }
 
-    setMinimizedState() {
+    setContainerFullyExpand() {
+        this.container.style.height = `${Math.floor(window.innerHeight)}px`;
+        this.container.classList.add('active');
+        this.containerState = CONSTANTS.STATES.EXPANDED;
+    }
+
+    setContainerHalfExpand() {
+        this.container.style.height = `${Math.floor(window.innerHeight / 2)}px`;
+        this.container.classList.add('active');
+        this.containerState = CONSTANTS.STATES.EXPANDED;
+    }
+
+
+    setContainerMinimized() {
         this.container.style.height = `${CONSTANTS.MIN_HEIGHT}px`;
         this.container.classList.remove('active');
         // Always keep scrollable class
