@@ -28,7 +28,7 @@ export function extractWholeSpecialNodesTree(cy = window.cytrace) {
     //   status.implementationEntryPoint ||
     //   status.recursiveEntryPoint ||
     //   className === "Root") {
-    if(true){
+    if(node.data('selected')) {
       
       const methodId = label;
       const lastDotBeforeParens = methodId.lastIndexOf(".", methodId.indexOf("("));
