@@ -50,7 +50,7 @@ const DEFAULT_PROPERTIES = [
     'simpleName', 'qualifiedName', 'kind', 'docComment', 'metaSrc', 'description',
     'subtreeSummary', 'subtreeDetailedExplanation', 'returns', 'reason', 'howToUse',
     'howItWorks', 'assertions', 'layer', 'color', 'label', 'detailedDescription',
-    'isRoot', 'collapsed'
+    'isRoot', 'collapsed', 'status', 'selected'
 ];
 
 /**
