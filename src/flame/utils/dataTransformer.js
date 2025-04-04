@@ -10,7 +10,7 @@ import { colorUtils } from "./colorChanger.js";
  * @param {number} scalingFactor - Factor to scale child nodes relative to parents (default: 0.95)
  * @return {Object} A flame graph compatible data structure
  */
-export function mapMethodDataToFlameGraph(methodNode, useTimeTotals = true, minValue = 8, scalingFactor = 0.95) {
+export function mapMethodDataToTemporalFlameGraphWithLayoutOpt(methodNode, useTimeTotals = true, minValue = 8, scalingFactor = 0.95) {
   if (!methodNode) return null;
   
   // Step 1: Build the complete tree and calculate raw values
@@ -128,7 +128,7 @@ export function mapMethodDataToFlameGraph(methodNode, useTimeTotals = true, minV
     if (originalNode.selfTime) node.selfTime = parseInt(originalNode.selfTime);
     
     // Lighten color
-    if (originalNode.color) node.color = colorUtils.lightenColor(originalNode.color);
+    if (originalNode.color) node.color = node.selected ? originalNode.color : colorUtils.lightenColor(originalNode.color);
     
     return node;
   }
@@ -137,40 +137,92 @@ export function mapMethodDataToFlameGraph(methodNode, useTimeTotals = true, minV
 }
 
 
-  /**
-   * Maps method call data to flame graph compatible format
-   * @param {Object} methodNode - The method call data node
-   * @param {boolean} useTimeTotals - Whether to use total time (true) or self time (false) for node values
-   * @return {Object} A flame graph compatible data structure
-   */
-  export function classicMapMethodDataToFlameGraph(methodNode, useTimeTotals = true) {
-    if (!methodNode) return null;
+/**
+ * Maps method call data to flame graph compatible format
+ * @param {Object} methodNode - The method call data node
+ * @param {boolean} useTimeTotals - Whether to use total time (true) or self time (false) for node values
+ * @return {Object} A flame graph compatible data structure
+ */
+export function mapMethodDataToTemporalFlameGraph(methodNode, useTimeTotals = true) {
+  if (!methodNode) return null;
 
-    const node = {
-      name: methodNode.label || `${methodNode.className}.${methodNode.methodName}()`,
-      value: Math.max(parseInt(useTimeTotals ? methodNode.time : methodNode.selfTime) || 1, 1),
-      selected: false
-    };
+  const node = {
+    name: methodNode.label || `${methodNode.className}.${methodNode.methodName}()`,
+    value: Math.max(parseInt(useTimeTotals ? methodNode.time : methodNode.selfTime) || 1, 1),
+    selected: false
+  };
 
-    // Add children if any
-    if (methodNode.children && methodNode.children.length > 0) {
-      node.children = methodNode.children.map(child => mapMethodDataToFlameGraph(child, useTimeTotals));
-    }
-
-   
-
-    // Copy all properties from methodNode to the transformed node for metadata
-    Object.keys(methodNode).forEach(key => {
-      if (key !== 'children' && !(key in node)) {
-        node[key] = methodNode[key];
-      }
-    });
-
-    // Ensure key timing properties are correctly formatted as integers
-    if (methodNode.time) node.totalTime = parseInt(methodNode.time);
-    if (methodNode.selfTime) node.selfTime = parseInt(methodNode.selfTime);
-    // lighten colour
-    if(methodNode.color) node.color = colorUtils.lightenColor(methodNode.color);
-
-    return node;
+  // Add children if any
+  if (methodNode.children && methodNode.children.length > 0) {
+    node.children = methodNode.children.map(child => mapMethodDataToTemporalFlameGraph(child, useTimeTotals));
   }
+
+  // Copy all properties from methodNode to the transformed node for metadata
+  Object.keys(methodNode).forEach(key => {
+    if (key !== 'children' && !(key in node)) {
+      node[key] = methodNode[key];
+    }
+  });
+
+  // Ensure key timing properties are correctly formatted as integers
+  if (methodNode.time) node.totalTime = parseInt(methodNode.time);
+  if (methodNode.selfTime) node.selfTime = parseInt(methodNode.selfTime);
+  
+  // Lighten color
+  if (methodNode.color) node.color = node.selected ? methodNode.color : colorUtils.lightenColor(methodNode.color);
+
+  return node;
+}
+
+/**
+ * Maps method call data to a logical flame graph format
+ * - Values represent logical relationships, not actual execution times
+ * - Leaf nodes are assigned a fixed value of 1 (baseline)
+ * - Parent nodes' values are derived from children plus a 10% factor
+ *
+ * @param {Object} methodNode - The method call data node
+ * @return {Object} Logical flame graph data structure showing call relationships
+ */
+export function mapMethodDataToLogicalFlameGraph(methodNode) {
+  if (!methodNode) return null;
+
+  const extraFactor = 0.05; // Additional 10% factor, can be adjusted between 0.05-0.1
+  let children = [];
+
+  // Recursively process children if they exist
+  if (methodNode.children && methodNode.children.length > 0) {
+    children = methodNode.children.map(child => mapMethodDataToLogicalFlameGraph(child));
+  }
+
+  // Set baseline value of 1 for leaf nodes; for nodes with children, calculate based on children sum
+  const baseline = 1;
+  let value = baseline;
+  if (children.length > 0) {
+    const sumChildren = children.reduce((sum, child) => sum + child.value, 0);
+    value = Math.ceil(sumChildren * (1 + extraFactor));
+  }
+
+  const node = {
+    name: methodNode.label || `${methodNode.className}.${methodNode.methodName}()`,
+    value: value,
+    selected: false
+  };
+
+  if (children.length > 0) {
+    node.children = children;
+  }
+
+  // Copy original metadata (except 'children' property)
+  Object.keys(methodNode).forEach(key => {
+    if (key !== 'children' && !(key in node)) {
+      node[key] = methodNode[key];
+    }
+  });
+
+  // Process color if defined
+  if (methodNode.color) {
+    node.color = node.selected ? methodNode.color : colorUtils.lightenColor(methodNode.color);
+  }
+
+  return node;
+}
