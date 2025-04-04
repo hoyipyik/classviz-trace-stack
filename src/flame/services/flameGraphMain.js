@@ -2,6 +2,8 @@ import { CONSTANTS } from "./contants.js";
 import { FlameGraphUIController } from "./flameUIController.js";
 import { FlameGraphRenderer } from "./flameRenderer.js";
 import { FlameGraphSelectionManager } from "./selectionManager.js";
+import { extractTraceByThread } from "../utils/extractDataFromCytrace.js";
+import { FlameSidebarController } from "./sidebarController.js";
 
 
 /**
@@ -12,6 +14,8 @@ export class FlameGraphService {
         this.selectionManager = new FlameGraphSelectionManager();
         this.renderer = new FlameGraphRenderer(CONSTANTS.CHART_SELECTOR, this.selectionManager);
         this.uiController = null;
+        this.traceDataMap = null;
+        this.sidebarController = null;
         
         // Bind methods
         this.initialize = this.initialize.bind(this);
@@ -35,26 +39,35 @@ export class FlameGraphService {
         this.renderer.onSelectionChange = (count) => {
             this.uiController.updateSelectionCountDisplay();
         };
+
+        // load data from cytrace
+        this.traceDataMap = extractTraceByThread();
+
+        // set up sidebar ui
+        this.sidebarController = new FlameSidebarController(CONSTANTS.SIDEBAR_ID, this.traceDataMap, this.renderer, this.uiController);
+        this.sidebarController.initialize();
         
         // Load data (use promise-based approach for better error handling)
-        this.loadData();
+        // this.loadData();
     }
+
+
     
-    loadData() {
-        // Use Fetch API for better Promise support
-        fetch("stacks.json")
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                this.renderer.renderData(data);
-            })
-            .catch(error => {
-                console.warn("Failed to load stacks.json:", error);
-                this.renderer.showError(`The stacks.json file could not be loaded. Error: ${error.message || 'Unknown error'}`);
-            });
-    }
+    // loadDataFromJson() {
+    //     // Use Fetch API for better Promise support
+    //     fetch("stacks.json")
+    //         .then(response => {
+    //             if (!response.ok) {
+    //                 throw new Error(`HTTP error! Status: ${response.status}`);
+    //             }
+    //             return response.json();
+    //         })
+    //         .then(data => {
+    //             this.renderer.renderData(data);
+    //         })
+    //         .catch(error => {
+    //             console.warn("Failed to load stacks.json:", error);
+    //             this.renderer.showError(`The stacks.json file could not be loaded. Error: ${error.message || 'Unknown error'}`);
+    //         });
+    // }
 }
