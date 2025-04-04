@@ -1,8 +1,9 @@
 import { callTreeParser } from "../../../utils/process/callTreeParser.js";
 import { xmlFileReader } from "../../../utils/process/xmlFileReader.js";
-import { updateTraceNodesOnClassviz } from "../../../utils/traceNodeOnClassviz/nodeManager.js";
+// import { updateTraceNodesOnClassviz } from "../../../utils/traceNodeOnClassviz/nodeManager.js";
 import { renderCallTree } from "../../renderers/callTree/index.js";
 import { rerender } from "../../views/index.js";
+import {loadFlameGraphPlugin} from "../../../../flame/index.js"
 
 export const traceLoader = () => {
     document.addEventListener('DOMContentLoaded', function () {
@@ -27,7 +28,9 @@ export const traceLoader = () => {
                 window.graph = graph;
                 rerender(true);
                 renderCallTree(graph);
+                loadFlameGraphPlugin();
                 // updateTraceNodesOnClassviz();
+
             }
         });
     });
