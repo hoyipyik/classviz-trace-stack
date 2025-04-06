@@ -24,10 +24,10 @@ export class FlameGraphRenderer {
         if (!nodeData) return "#cccccc";
 
         const baseColor = nodeData.color ||
-            nodeData._originalColor ||
             d3.scaleOrdinal(d3.schemeCategory10)(nodeData.name || "unknown");
 
-        const isSelected = nodeData.selected || this.selectionManager.isNodeSelected(nodeData);
+        const isSelected = this.selectionManager.isNodeSelected(nodeData);
+        // console.log(isSelected, "!!!!")
         const color = isSelected ? baseColor : colorUtils.lightenColor(baseColor);
 
         // If no special status, return regular color without texture
