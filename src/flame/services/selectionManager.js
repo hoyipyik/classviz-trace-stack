@@ -10,6 +10,38 @@ export class FlameGraphSelectionManager {
 
         // call back
         this.renderData = null;
+        this.updateSelectedNodes(this.dataManager.getData());
+    }
+
+    updateSelectedNodes(data) {
+        if (!data) return;
+
+        this.selectedNodes.clear();
+        
+        const updateNodeRecursively = (node) => {
+            if (!node) return;
+            
+            // If node is selected, add it to the selectedNodes Map
+            if (node.selected) {
+                const nodeId = this.getNodeId(node);
+                this.selectedNodes.set(nodeId, true);
+            }
+            
+            // Recursively process children if they exist
+            if (node.children && node.children.length > 0) {
+                for (const childNode of node.children) {
+                    updateNodeRecursively(childNode);
+                }
+            }
+        };
+        
+        // Process each root node in the data
+        for (const key in data) {
+            const rootNode = data[key];
+            if (!rootNode) continue;
+            
+            updateNodeRecursively(rootNode);
+        }
     }
 
     setDataRefreshCallback(callback) {
@@ -33,11 +65,11 @@ export class FlameGraphSelectionManager {
 
         if (isCurrentlySelected) {
             this.selectedNodes.delete(nodeId);
-            this.updateNodeColorState(nodeData, false);
+            // this.updateNodeColorState(nodeData, false);
             this.dataManager.updateSelectionForSingleNode(nodeId, false);
         } else {
             this.selectedNodes.set(nodeId, true);
-            this.updateNodeColorState(nodeData, true);
+            // this.updateNodeColorState(nodeData, true);
             this.dataManager.updateSelectionForSingleNode(nodeId, true);
         }
 
@@ -58,13 +90,6 @@ export class FlameGraphSelectionManager {
         return `${nodeData.className || ''}|${nodeData.methodName || ''}|${nodeData.name || ''}|${nodeData.value || ''}`;
     }
 
-    updateNodeColorState(nodeData, isSelected) {
-        if (!nodeData) return;
-
-        nodeData._originalColor = nodeData._originalColor || nodeData.color || null;
-        nodeData.selected = isSelected;
-    }
-
     getSelectionCount() {
         return this.selectedNodes.size;
     }
@@ -75,8 +100,7 @@ export class FlameGraphSelectionManager {
 
         // Process the node itself first
         const nodeId = this.getNodeId(currentData);
-        this.selectedNodes.set(nodeId, true);
-        this.updateNodeColorState(currentData, true);
+        // this.selectedNodes.set(nodeId, true);
         nodeIdsToSelect.push(nodeId);
 
         // Recursively process children if they exist
@@ -101,8 +125,7 @@ export class FlameGraphSelectionManager {
 
         // Process the node itself first
         const nodeId = this.getNodeId(currentData);
-        this.selectedNodes.delete(nodeId);
-        this.updateNodeColorState(currentData, false);
+        // this.selectedNodes.delete(nodeId);
         nodeIdsToClear.push(nodeId);
 
         // Recursively process children if they exist
@@ -146,7 +169,7 @@ export class FlameGraphSelectionManager {
     }
 
     clearAll() {
-        this.selectedNodes.clear();
+        // this.selectedNodes.clear();
         this.dataManager.updateSelectionForAllNodes(false);
         this.renderData();
 
