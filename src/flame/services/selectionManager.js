@@ -17,16 +17,16 @@ export class FlameGraphSelectionManager {
         if (!data) return;
 
         this.selectedNodes.clear();
-        
+
         const updateNodeRecursively = (node) => {
             if (!node) return;
-            
+
             // If node is selected, add it to the selectedNodes Map
             if (node.selected) {
                 const nodeId = this.getNodeId(node);
                 this.selectedNodes.set(nodeId, true);
             }
-            
+
             // Recursively process children if they exist
             if (node.children && node.children.length > 0) {
                 for (const childNode of node.children) {
@@ -34,12 +34,12 @@ export class FlameGraphSelectionManager {
                 }
             }
         };
-        
+
         // Process each root node in the data
         for (const key in data) {
             const rootNode = data[key];
             if (!rootNode) continue;
-            
+
             updateNodeRecursively(rootNode);
         }
     }
@@ -173,6 +173,156 @@ export class FlameGraphSelectionManager {
         this.dataManager.updateSelectionForAllNodes(false);
         this.renderData();
 
+    }
+
+    /**
+ * Selects all direct children of the given node
+ * @param {Object} nodeData - The parent node whose direct children should be selected
+ * @param {boolean} includeItself - Whether to include the parent node in selection (default: true)
+ */
+    selectDirectChildren(nodeData, includeItself = true) {
+        if (!nodeData) return;
+
+        const nodeIdsToSelect = [];
+
+        // Include parent node if flag is true
+        if (includeItself) {
+            const parentId = this.getNodeId(nodeData);
+            nodeIdsToSelect.push(parentId);
+        }
+
+        // Collect IDs of all direct children
+        if (nodeData.children) {
+            for (const child of nodeData.children) {
+                const childId = this.getNodeId(child);
+                nodeIdsToSelect.push(childId);
+            }
+        }
+
+        // Batch update all selected nodes and trigger render
+        if (nodeIdsToSelect.length > 0) {
+            this.dataManager.updateSelectionForMultiNodes(nodeIdsToSelect, true);
+            this.renderData();
+        }
+    }
+
+    /**
+     * Clears selection for all direct children of the given node
+     * @param {Object} nodeData - The parent node whose direct children should be deselected
+     * @param {boolean} includeItself - Whether to include the parent node in deselection (default: true)
+     */
+    clearDirectChildren(nodeData, includeItself = true) {
+        if (!nodeData) return;
+
+        const nodeIdsToClear = [];
+
+        // Include parent node if flag is true
+        if (includeItself) {
+            const parentId = this.getNodeId(nodeData);
+            nodeIdsToClear.push(parentId);
+        }
+
+        // Collect IDs of all direct children
+        if (nodeData.children) {
+            for (const child of nodeData.children) {
+                const childId = this.getNodeId(child);
+                nodeIdsToClear.push(childId);
+            }
+        }
+
+        // Batch update all deselected nodes and trigger render
+        if (nodeIdsToClear.length > 0) {
+            this.dataManager.updateSelectionForMultiNodes(nodeIdsToClear, false);
+            this.renderData();
+        }
+    }
+
+    /**
+     * Selects all descendants (children, grandchildren, etc.) of the given node
+     * @param {Object} nodeData - The parent node whose descendants should be selected
+     * @param {boolean} includeItself - Whether to include the parent node in selection (default: true)
+     */
+    selectAllDescendants(nodeData, includeItself = true) {
+        if (!nodeData) return;
+
+        const nodeIdsToSelect = [];
+
+        // Include parent node if flag is true
+        if (includeItself) {
+            const parentId = this.getNodeId(nodeData);
+            nodeIdsToSelect.push(parentId);
+        }
+
+        // Helper function to recursively collect all descendant IDs
+        const collectDescendantIds = (node) => {
+            if (!node) return;
+
+            const nodeId = this.getNodeId(node);
+            nodeIdsToSelect.push(nodeId);
+
+            if (node.children && node.children.length > 0) {
+                for (const child of node.children) {
+                    collectDescendantIds(child);
+                }
+            }
+        };
+
+        // Start collecting from the node's children
+        if (nodeData.children) {
+            for (const child of nodeData.children) {
+                collectDescendantIds(child);
+            }
+        }
+
+        // Batch update all selected nodes and trigger render
+        if (nodeIdsToSelect.length > 0) {
+            this.dataManager.updateSelectionForMultiNodes(nodeIdsToSelect, true);
+            this.renderData();
+        }
+    }
+
+    /**
+     * Clears selection for all descendants of the given node
+     * @param {Object} nodeData - The parent node whose descendants should be deselected
+     * @param {boolean} includeItself - Whether to include the parent node in deselection (default: true)
+     */
+    clearAllDescendants(nodeData, includeItself = true) {
+        if (!nodeData) return;
+
+        const nodeIdsToClear = [];
+
+        // Include parent node if flag is true
+        if (includeItself) {
+            const parentId = this.getNodeId(nodeData);
+            nodeIdsToClear.push(parentId);
+        }
+
+        // Helper function to recursively collect all descendant IDs
+        const collectDescendantIds = (node) => {
+            if (!node) return;
+
+            const nodeId = this.getNodeId(node);
+            nodeIdsToClear.push(nodeId);
+
+            if (node.children && node.children.length > 0) {
+                for (const child of node.children) {
+                    collectDescendantIds(child);
+                }
+            }
+        };
+
+        // Start collecting from the node's children
+        if (nodeData.children) {
+            for (const child of nodeData.children) {
+                collectDescendantIds(child);
+            }
+        }
+
+        // Batch update all deselected nodes and trigger render
+        if (nodeIdsToClear.length > 0) {
+            this.dataManager.updateSelectionForMultiNodes(nodeIdsToClear, false);
+            this.renderData();
+        }
     }
 
     getSelectedNodeIds() {
