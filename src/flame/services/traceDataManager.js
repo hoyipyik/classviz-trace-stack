@@ -36,9 +36,12 @@ export class TraceDataManager {
         return () => this._subscribers.delete(callback);
     }
 
-    notifySubscribers() {
+    notifySubscribers(options = {}) {
+        const defaultOptions = { updateSelection: true };
+        const finalOptions = { ...defaultOptions, ...options };
+        
         for (const callback of this._subscribers) {
-            callback(this._data);
+            callback(this._data, finalOptions);
         }
     }
 
@@ -63,7 +66,7 @@ export class TraceDataManager {
                 node.data('selected', selected);
             }
         });
-        this.refreshData();
+        this.refreshData(false);
     }
 
     updateSelectionForMultiNodes(ids, selected) {
@@ -74,7 +77,7 @@ export class TraceDataManager {
                 node.data('selected', selected);
             }
         });
-        this.refreshData();
+        this.refreshData(true);
     }
 
     updateSelectionForAllNodes(selected) {
@@ -83,7 +86,7 @@ export class TraceDataManager {
         nodes.forEach(node => {
             node.data('selected', selected);
         });
-        this.refreshData();
+        this.refreshData(true);
     }
 
     updateSelectionForSubTree(entryId, selected) {
@@ -92,7 +95,7 @@ export class TraceDataManager {
         descendants.forEach(node => {
             node.data('selected', selected);
         });
-        this.refreshData();
+        this.refreshData(true);
     }
 
     updateSelectionForDirectChildren(entryId, selected) {
@@ -101,12 +104,12 @@ export class TraceDataManager {
         children.forEach(node => {
             node.data('selected', selected);
         });
-        this.refreshData();
+        this.refreshData(true);
     }
 
-    refreshData() {
+    refreshData(updateFlag = true) {
         this._data = this.extractTraceByThread();
-        this.notifySubscribers();
+        this.notifySubscribers({updateSelection: updateFlag});
         this.methodDisplayManager.updateMethodsOnClassviz();
         // updateTraceNodesOnClassviz();
     }
