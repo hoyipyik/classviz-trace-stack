@@ -16,6 +16,10 @@ export class FlameGraphRenderer {
         this.graphData = null;
     }
 
+    getGraphData() {
+        return this.graphData;
+    }
+
     getNodeColor(nodeData) {
         if (!nodeData) return "#cccccc";
 
