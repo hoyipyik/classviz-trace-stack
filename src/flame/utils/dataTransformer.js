@@ -1,9 +1,7 @@
 import { colorUtils } from "./colorChanger.js";
 
 /**
- * Maps method call data to flame graph compatible format
- * Ensures strict hierarchical consistency with guaranteed parent-child size relationships
- * 
+ * Maps method call data to flame graph compatible format with optimized layout
  * @param {Object} methodNode - The method call data node
  * @param {boolean} useTimeTotals - Whether to use total time (true) or self time (false) for node values
  * @param {number} minValue - Minimum value for any node (default: 1)
@@ -16,6 +14,11 @@ export function mapMethodDataToTemporalFlameGraphWithLayoutOpt(methodNode, useTi
   // Step 1: Build the complete tree and calculate raw values
   function buildInitialTree(node) {
     if (!node) return null;
+    
+    // Add to selectedMap if node is selected
+    // if (node.selected && selectedMap) {
+    //   selectedMap.set(node.id, node);
+    // }
     
     const rawValue = parseInt(useTimeTotals ? node.time : node.selfTime) || 0;
     const treeNode = {
@@ -101,7 +104,7 @@ export function mapMethodDataToTemporalFlameGraphWithLayoutOpt(methodNode, useTi
     const node = {
       name: originalNode.label || `${originalNode.className}.${originalNode.methodName}()`,
       value: treeNode.value,
-      selected: false,
+      selected: originalNode.selected || false,
       _originalValue: treeNode.rawValue,
       _depth: treeNode.depth // Store depth for debugging
     };
@@ -128,7 +131,7 @@ export function mapMethodDataToTemporalFlameGraphWithLayoutOpt(methodNode, useTi
     if (originalNode.selfTime) node.selfTime = parseInt(originalNode.selfTime);
     
     // Lighten color
-    if (originalNode.color) node.color = node.selected ? originalNode.color : colorUtils.lightenColor(originalNode.color);
+    if (originalNode.color) node.color = colorUtils.lightenColor(originalNode.color, 0.35);
     
     return node;
   }
@@ -146,10 +149,15 @@ export function mapMethodDataToTemporalFlameGraphWithLayoutOpt(methodNode, useTi
 export function mapMethodDataToTemporalFlameGraph(methodNode, useTimeTotals = true) {
   if (!methodNode) return null;
 
+  // Add to selectedMap if node is selected
+  // if (methodNode.selected && selectedMap) {
+  //   selectedMap.set(methodNode.id, methodNode);
+  // }
+
   const node = {
     name: methodNode.label || `${methodNode.className}.${methodNode.methodName}()`,
     value: Math.max(parseInt(useTimeTotals ? methodNode.time : methodNode.selfTime) || 1, 1),
-    selected: false
+    selected: methodNode.selected || false
   };
 
   // Add children if any
@@ -169,24 +177,25 @@ export function mapMethodDataToTemporalFlameGraph(methodNode, useTimeTotals = tr
   if (methodNode.selfTime) node.selfTime = parseInt(methodNode.selfTime);
   
   // Lighten color
-  if (methodNode.color) node.color = node.selected ? methodNode.color : colorUtils.lightenColor(methodNode.color);
+  if (methodNode.color) node.color = colorUtils.lightenColor(methodNode.color, 0.35);
 
   return node;
 }
 
 /**
  * Maps method call data to a logical flame graph format
- * - Values represent logical relationships, not actual execution times
- * - Leaf nodes are assigned a fixed value of 1 (baseline)
- * - Parent nodes' values are derived from children plus a 10% factor
- *
  * @param {Object} methodNode - The method call data node
  * @return {Object} Logical flame graph data structure showing call relationships
  */
 export function mapMethodDataToLogicalFlameGraph(methodNode) {
   if (!methodNode) return null;
 
-  const extraFactor = 0.05; // Additional 10% factor, can be adjusted between 0.05-0.1
+  // // Add to selectedMap if node is selected
+  // if (methodNode.selected && selectedMap) {
+  //   selectedMap.set(methodNode.id, methodNode);
+  // }
+
+  const extraFactor = 0.05; // Additional 5% factor
   let children = [];
 
   // Recursively process children if they exist
@@ -205,7 +214,7 @@ export function mapMethodDataToLogicalFlameGraph(methodNode) {
   const node = {
     name: methodNode.label || `${methodNode.className}.${methodNode.methodName}()`,
     value: value,
-    selected: false
+    selected: methodNode.selected || false
   };
 
   if (children.length > 0) {
@@ -221,7 +230,7 @@ export function mapMethodDataToLogicalFlameGraph(methodNode) {
 
   // Process color if defined
   if (methodNode.color) {
-    node.color = node.selected ? methodNode.color : colorUtils.lightenColor(methodNode.color);
+    node.color = colorUtils.lightenColor(methodNode.color, 0.35);
   }
 
   return node;
