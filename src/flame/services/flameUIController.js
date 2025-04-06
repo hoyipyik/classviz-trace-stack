@@ -90,7 +90,7 @@ export class FlameGraphUIController {
         const countDisplay = document.getElementById('selection-count');
         if (countDisplay) {
             countDisplay.textContent = `${this.selectionManager.getSelectionCount()} node(s) selected`;
-            console.log("number updated", this.selectionManager.selectedNodes.size, this.selectionManager.getSelectionCount(), this.selectionManager.selectedNodes);
+            // console.log("number updated", this.selectionManager.selectedNodes.size, this.selectionManager.getSelectionCount(), this.selectionManager.selectedNodes);
         }
     }
 
