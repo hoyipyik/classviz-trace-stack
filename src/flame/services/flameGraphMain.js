@@ -70,8 +70,14 @@ export class FlameGraphService {
             this.sidebarController.renderData();
         });
 
-        this.dataManager.subscribe((newData) => {
+        this.dataManager.subscribe((newData, options) => {
             this.sidebarController.updateFromManager(newData);
+            
+            if (options.updateSelection) {
+                this.selectionManager.updateSelectedNodes(newData);
+                // var testMap = this.selectionManager.selectedNodes;
+                // console.log("!!!!!Selected nodes:", testMap);
+            }
         });
 
         this.methodDisplayManager.updateMethodsOnClassviz();
