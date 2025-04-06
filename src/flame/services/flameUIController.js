@@ -12,8 +12,11 @@ export class FlameGraphUIController {
 
         // Bind methods to preserve 'this' context
         this.toggleSelectionMode = this.toggleSelectionMode.bind(this);
-        this.clearSelection = this.clearSelection.bind(this);
+        this.clearAllSelectionHandler = this.clearAllSelectionHandler.bind(this);
         this.handleDragHandleDblClick = this.handleDragHandleDblClick.bind(this);
+        this.selectAllHandler = this.selectAllHandler.bind(this);
+        this.selectGraphHandler = this.selectGraphHandler.bind(this);
+        this.clearGraphSelectionHandler = this.clearGraphSelectionHandler.bind(this);
     }
 
     initialize() {
@@ -30,7 +33,10 @@ export class FlameGraphUIController {
         const handlers = {
             'reset-zoom-btn': () => this.renderer.resetZoom(),
             'selection-btn': this.toggleSelectionMode,
-            'clear-selection-btn': this.clearSelection
+            'selection-all-btn': this.selectAllHandler,
+            'clear-all-btn': this.clearAllSelectionHandler,
+            'select-graph-btn': this.selectGraphHandler,
+            'clear-graph-btn': this.clearGraphSelectionHandler
         };
 
         // Efficiently attach event handlers
@@ -55,17 +61,30 @@ export class FlameGraphUIController {
         console.log(`Selection mode ${enabled ? 'enabled' : 'disabled'}`);
     }
 
-    clearSelection() {
-        // if (this.renderer && this.renderer.flameGraph) {
-        //     d3.select(this.renderer.chartSelector).selectAll("rect").each(d => {
-        //         if (d && d.data) {
-        //             d.data.selected = false;
-        //         }
-        //     });
-        // }
+    clearAllSelectionHandler() {
         this.selectionManager.clearAll();
         this.updateSelectionCountDisplay();
     }
+
+    clearGraphSelectionHandler() {
+        const data = this.renderer.getGraphData();
+        if (!data) return;
+        this.selectionManager.clearAllAtCurrentGraph(data);
+        this.updateSelectionCountDisplay();
+    }
+
+    selectAllHandler() {
+        this.selectionManager.selectAll();
+        this.updateSelectionCountDisplay();
+    }
+
+    selectGraphHandler() {
+        const data = this.renderer.getGraphData();
+        if (!data) return;
+        this.selectionManager.selectAllAtCurrentGraph(data);
+        this.updateSelectionCountDisplay();
+    }
+
 
     updateSelectionCountDisplay() {
         const countDisplay = document.getElementById('selection-count');
@@ -234,12 +253,21 @@ export class FlameGraphUIController {
 
             this.container.style.transition = 'none';
 
+            // Bind these handlers to preserve context
+            const handleMove = this.handleDragMove.bind(this);
+            const handleEnd = this.handleDragEnd.bind(this);
+
             // Use passive event listeners where appropriate
-            document.addEventListener('mousemove',
-                (ev) => this.handleDragMove(ev, dragState),
+            document.addEventListener('mousemove', 
+                (ev) => handleMove(ev, dragState),
                 { passive: false });
-            document.addEventListener('mouseup',
-                () => this.handleDragEnd(dragState));
+            document.addEventListener('mouseup', 
+                () => {
+                    handleEnd(dragState);
+                    // Clean up event listeners
+                    document.removeEventListener('mousemove', handleMove);
+                    document.removeEventListener('mouseup', handleEnd);
+                });
         });
     }
 
@@ -277,9 +305,6 @@ export class FlameGraphUIController {
             this.containerState = CONSTANTS.STATES.EXPANDED;
             this.container.classList.add('active');
         }
-
-        document.removeEventListener('mousemove', this.handleDragMove);
-        document.removeEventListener('mouseup', this.handleDragEnd);
     }
 
     handleDragHandleDblClick() {
