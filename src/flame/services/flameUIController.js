@@ -56,24 +56,14 @@ export class FlameGraphUIController {
     }
 
     clearSelection() {
-        // Optimize by first updating the visual state
-        if (this.renderer.flameGraph) {
-            d3.select(CONSTANTS.CHART_SELECTOR).selectAll("rect").each(d => {
-                if (d && d.data) {
-                    d.data.selected = false;
-                }
-            });
-        }
-
-        // Then clear the data state
-        this.selectionManager.clearSelection();
-
-        // refresh the data to reflect the cleared selection
-        // (Can't fix the texture color disappearing issue)
-        if (this.renderer.flameGraph) {
-            this.renderer.updateData(this.renderer.data, false);
-        }
-
+        // if (this.renderer && this.renderer.flameGraph) {
+        //     d3.select(this.renderer.chartSelector).selectAll("rect").each(d => {
+        //         if (d && d.data) {
+        //             d.data.selected = false;
+        //         }
+        //     });
+        // }
+        this.selectionManager.clearAll();
         this.updateSelectionCountDisplay();
     }
 
@@ -81,6 +71,7 @@ export class FlameGraphUIController {
         const countDisplay = document.getElementById('selection-count');
         if (countDisplay) {
             countDisplay.textContent = `${this.selectionManager.getSelectionCount()} node(s) selected`;
+            console.log("number updated", this.selectionManager.selectedNodes.size, this.selectionManager.getSelectionCount(), this.selectionManager.selectedNodes);
         }
     }
 
