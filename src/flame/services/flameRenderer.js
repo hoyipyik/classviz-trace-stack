@@ -22,21 +22,21 @@ export class FlameGraphRenderer {
 
     getNodeColor(nodeData) {
         if (!nodeData) return "#cccccc";
-
+    
         const baseColor = nodeData.color ||
             d3.scaleOrdinal(d3.schemeCategory10)(nodeData.name || "unknown");
-
+    
         const isSelected = this.selectionManager.isNodeSelected(nodeData);
         // console.log(isSelected, "!!!!")
         const color = isSelected ? baseColor : colorUtils.lightenColor(baseColor);
-
+    
         // If no special status, return regular color without texture
         if (!nodeData.status?.fanOut &&
             !nodeData.status?.implementationEntryPoint &&
             !nodeData.status?.recursiveEntryPoint) {
             return color;
         }
-
+    
         // Create patterns container only once and store them
         if (!this._patterns) {
             this._patterns = new Map();
@@ -47,13 +47,13 @@ export class FlameGraphRenderer {
                 defs.selectAll('pattern[id^="pattern-"]').remove();
             }
         }
-
+    
         function createSafeId(color, patternType) {
             return 'pattern-' + patternType + '-' + color.toString()
                 .replace(/[^a-zA-Z0-9]/g, '')
                 .toLowerCase();
         }
-
+    
         // Determine pattern type
         let patternType = "default";
         if (nodeData.status?.fanOut) {
@@ -63,13 +63,13 @@ export class FlameGraphRenderer {
         } else if (nodeData.status?.recursiveEntryPoint) {
             patternType = "recursive";
         }
-
+    
         // For patterns, use the darkened color to compensate for the visual lightening effect
         // caused by the white elements in the pattern
         const patternBaseColor = isSelected ? colorUtils.darkenColor(color, 0.16) : colorUtils.darkenColor(color, 0.16);
-
+    
         const patternId = createSafeId(color, patternType);
-
+    
         // Check if pattern already exists in our Map
         if (!this._patterns.has(patternId)) {
             const svg = d3.select('.d3-flame-graph');
@@ -77,66 +77,90 @@ export class FlameGraphRenderer {
             if (defs.empty()) {
                 defs = svg.insert('defs', ':first-child');
             }
-
+    
             // Remove existing pattern if it exists
             defs.select(`#${patternId}`).remove();
-
-            // 设置所有模式使用相同的基本大小 - 使用16x16作为标准大小
-            const patternSize = 16;
-
-            // Create pattern based on node status type
+    
+            // 保持高度为16，但显著增加宽度以减少边界干扰
+            const patternHeight = 16;
+            const patternWidth = 2048; // 非常宽，以确保几乎不会有边界交叉
+    
+            // Create pattern based on node status type - 保持原始图案设计
             if (patternType === "implementation") {
-                // 细小的点状图案 - 与原始设计相符但更大
+                // 水平密集单行大点的图案
+                let dotsHtml = '';
+                const dotRadius = 2.2;       // 更大的点
+                const opacity = 0.5;         // 更高的不透明度以增强可见性
+                const dotsPerRow = 160;       // 水平更密集
+                const y = patternHeight / 2; // 垂直居中，只有一行
+                
+                for (let col = 0; col < dotsPerRow; col++) {
+                    const x = patternWidth * (col + 0.5) / dotsPerRow;
+                    dotsHtml += `<circle cx="${x}" cy="${y}" r="${dotRadius}" fill="#fff" fill-opacity="${opacity}"/>`;
+                }
+    
                 defs.append('pattern')
                     .attr('id', patternId)
                     .attr('patternUnits', 'userSpaceOnUse')
-                    .attr('width', patternSize)
-                    .attr('height', patternSize)
+                    .attr('width', patternWidth)
+                    .attr('height', patternHeight)
                     .html(`
-                        <rect width="${patternSize}" height="${patternSize}" fill="${patternBaseColor}"/>
-                        <circle cx="${patternSize / 4}" cy="${patternSize / 4}" r="1.2" fill="#fff" fill-opacity="0.4"/>
-                        <circle cx="${patternSize * 3 / 4}" cy="${patternSize / 4}" r="1.2" fill="#fff" fill-opacity="0.4"/>
-                        <circle cx="${patternSize / 4}" cy="${patternSize * 3 / 4}" r="1.2" fill="#fff" fill-opacity="0.4"/>
-                        <circle cx="${patternSize * 3 / 4}" cy="${patternSize * 3 / 4}" r="1.2" fill="#fff" fill-opacity="0.4"/>
+                        <rect width="${patternWidth}" height="${patternHeight}" fill="${patternBaseColor}"/>
+                        ${dotsHtml}
                     `);
             }
-            if (patternType === "fanout") {
-                // 星形点状图案
-                const dotRadius = patternSize / 8;
+            else if (patternType === "fanout") {
+                // 星形点状图案 - 保持原始设计但横向扩展
+                const dotRadius = patternHeight / 8;
                 const centerDotRadius = dotRadius * 1.5;
-
+    
+                // 创建一个基本单元
+                function createStarUnit(offsetX) {
+                    return `
+                        <circle cx="${offsetX + patternHeight / 4}" cy="${patternHeight / 4}" r="${dotRadius}" fill="#fff" fill-opacity="0.5"/>
+                        <circle cx="${offsetX + patternHeight * 3 / 4}" cy="${patternHeight / 4}" r="${dotRadius}" fill="#fff" fill-opacity="0.5"/>
+                        <circle cx="${offsetX + patternHeight / 4}" cy="${patternHeight * 3 / 4}" r="${dotRadius}" fill="#fff" fill-opacity="0.5"/>
+                        <circle cx="${offsetX + patternHeight * 3 / 4}" cy="${patternHeight * 3 / 4}" r="${dotRadius}" fill="#fff" fill-opacity="0.5"/>
+                        <circle cx="${offsetX + patternHeight / 2}" cy="${patternHeight / 2}" r="${centerDotRadius}" fill="#fff" fill-opacity="0.6"/>
+                    `;
+                }
+    
+                // 计算可以放多少个完整单元
+                const unitsCount = Math.floor(patternWidth / patternHeight);
+                let unitsHtml = '';
+                
+                for (let i = 0; i < unitsCount; i++) {
+                    unitsHtml += createStarUnit(i * patternHeight);
+                }
+    
                 defs.append('pattern')
                     .attr('id', patternId)
                     .attr('patternUnits', 'userSpaceOnUse')
-                    .attr('width', patternSize)
-                    .attr('height', patternSize)
+                    .attr('width', patternWidth)
+                    .attr('height', patternHeight)
                     .html(`
-                        <rect width="${patternSize}" height="${patternSize}" fill="${patternBaseColor}"/>
-                        <circle cx="${patternSize / 4}" cy="${patternSize / 4}" r="${dotRadius}" fill="#fff" fill-opacity="0.5"/>
-                        <circle cx="${patternSize * 3 / 4}" cy="${patternSize / 4}" r="${dotRadius}" fill="#fff" fill-opacity="0.5"/>
-                        <circle cx="${patternSize / 4}" cy="${patternSize * 3 / 4}" r="${dotRadius}" fill="#fff" fill-opacity="0.5"/>
-                        <circle cx="${patternSize * 3 / 4}" cy="${patternSize * 3 / 4}" r="${dotRadius}" fill="#fff" fill-opacity="0.5"/>
-                        <circle cx="${patternSize / 2}" cy="${patternSize / 2}" r="${centerDotRadius}" fill="#fff" fill-opacity="0.6"/>
+                        <rect width="${patternWidth}" height="${patternHeight}" fill="${patternBaseColor}"/>
+                        ${unitsHtml}
                     `);
             }
-            if (patternType === "recursive") {
-                // 粗线条对角线图案 - 明显区别于其他模式
+            else if (patternType === "recursive") {
+                // 粗线条对角线图案 - 保持原始设计但用更宽的重复单元
                 defs.append('pattern')
                     .attr('id', patternId)
                     .attr('patternUnits', 'userSpaceOnUse')
-                    .attr('width', patternSize)
-                    .attr('height', patternSize)
+                    .attr('width', patternWidth)
+                    .attr('height', patternHeight)
                     .html(`
-                    <rect width="${patternSize}" height="${patternSize}" fill="${patternBaseColor}"/>
-                    <path d="M0,0 l${patternSize},${patternSize} M-4,4 l8,8 M${patternSize - 8},${patternSize - 8} l8,8" 
-                        style="stroke:#fff; stroke-width:2.2; stroke-opacity:0.4"/>
-                `);
+                        <rect width="${patternWidth}" height="${patternHeight}" fill="${patternBaseColor}"/>
+                        <path d="M0,0 L${patternHeight},${patternHeight} M${patternHeight},0 L0,${patternHeight} M${patternHeight},0 L${patternHeight*2},${patternHeight} M${patternHeight*2},0 L${patternHeight},${patternHeight} M${patternHeight*2},0 L${patternHeight*3},${patternHeight} M${patternHeight*3},0 L${patternHeight*2},${patternHeight} M${patternHeight*4},0 L${patternHeight*3},${patternHeight} M${patternHeight*5},0 L${patternHeight*4},${patternHeight} M${patternHeight*6},0 L${patternHeight*5},${patternHeight} M${patternHeight*7},0 L${patternHeight*6},${patternHeight}" 
+                            style="stroke:#fff; stroke-width:2.2; stroke-opacity:0.4"/>
+                    `);
             }
-
+    
             // Store in our Map
             this._patterns.set(patternId, true);
         }
-
+    
         return `url(#${patternId})`;
     }
 
