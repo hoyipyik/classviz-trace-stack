@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tree type="Call Tree" threadSelection="All thread groups" threadStatus="Runnable" aggregationLevel="Methods">
+  <node leaf="false" class="java.awt.EventDispatchThread" methodName="run" methodSignature="()V" time="994172" count="1" selfTime="174075" lineNumber="-1" percent="83.7">
+    <node leaf="false" class="nl.tudelft.jpacman.ui.BoardPanel" methodName="paint" methodSignature="(Ljava/awt/Graphics;)V" time="820097" count="347" selfTime="2071" lineNumber="-1" percent="69.1">
+      <node leaf="false" class="nl.tudelft.jpacman.ui.BoardPanel" methodName="render" methodSignature="(Lnl/tudelft/jpacman/board/Board;Ljava/awt/Graphics;Ljava/awt/Dimension;)V" time="817313" count="347" selfTime="76908" lineNumber="-1" percent="68.8">
+        <node leaf="false" class="nl.tudelft.jpacman.ui.BoardPanel" methodName="render" methodSignature="(Lnl/tudelft/jpacman/board/Square;Ljava/awt/Graphics;IIII)V" time="694701" count="167314" selfTime="180115" lineNumber="-1" percent="58.5">
+          <node leaf="false" class="nl.tudelft.jpacman.sprite.ImageSprite" methodName="draw" methodSignature="(Ljava/awt/Graphics;IIII)V" time="323071" count="228978" selfTime="123383" lineNumber="-1" percent="27.2">
+            <node leaf="true" class="java.awt.Graphics" methodName="drawImage" methodSignature="(Ljava/awt/Image;IIIIIIIILjava/awt/image/ImageObserver;)Z" time="141868" count="228978" selfTime="141868" lineNumber="-1" percent="11.9"/>
+            <node leaf="true" class="java.awt.Image" methodName="getWidth" methodSignature="(Ljava/awt/image/ImageObserver;)I" time="29220" count="228978" selfTime="29220" lineNumber="-1" percent="2.5"/>
+            <node leaf="true" class="java.awt.Image" methodName="getHeight" methodSignature="(Ljava/awt/image/ImageObserver;)I" time="28600" count="228978" selfTime="28600" lineNumber="-1" percent="2.4"/>
+          </node>
+          <node leaf="false" class="nl.tudelft.jpacman.board.Square" methodName="getOccupants" methodSignature="()Ljava/util/List;" time="74903" count="167314" selfTime="46471" lineNumber="-1" percent="6.3">
+            <node leaf="true" class="com.google.common.collect.ImmutableList" methodName="copyOf" methodSignature="(Ljava/util/Collection;)Lcom/google/common/collect/ImmutableList;" time="28432" count="167314" selfTime="28432" lineNumber="-1" percent="2.4"/>
+          </node>
+          <node leaf="true" class="java.util.Iterator" methodName="hasNext" methodSignature="()Z" time="34282" count="230709" selfTime="34282" lineNumber="-1" percent="2.9"/>
+          <node leaf="true" class="java.util.List" methodName="iterator" methodSignature="()Ljava/util/Iterator;" time="26420" count="167314" selfTime="26420" lineNumber="-1" percent="2.2"/>
+          <node leaf="true" class="nl.tudelft.jpacman.board.BoardFactory$Wall" methodName="getSprite" methodSignature="()Lnl/tudelft/jpacman/sprite/Sprite;" time="12885" count="82446" selfTime="12885" lineNumber="-1" percent="1.1"/>
+          <node leaf="true" class="nl.tudelft.jpacman.board.BoardFactory$Ground" methodName="getSprite" methodSignature="()Lnl/tudelft/jpacman/sprite/Sprite;" time="11993" count="84868" selfTime="11993" lineNumber="-1" percent="1.0"/>
+          <node leaf="true" class="java.util.Iterator" methodName="next" methodSignature="()Ljava/lang/Object;" time="8634" count="63395" selfTime="8634" lineNumber="-1" percent="0.7"/>
+          <node leaf="false" class="nl.tudelft.jpacman.sprite.AnimatedSprite" methodName="draw" methodSignature="(Ljava/awt/Graphics;IIII)V" time="8538" count="1731" selfTime="1842" lineNumber="-1" percent="0.7">
+            <node leaf="false" class="nl.tudelft.jpacman.sprite.ImageSprite" methodName="draw" methodSignature="(Ljava/awt/Graphics;IIII)V" time="4380" count="1731" selfTime="1045" lineNumber="-1" percent="0.4">
+              <node leaf="true" class="java.awt.Graphics" methodName="drawImage" methodSignature="(Ljava/awt/Image;IIIIIIIILjava/awt/image/ImageObserver;)Z" time="1963" count="1731" selfTime="1963" lineNumber="-1" percent="0.2"/>
+              <node leaf="true" class="java.awt.Image" methodName="getWidth" methodSignature="(Ljava/awt/image/ImageObserver;)I" time="1059" count="1731" selfTime="1059" lineNumber="-1" percent="0.1"/>
+              <node leaf="true" class="java.awt.Image" methodName="getHeight" methodSignature="(Ljava/awt/image/ImageObserver;)I" time="313" count="1731" selfTime="313" lineNumber="-1" percent="0.0"/>
+            </node>
+            <node leaf="false" class="nl.tudelft.jpacman.sprite.AnimatedSprite" methodName="update" methodSignature="()V" time="1822" count="1731" selfTime="1102" lineNumber="-1" percent="0.2">
+              <node leaf="true" class="java.lang.System" methodName="currentTimeMillis" methodSignature="()J" time="720" count="1731" selfTime="720" lineNumber="-1" percent="0.1"/>
+            </node>
+            <node leaf="true" class="nl.tudelft.jpacman.sprite.AnimatedSprite" methodName="currentSprite" methodSignature="()Lnl/tudelft/jpacman/sprite/Sprite;" time="494" count="1731" selfTime="494" lineNumber="-1" percent="0.0"/>
+          </node>
+          <node leaf="true" class="nl.tudelft.jpacman.level.Pellet" methodName="getSprite" methodSignature="()Lnl/tudelft/jpacman/sprite/Sprite;" time="7822" count="61664" selfTime="7822" lineNumber="-1" percent="0.7"/>
+          <node leaf="false" class="nl.tudelft.jpacman.npc.Ghost" methodName="getSprite" methodSignature="()Lnl/tudelft/jpacman/sprite/Sprite;" time="4222" count="1385" selfTime="1355" lineNumber="-1" percent="0.4">
+            <node leaf="true" class="java.util.Map" methodName="get" methodSignature="(Ljava/lang/Object;)Ljava/lang/Object;" time="2622" count="1385" selfTime="2622" lineNumber="-1" percent="0.2"/>
+            <node leaf="true" class="nl.tudelft.jpacman.board.Unit" methodName="getDirection" methodSignature="()Lnl/tudelft/jpacman/board/Direction;" time="245" count="1385" selfTime="245" lineNumber="-1" percent="0.0"/>
+          </node>
+          <node leaf="false" class="nl.tudelft.jpacman.level.Player" methodName="getSprite" methodSignature="()Lnl/tudelft/jpacman/sprite/Sprite;" time="1816" count="346" selfTime="837" lineNumber="-1" percent="0.2">
+            <node leaf="true" class="java.util.Map" methodName="get" methodSignature="(Ljava/lang/Object;)Ljava/lang/Object;" time="655" count="346" selfTime="655" lineNumber="-1" percent="0.1"/>
+            <node leaf="true" class="nl.tudelft.jpacman.level.Player" methodName="isAlive" methodSignature="()Z" time="258" count="346" selfTime="258" lineNumber="-1" percent="0.0"/>
+            <node leaf="true" class="nl.tudelft.jpacman.board.Unit" methodName="getDirection" methodSignature="()Lnl/tudelft/jpacman/board/Direction;" time="66" count="346" selfTime="66" lineNumber="-1" percent="0.0"/>
+          </node>
+        </node>
+        <node leaf="true" class="nl.tudelft.jpacman.board.Board" methodName="getWidth" methodSignature="()I" time="21982" count="174936" selfTime="21982" lineNumber="-1" percent="1.9"/>
+        <node leaf="true" class="nl.tudelft.jpacman.board.Board" methodName="squareAt" methodSignature="(II)Lnl/tudelft/jpacman/board/Square;" time="20979" count="167315" selfTime="20979" lineNumber="-1" percent="1.8"/>
+        <node leaf="true" class="nl.tudelft.jpacman.board.Board" methodName="getHeight" methodSignature="()I" time="1721" count="7968" selfTime="1721" lineNumber="-1" percent="0.1"/>
+        <node leaf="true" class="java.awt.Graphics" methodName="fillRect" methodSignature="(IIII)V" time="743" count="347" selfTime="743" lineNumber="-1" percent="0.1"/>
+        <node leaf="true" class="java.awt.Graphics" methodName="setColor" methodSignature="(Ljava/awt/Color;)V" time="279" count="347" selfTime="279" lineNumber="-1" percent="0.0"/>
+      </node>
+      <node leaf="true" class="nl.tudelft.jpacman.game.SinglePlayerGame" methodName="getLevel" methodSignature="()Lnl/tudelft/jpacman/level/Level;" time="569" count="347" selfTime="569" lineNumber="-1" percent="0.0"/>
+      <node leaf="true" class="nl.tudelft.jpacman.level.Level" methodName="getBoard" methodSignature="()Lnl/tudelft/jpacman/board/Board;" time="144" count="347" selfTime="144" lineNumber="-1" percent="0.0"/>
+    </node>
+  </node>
+  <node leaf="false" class="java.util.concurrent.ThreadPoolExecutor$Worker" methodName="run" methodSignature="()V" time="193216" count="1" selfTime="34966" lineNumber="-1" percent="16.3">
+    <node leaf="false" class="nl.tudelft.jpacman.ui.PacManUI" methodName="nextFrame" methodSignature="()V" time="158250" count="347" selfTime="69111" lineNumber="-1" percent="13.3">
+      <node leaf="false" class="nl.tudelft.jpacman.ui.ScorePanel" methodName="refresh" methodSignature="()V" time="89139" count="347" selfTime="9683" lineNumber="-1" percent="7.5">
+        <node leaf="false" class="nl.tudelft.jpacman.ui.ScorePanel" methodName="lambda$static$0" methodSignature="(Lnl/tudelft/jpacman/level/Player;)Ljava/lang/String;" time="72663" count="347" selfTime="2963" lineNumber="-1" percent="6.1">
+          <node leaf="true" class="java.lang.String" methodName="format" methodSignature="(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;" time="68939" count="347" selfTime="68939" lineNumber="-1" percent="5.8"/>
+          <node leaf="true" class="java.lang.Integer" methodName="valueOf" methodSignature="(I)Ljava/lang/Integer;" time="442" count="347" selfTime="442" lineNumber="-1" percent="0.0"/>
+          <node leaf="true" class="nl.tudelft.jpacman.level.Player" methodName="getScore" methodSignature="()I" time="319" count="347" selfTime="319" lineNumber="-1" percent="0.0"/>
+        </node>
+        <node leaf="true" class="javax.swing.JLabel" methodName="setText" methodSignature="(Ljava/lang/String;)V" time="1781" count="347" selfTime="1781" lineNumber="-1" percent="0.1"/>
+        <node leaf="true" class="java.util.Set" methodName="iterator" methodSignature="()Ljava/util/Iterator;" time="1332" count="347" selfTime="1332" lineNumber="-1" percent="0.1"/>
+        <node leaf="true" class="java.util.Map" methodName="entrySet" methodSignature="()Ljava/util/Set;" time="1222" count="347" selfTime="1222" lineNumber="-1" percent="0.1"/>
+        <node leaf="true" class="java.util.Iterator" methodName="next" methodSignature="()Ljava/lang/Object;" time="803" count="347" selfTime="803" lineNumber="-1" percent="0.1"/>
+        <node leaf="true" class="java.util.Iterator" methodName="hasNext" methodSignature="()Z" time="533" count="694" selfTime="533" lineNumber="-1" percent="0.0"/>
+        <node leaf="true" class="java.util.Map$Entry" methodName="getValue" methodSignature="()Ljava/lang/Object;" time="497" count="347" selfTime="497" lineNumber="-1" percent="0.0"/>
+        <node leaf="true" class="java.util.Map$Entry" methodName="getKey" methodSignature="()Ljava/lang/Object;" time="317" count="347" selfTime="317" lineNumber="-1" percent="0.0"/>
+        <node leaf="true" class="nl.tudelft.jpacman.level.Player" methodName="isAlive" methodSignature="()Z" time="308" count="347" selfTime="308" lineNumber="-1" percent="0.0"/>
+      </node>
+    </node>
+  </node>
+</tree>
