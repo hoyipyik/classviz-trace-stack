@@ -97,6 +97,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       label,
       isRoot,
       collapsed: false,
+      selected: false,
       // Tree statistics
       treeStats: {
         directChildrenCount: treeMetrics.directChildrenCount,
