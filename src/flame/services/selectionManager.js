@@ -70,64 +70,79 @@ export class FlameGraphSelectionManager {
     }
 
     // Updated function to select all nodes in the current graph
-    selectAllAtCurrentGraph(currentData, isTopLevel = true) {
-        if (!currentData) return;
+    selectAllAtCurrentGraph(currentData, isTopLevel = true, nodeIdsToSelect = []) {
+        if (!currentData) return nodeIdsToSelect;
+
         // Process the node itself first
         const nodeId = this.getNodeId(currentData);
         this.selectedNodes.set(nodeId, true);
         this.updateNodeColorState(currentData, true);
-        this.dataManager.updateSelectionForSingleNode(nodeId, true);
+        nodeIdsToSelect.push(nodeId);
 
         // Recursively process children if they exist
         if (currentData.children && currentData.children.length > 0) {
             for (const childNode of currentData.children) {
-                this.selectAllAtCurrentGraph(childNode, false);
+                this.selectAllAtCurrentGraph(childNode, false, nodeIdsToSelect);
             }
         }
 
-        // Only render when we're at the top level of recursion
+        // Only update selection and render when we're at the top level of recursion
         if (isTopLevel) {
+            this.dataManager.updateSelectionForMultiNodes(nodeIdsToSelect, true);
             this.renderData();
         }
+
+        return nodeIdsToSelect;
     }
 
     // Updated function to clear all selections in the current graph
-    clearAllAtCurrentGraph(currentData, isTopLevel = true) {
-        if (!currentData) return;
+    clearAllAtCurrentGraph(currentData, isTopLevel = true, nodeIdsToClear = []) {
+        if (!currentData) return nodeIdsToClear;
+
         // Process the node itself first
         const nodeId = this.getNodeId(currentData);
         this.selectedNodes.delete(nodeId);
         this.updateNodeColorState(currentData, false);
-        this.dataManager.updateSelectionForSingleNode(nodeId, false);
+        nodeIdsToClear.push(nodeId);
 
         // Recursively process children if they exist
         if (currentData.children && currentData.children.length > 0) {
             for (const childNode of currentData.children) {
-                this.clearAllAtCurrentGraph(childNode, false);
+                this.clearAllAtCurrentGraph(childNode, false, nodeIdsToClear);
             }
         }
 
-        // Only render when we're at the top level of recursion
+        // Only update selection and render when we're at the top level of recursion
         if (isTopLevel) {
+            this.dataManager.updateSelectionForMultiNodes(nodeIdsToClear, false);
             this.renderData();
         }
+
+        return nodeIdsToClear;
     }
 
     // Updated function to select all nodes across multiple flame graphs
     selectAll() {
         const dataMap = this.dataManager.getData();
         if (!dataMap) return;
+
+        const allNodeIds = [];
+
         // Iterate through each key in the map
-        // this.dataManager.updateSelectionForAllNodes(true);
         for (const key in dataMap) {
             const rootNode = dataMap[key];
             if (!rootNode) continue;
 
             // Process the root node and all its children recursively
-            this.selectAllAtCurrentGraph(rootNode, false);
+            // But don't render or update selection until we've collected all node IDs
+            this.selectAllAtCurrentGraph(rootNode, false, allNodeIds);
         }
 
-        this.renderData();
+        // Now batch update all nodes and render once
+        if (allNodeIds.length > 0) {
+            this.dataManager.updateSelectionForMultiNodes(allNodeIds, true);
+            this.renderData();
+        }
     }
 
     clearAll() {
