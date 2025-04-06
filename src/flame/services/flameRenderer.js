@@ -1,5 +1,4 @@
 import { colorUtils } from "../utils/colorChanger.js";
-import { mapMethodDataToLogicalFlameGraph, mapMethodDataToTemporalFlameGraph } from "../utils/dataTransformer.js";
 import { CONSTANTS } from "./contants.js";
 
 
@@ -8,13 +7,13 @@ import { CONSTANTS } from "./contants.js";
  */
 export class FlameGraphRenderer {
     constructor(chartSelector, selectionManager) {
-        this.showLogical = true;
         this.chartSelector = chartSelector;
         this.selectionManager = selectionManager;
         this.flameGraph = null;
         this.onNodeClick = null;
         this.onSelectionChange = null;
-        this.data = null;
+
+        this.graphData = null;
     }
 
     getNodeColor(nodeData) {
@@ -25,7 +24,7 @@ export class FlameGraphRenderer {
             d3.scaleOrdinal(d3.schemeCategory10)(nodeData.name || "unknown");
 
         const isSelected = nodeData.selected || this.selectionManager.isNodeSelected(nodeData);
-        const color = isSelected ? colorUtils.darkenColor(baseColor) : baseColor;
+        const color = isSelected ? baseColor : colorUtils.lightenColor(baseColor);
 
         // If no special status, return regular color without texture
         if (!nodeData.status?.fanOut &&
@@ -37,6 +36,12 @@ export class FlameGraphRenderer {
         // Create patterns container only once and store them
         if (!this._patterns) {
             this._patterns = new Map();
+            // Clear all existing patterns to avoid mixed sizes
+            const svg = d3.select('.d3-flame-graph');
+            let defs = svg.select('defs');
+            if (!defs.empty()) {
+                defs.selectAll('pattern[id^="pattern-"]').remove();
+            }
         }
 
         function createSafeId(color, patternType) {
@@ -55,6 +60,10 @@ export class FlameGraphRenderer {
             patternType = "recursive";
         }
 
+        // For patterns, use the darkened color to compensate for the visual lightening effect
+        // caused by the white elements in the pattern
+        const patternBaseColor = isSelected ? colorUtils.darkenColor(color, 0.16) : colorUtils.darkenColor(color, 0.16);
+
         const patternId = createSafeId(color, patternType);
 
         // Check if pattern already exists in our Map
@@ -65,50 +74,58 @@ export class FlameGraphRenderer {
                 defs = svg.insert('defs', ':first-child');
             }
 
-            // Remove existing pattern if it somehow exists in DOM but not in our Map
+            // Remove existing pattern if it exists
             defs.select(`#${patternId}`).remove();
+
+            // 设置所有模式使用相同的基本大小 - 使用16x16作为标准大小
+            const patternSize = 16;
 
             // Create pattern based on node status type
             if (patternType === "implementation") {
-                // The original dot pattern for implementationEntryPoint
+                // 细小的点状图案 - 与原始设计相符但更大
                 defs.append('pattern')
                     .attr('id', patternId)
                     .attr('patternUnits', 'userSpaceOnUse')
-                    .attr('width', 4)
-                    .attr('height', 4)
+                    .attr('width', patternSize)
+                    .attr('height', patternSize)
                     .html(`
-                        <rect width="4" height="4" fill="${color}"/>
-                        <path d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2" 
-                            style="stroke:#fff; stroke-width:0.5; stroke-opacity:0.3"/>
+                        <rect width="${patternSize}" height="${patternSize}" fill="${patternBaseColor}"/>
+                        <circle cx="${patternSize / 4}" cy="${patternSize / 4}" r="1.2" fill="#fff" fill-opacity="0.4"/>
+                        <circle cx="${patternSize * 3 / 4}" cy="${patternSize / 4}" r="1.2" fill="#fff" fill-opacity="0.4"/>
+                        <circle cx="${patternSize / 4}" cy="${patternSize * 3 / 4}" r="1.2" fill="#fff" fill-opacity="0.4"/>
+                        <circle cx="${patternSize * 3 / 4}" cy="${patternSize * 3 / 4}" r="1.2" fill="#fff" fill-opacity="0.4"/>
                     `);
             }
             if (patternType === "fanout") {
-                // Star dot pattern for fanOut
+                // 星形点状图案
+                const dotRadius = patternSize / 8;
+                const centerDotRadius = dotRadius * 1.5;
+
                 defs.append('pattern')
                     .attr('id', patternId)
                     .attr('patternUnits', 'userSpaceOnUse')
-                    .attr('width', 8)
-                    .attr('height', 8)
+                    .attr('width', patternSize)
+                    .attr('height', patternSize)
                     .html(`
-                        <rect width="8" height="8" fill="${color}"/>
-                        <circle cx="2" cy="2" r="0.7" fill="#fff" fill-opacity="0.6"/>
-                        <circle cx="6" cy="2" r="0.7" fill="#fff" fill-opacity="0.6"/>
-                        <circle cx="2" cy="6" r="0.7" fill="#fff" fill-opacity="0.6"/>
-                        <circle cx="6" cy="6" r="0.7" fill="#fff" fill-opacity="0.6"/>
-                        <circle cx="4" cy="4" r="0.9" fill="#fff" fill-opacity="0.7"/>
+                        <rect width="${patternSize}" height="${patternSize}" fill="${patternBaseColor}"/>
+                        <circle cx="${patternSize / 4}" cy="${patternSize / 4}" r="${dotRadius}" fill="#fff" fill-opacity="0.5"/>
+                        <circle cx="${patternSize * 3 / 4}" cy="${patternSize / 4}" r="${dotRadius}" fill="#fff" fill-opacity="0.5"/>
+                        <circle cx="${patternSize / 4}" cy="${patternSize * 3 / 4}" r="${dotRadius}" fill="#fff" fill-opacity="0.5"/>
+                        <circle cx="${patternSize * 3 / 4}" cy="${patternSize * 3 / 4}" r="${dotRadius}" fill="#fff" fill-opacity="0.5"/>
+                        <circle cx="${patternSize / 2}" cy="${patternSize / 2}" r="${centerDotRadius}" fill="#fff" fill-opacity="0.6"/>
                     `);
             }
             if (patternType === "recursive") {
-                // Diagonal lines pattern for recursiveEntryPoint
+                // 粗线条对角线图案 - 明显区别于其他模式
                 defs.append('pattern')
                     .attr('id', patternId)
                     .attr('patternUnits', 'userSpaceOnUse')
-                    .attr('width', 8)
-                    .attr('height', 8)
+                    .attr('width', patternSize)
+                    .attr('height', patternSize)
                     .html(`
-                    <rect width="8" height="8" fill="${color}"/>
-                    <path d="M-2,2 l8,-8 M0,8 l8,-8 M6,10 l8,-8" 
-                        style="stroke:#fff; stroke-width:1.2; stroke-opacity:0.4"/>
+                    <rect width="${patternSize}" height="${patternSize}" fill="${patternBaseColor}"/>
+                    <path d="M0,0 l${patternSize},${patternSize} M-4,4 l8,8 M${patternSize - 8},${patternSize - 8} l8,8" 
+                        style="stroke:#fff; stroke-width:2.2; stroke-opacity:0.4"/>
                 `);
             }
 
@@ -127,7 +144,7 @@ export class FlameGraphRenderer {
             d3.scaleOrdinal(d3.schemeCategory10)(nodeData.name || "unknown");
 
         return (nodeData.selected || this.selectionManager.isNodeSelected(nodeData))
-            ? colorUtils.darkenColor(baseColor)
+            ? colorUtils.lightenColor(baseColor)
             : baseColor;
     }
 
@@ -180,48 +197,12 @@ export class FlameGraphRenderer {
         });
     }
 
-    switchWidthMode(showLogical) {
-        this.showLogical = showLogical;
-        if (this.data)
-            this.applyWidthMode();
-    }
-
-    applyWidthMode() {
-        this.updateData(this.data, true);
-    }
-
 
     resetZoom() {
         if (this.flameGraph) {
             this.flameGraph.resetZoom();
         }
     }
-
-    renderData(data) {
-        if (!data) {
-            this.showError("No data available");
-            return;
-        }
-
-        this.data = data;
-
-        const transformedData = this.showLogical ? mapMethodDataToLogicalFlameGraph(data) : mapMethodDataToTemporalFlameGraph(data, true);
-        const chartSelection = d3.select(this.chartSelector);
-
-        // Optimize rendering by clearing previous content first
-        chartSelection.html("");
-
-        chartSelection
-            .datum(transformedData)
-            .call(this.flameGraph);
-
-        // Optimize by using requestAnimationFrame for timing-sensitive operations
-        requestAnimationFrame(() => {
-            d3.selectAll(`${this.chartSelector} rect`).style("fill-opacity", "1");
-            this.setupReflowHandler();
-        });
-    }
-
 
     /**
      * Updates the flame graph with new data
@@ -236,7 +217,7 @@ export class FlameGraphRenderer {
             return;
         }
 
-        this.data = newData;
+        this.graphData = newData;
 
         // Store current zoom state if we want to preserve it
         let currentZoom = null;
@@ -245,17 +226,10 @@ export class FlameGraphRenderer {
             // If yours doesn't, you may need to track this separately
             currentZoom = this.flameGraph.currentZoom ? this.flameGraph.currentZoom() : null;
         }
-
-        // Transform the new data based on current mode
-        const transformedData = this.showLogical
-            ? mapMethodDataToLogicalFlameGraph(newData)
-            : mapMethodDataToTemporalFlameGraph(newData, true);
-
         const chartSelection = d3.select(this.chartSelector);
-
         // Apply the update
         chartSelection
-            .datum(transformedData)
+            .datum(newData)
             .call(this.flameGraph);
 
         // Apply stored zoom state if we're preserving it
@@ -268,21 +242,26 @@ export class FlameGraphRenderer {
 
         // Ensure selected nodes maintain their appearance
         requestAnimationFrame(() => {
+            // 首先重置所有矩形的透明度
             d3.selectAll(`${this.chartSelector} rect`).style("fill-opacity", "1");
-
-            // Update colors for selected nodes
-            chartSelection.selectAll("rect").each(d => {
-                if (d && d.data && (d.data.selected || this.selectionManager.isNodeSelected(d.data))) {
-                    d3.select(this).style("fill", this.getNodeColor(d.data));
+    
+            // 更新所有节点的颜色以确保一致性
+            const self = this; // 保存FlameGraphRenderer实例的引用
+    
+            chartSelection.selectAll("rect").each(function (d) { // 使用function()而不是箭头函数以访问this
+                if (d && d.data) {
+                    // 不论是否选中，都重新应用颜色
+                    d3.select(this).style("fill", self.getNodeColor(d.data));
                 }
             });
-
-            // Reset the reflow handler
+    
+            // 重置reflow处理程序
             this.setupReflowHandler();
         });
 
         // If we need to reset zoom after update
         if (resetZoomAfterUpdate) {
+            console.log("Resetting zoom after update");
             this.resetZoom();
         }
     }
