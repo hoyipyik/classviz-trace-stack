@@ -1,22 +1,44 @@
+import { mapMethodDataToLogicalFlameGraph, mapMethodDataToTemporalFlameGraph } from "../utils/dataTransformer.js";
 import { CONSTANTS } from "./contants.js";
 
 export class FlameSidebarController {
-    constructor(containerId, dataMap, flameRenderer, flameChartContainer) {
-        this.dataMap = dataMap;
+    constructor(containerId, dataManager, flameRenderer, flameChartContainer, selectionManager) {
+        this.dataManager = dataManager;
         this.renderer = flameRenderer;
         this.container = document.getElementById(containerId);
         this.flameChartContainer = flameChartContainer;
+        this.selectionManager = selectionManager;
+
+        // Initialize selection values with defaults
+        this.dataMap = this.dataManager.getData();
+        this.threadSelectionValue = Object.keys(this.dataMap)[0] || null;
+        this.graphStyleSelectionValue = 'logical';
+        this.showLogical = true;
+        
+        // dataMap
+        this.dataMap = null;
+
+
     }
 
     initialize() {
+      
         this.createSidebarContentUI();
+        // this.selectAllByDefault();
+    }
+
+    updateFromManager(newData) {
+        this.dataMap = newData;
+    }
+
+    selectAllByDefault() {
+        console.log("Selecting all nodes by default");
+        this.selectionManager.selectAll(this.dataMap);
+        this.flameChartContainer.updateSelectionCountDisplay();
     }
 
     createSidebarContentUI() {
-        // Clear existing content
         this.container.innerHTML = '';
-        
-        // Add container styling to make it full width with a border
         this.container.style.width = '100%';
         this.container.style.boxSizing = 'border-box';
         this.container.style.border = '1px solid #ccc';
@@ -30,7 +52,6 @@ export class FlameSidebarController {
         const toggleContainer = document.createElement('div');
         toggleContainer.className = 'flame-toggle-buttons';
         
-        // Add CSS for toggle button
         const style = document.createElement('style');
         style.textContent = `
             .flame-toggle-buttons {
@@ -60,22 +81,18 @@ export class FlameSidebarController {
         `;
         document.head.appendChild(style);
         
-        // Create toggle button
         const toggleButton = document.createElement('button');
         toggleButton.className = 'expand-collapse-button';
         
-        // Create button text
         const buttonText = document.createElement('span');
         buttonText.textContent = 'Toggle Flame Chart';
         toggleButton.appendChild(buttonText);
         
-        // Create icon element
         const iconElement = document.createElement('span');
         iconElement.className = 'expand-collapse-icon';
         iconElement.textContent = '⇕';
         toggleButton.appendChild(iconElement);
         
-        // Add click event listener
         toggleButton.addEventListener('click', () => {
             if (this.flameChartContainer.containerState === CONSTANTS.STATES.MINIMIZED) {
                 this.flameChartContainer.setContainerFullyExpand();
@@ -94,16 +111,13 @@ export class FlameSidebarController {
         const selectorContainer = document.createElement('div');
         selectorContainer.className = 'thread-selector';
         
-        // Create header
         const header = document.createElement('h2');
         header.textContent = 'Thread Selection';
         selectorContainer.appendChild(header);
         
-        // Create form for radio buttons
         const form = document.createElement('form');
         form.className = 'thread-selector-form';
         
-        // Add CSS for text wrapping and container styling
         const style = document.createElement('style');
         style.textContent = `
             .radio-container {
@@ -128,10 +142,8 @@ export class FlameSidebarController {
         `;
         document.head.appendChild(style);
         
-        // Get keys from dataMap
-        const threadKeys = Object.keys(this.dataMap);
+        const threadKeys = Object.keys(this.dataManager.getData());
         
-        // Create radio buttons for each thread
         threadKeys.forEach((key, index) => {
             const radioContainer = document.createElement('div');
             radioContainer.className = 'radio-container';
@@ -144,16 +156,13 @@ export class FlameSidebarController {
             radioInput.value = key;
             radioInput.style.verticalAlign = 'top';
             
-            // Make the first option selected by default
-            if (index === 0) {
-                radioInput.checked = true;
-            }
+            // Check if this is the currently selected thread
+            radioInput.checked = key === this.threadSelectionValue;
             
-            // Add event listener
             radioInput.addEventListener('change', () => {
                 if (radioInput.checked) {
-                    const newData = this.dataMap[key];
-                    this.renderer.updateData(newData, true); // resetZoomAfterUpdate = true
+                    this.threadSelectionValue = key;
+                    this.renderData();
                 }
             });
             
@@ -171,14 +180,24 @@ export class FlameSidebarController {
         selectorContainer.appendChild(form);
         this.container.appendChild(selectorContainer);
         
-        // Initialize with the first thread if available
-        if (threadKeys.length > 0) {
-            const firstKey = threadKeys[0];
-            // Set a small timeout to ensure the UI is fully created before updating
+        // Initialize with the selected thread
+        if (this.threadSelectionValue) {
             setTimeout(() => {
-                this.renderer.updateData(this.dataMap[firstKey], true);
+               this.renderData();
             }, 10);
         }
+    }
+
+    renderData() {
+        const dataMap = this.dataManager.getData();
+        const currentDisplayData = dataMap[this.threadSelectionValue];
+        const newData = this.showLogical
+                    ? mapMethodDataToLogicalFlameGraph(currentDisplayData)
+                    : mapMethodDataToTemporalFlameGraph(currentDisplayData, true);
+      
+        this.renderer.updateData(newData, true);
+        this.flameChartContainer.updateSelectionCountDisplay();
+        console.log("Flame graph data updated:", newData);
     }
 
 
@@ -186,23 +205,19 @@ export class FlameSidebarController {
         const styleContainer = document.createElement('div');
         styleContainer.className = 'style-selector';
         
-        // Create header
         const header = document.createElement('h2');
         header.textContent = 'Flame Graph Style';
         styleContainer.appendChild(header);
         
-        // Create form for radio buttons
         const form = document.createElement('form');
         form.className = 'style-selector-form';
         
-        // Define style options
         const styleOptions = [
             { id: 'logical', text: 'Logical', value: true, description: 'Ignores time information, focuses on method call relationships' },
             { id: 'temporal', text: 'Temporal', value: false, description: 'Sets block widths based on actual time usage' }
         ];
         
-        // Create radio buttons for each style
-        styleOptions.forEach((option, index) => {
+        styleOptions.forEach((option) => {
             const radioContainer = document.createElement('div');
             radioContainer.className = 'radio-container';
             
@@ -211,18 +226,18 @@ export class FlameSidebarController {
             radioInput.id = `style-${option.id}`;
             radioInput.name = 'style-selection';
             radioInput.value = option.id;
-            radioInput.checked = option.id === 'logical'; // Logical is selected by default
+            radioInput.checked = option.id === this.graphStyleSelectionValue;
             radioInput.style.verticalAlign = 'top';
             radioInput.style.cursor = "pointer";
             
-            // Add event listener
             radioInput.addEventListener('change', () => {
                 if (radioInput.checked) {
-                    this.renderer.switchWidthMode(option.value);
+                    this.graphStyleSelectionValue = option.id;
+                    this.showLogical = option.value;
+                    this.renderData();
                 }
             });
             
-            // Create label with description
             const labelContainer = document.createElement('div');
             labelContainer.className = 'label-container';
             
@@ -234,7 +249,6 @@ export class FlameSidebarController {
             
             labelContainer.appendChild(label);
             
-            // Add description text
             const description = document.createElement('div');
             description.className = 'style-description';
             description.textContent = option.description;
@@ -245,7 +259,6 @@ export class FlameSidebarController {
             form.appendChild(radioContainer);
         });
         
-        // Add some styling
         const style = document.createElement('style');
         style.textContent = `
             .style-selector {
@@ -268,14 +281,17 @@ export class FlameSidebarController {
             .style-label {
                 font-weight: bold;
             }
-
         `;
         document.head.appendChild(style);
         
         styleContainer.appendChild(form);
         this.container.appendChild(styleContainer);
         
-        // Set the initial style (logical by default)
-        this.renderer.switchWidthMode(true);
+        // Set the initial style based on the selected value
+        const selectedOption = styleOptions.find(option => option.id === this.graphStyleSelectionValue);
+        if (selectedOption) {
+            this.showLogical = selectedOption.value;
+            this.renderData();
+        }
     }
 }
