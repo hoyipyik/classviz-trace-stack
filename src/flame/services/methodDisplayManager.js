@@ -257,7 +257,7 @@ export class MethodsDisplayManager {
       // Add all nodes in a single batch operation for better performance
       if (nodesToAdd.length > 0) {
         this.cy.add(nodesToAdd);
-        console.log(`Added ${nodesToAdd.length} method nodes`);
+        // console.log(`Added ${nodesToAdd.length} method nodes`);
   
         // Adjust parent node heights to accommodate methods
         parentIds.forEach(classId => {
@@ -327,7 +327,7 @@ export class MethodsDisplayManager {
         
         if (!edgesToRemove.empty()) {
           this.cy.remove(edgesToRemove);
-          console.log(`Removed ${edgesToRemove.size()} method call edges`);
+          // console.log(`Removed ${edgesToRemove.size()} method call edges`);
         }
       }
       
@@ -343,7 +343,7 @@ export class MethodsDisplayManager {
         
         if (!nodesToRemove.empty()) {
           this.cy.remove(nodesToRemove);
-          console.log(`Removed ${nodesToRemove.size()} method nodes`);
+          // console.log(`Removed ${nodesToRemove.size()} method nodes`);
         }
       }
       
@@ -380,7 +380,7 @@ export class MethodsDisplayManager {
             classNode.style(styleObj);
             
             // Log restoration for debugging
-            console.log(`Restored original style for class ${classId}`);
+            // console.log(`Restored original style for class ${classId}`);
           } else {
             // Fallback to default styling if original dimensions not available
             classNode.style({
@@ -534,7 +534,7 @@ export class MethodsDisplayManager {
       // Add edges in batch
       if (edgesToAdd.length > 0) {
         this.cy.add(edgesToAdd);
-        console.log(`Added ${edgesToAdd.length} method call edges`);
+        // console.log(`Added ${edgesToAdd.length} method call edges`);
   
         // Style trace_call edges
         this.cy.edges(`[interaction = "trace_call"]`).style({
