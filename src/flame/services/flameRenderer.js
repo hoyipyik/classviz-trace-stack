@@ -201,25 +201,25 @@ export class FlameGraphRenderer {
 
         // button click handlers - modified to use the passed node data
         const handleShowAllClick = (e, nodeData) => {
-            e.stopPropagation(); 
+            e.stopPropagation();
             console.log('Select All Descendants clicked for node:', nodeData);
             this.selectionManager.selectAllDescendants(nodeData);
         };
 
         const handleHideAllClick = (e, nodeData) => {
-            e.stopPropagation(); 
+            e.stopPropagation();
             console.log('Clear All Descendants clicked for node:', nodeData);
             this.selectionManager.clearAllDescendants(nodeData);
         };
 
         const handleShowDirectClick = (e, nodeData) => {
-            e.stopPropagation(); 
+            e.stopPropagation();
             console.log('Select Direct Children clicked for node:', nodeData);
             this.selectionManager.selectDirectChildren(nodeData);
         };
 
         const handleHideDirectClick = (e, nodeData) => {
-            e.stopPropagation(); 
+            e.stopPropagation();
             console.log('Clear Direct Children clicked for node:', nodeData);
             this.selectionManager.clearDirectChildren(nodeData);
         };
@@ -243,7 +243,7 @@ export class FlameGraphRenderer {
             if (autoHideTimeout) {
                 clearTimeout(autoHideTimeout);
             }
-            
+
             // Set a new timeout to hide the card after inactivity (3 seconds)
             autoHideTimeout = setTimeout(() => {
                 if (!mouseOverCard) {
@@ -323,7 +323,7 @@ export class FlameGraphRenderer {
                 });
             }, 0);
 
-    
+
             hoverCard.style.display = 'block';
             hoverCard.style.opacity = '0';
             hoverCard.style.visibility = 'hidden'; // avoid flicker
@@ -332,7 +332,7 @@ export class FlameGraphRenderer {
             const cardRect = hoverCard.getBoundingClientRect();
             const cardWidth = cardRect.width;
             const cardHeight = cardRect.height;
-            
+
             // get the viewport size
             const viewportWidth = window.innerWidth;
             const viewportHeight = window.innerHeight;
@@ -369,10 +369,10 @@ export class FlameGraphRenderer {
                 clearTimeout(autoHideTimeout);
                 autoHideTimeout = null;
             }
-            
+
             hoverCard.style.opacity = '0';
             hoverCard.style.transform = 'translateY(5px)';
-            
+
             // Hide immediately after opacity transition
             setTimeout(() => {
                 if (hoverCard.style.opacity === '0') {
@@ -415,7 +415,7 @@ export class FlameGraphRenderer {
                 if (autoHideTimeout) {
                     clearTimeout(autoHideTimeout);
                 }
-                
+
                 autoHideTimeout = setTimeout(() => {
                     if (!mouseOverCard) {
                         hideHoverCard();
@@ -466,6 +466,33 @@ export class FlameGraphRenderer {
         }
     }
 
+    // 直接使用D3操作SVG实现30%-70%区间显示
+    zoomFlameGraphWithD3(chartSelector = ".d3-flame-graph", minPercent = 30, maxPercent = 70) {
+        // 获取火焰图SVG
+        const svg = d3.select(`${chartSelector}`);
+        if (svg.empty()) {
+            console.warn('火焰图SVG元素不存在');
+            return;
+        }
+
+        // 获取SVG尺寸
+        const width = parseInt(svg.attr('width')) || 960;
+        const height = parseInt(svg.attr('height')) || 500;
+
+        // 保存原始宽度（如果需要恢复）
+        if (!svg.attr('data-original-width')) {
+            svg.attr('data-original-width', width);
+        }
+
+        // 计算可视区域
+        const xStart = (minPercent / 100) * width;
+        const viewWidth = ((maxPercent - minPercent) / 100) * width;
+
+        // 设置viewBox来仅显示指定区域
+        svg.attr('viewBox', `${xStart} 0 ${viewWidth} ${height}`)
+        .attr('preserveAspectRatio', 'none');; // 可选：调整SVG宽度以匹配可视区域
+    }
+
     /**
      * Updates the flame graph with new data
      * 
@@ -478,6 +505,7 @@ export class FlameGraphRenderer {
             this.showError("No data available for update");
             return;
         }
+        console.log(newData);
 
         this.graphData = newData;
 
@@ -526,6 +554,7 @@ export class FlameGraphRenderer {
             console.log("Resetting zoom after update");
             this.resetZoom();
         }
+
     }
 
     setupReflowHandler() {
