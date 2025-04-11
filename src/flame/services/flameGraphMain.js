@@ -10,10 +10,10 @@ import { MethodsDisplayManager } from "./methodDisplayManager.js";
  * FlameGraph service that ties everything together
  */
 export class FlameGraphService {
-    constructor() {
+    constructor(cascadeTreeData, nodeMap, rootNode) {
         // Core data management
-        this.methodDisplayManager = new MethodsDisplayManager(window.cy, window.cytrace);
-        this.dataManager = new TraceDataManager(this.methodDisplayManager, window.cytrace);
+        this.methodDisplayManager = new MethodsDisplayManager(window.cy, rootNode, nodeMap);
+        this.dataManager = new TraceDataManager(this.methodDisplayManager, cascadeTreeData, nodeMap);
         this.selectionManager = new FlameGraphSelectionManager(this.dataManager);
         
         // Visualization components
@@ -75,8 +75,6 @@ export class FlameGraphService {
             
             if (options.updateSelection) {
                 this.selectionManager.updateSelectedNodes(newData);
-                // var testMap = this.selectionManager.selectedNodes;
-                // console.log("!!!!!Selected nodes:", testMap);
             }
         });
 
