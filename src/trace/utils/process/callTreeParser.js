@@ -14,18 +14,18 @@ export const EXCEPT_METHODS = [
 ];
 
 /**
- * 将XML文档解析为多种格式：级联结构、节点映射和nodes/edges数组
- * @param {Document} xmlDoc - 要解析的XML文档
- * @param {Object} options - 配置选项
- * @param {Array<string>} [options.excludeMethods=[]] - 要排除的方法名称 (例如 ['<init>', '<clinit>'])
- * @param {boolean} [options.allowExcludedMethodsAtRoot=false] - 如果位于根节点则允许排除的方法
- * @param {boolean} [options.onlyPackages=false] - 仅包括特定包中的节点
- * @param {Array<string>} [options.includedPackages=[]] - 要包含的包 (例如 ['nl.tudelft.jpacman'])
- * @param {Array<string>} [options.exceptMethods=[]] - 即使来自排除的包也要包含的特定方法路径
- * @return {Object} 包含多种数据表示的结果对象
+ * Parses XML document into multiple formats: cascade structure, node mapping, and nodes/edges arrays
+ * @param {Document} xmlDoc - XML document to parse
+ * @param {Object} options - Configuration options
+ * @param {Array<string>} [options.excludeMethods=[]] - Method names to exclude (e.g., ['<init>', '<clinit>'])
+ * @param {boolean} [options.allowExcludedMethodsAtRoot=false] - Allow excluded methods if they are at root
+ * @param {boolean} [options.onlyPackages=false] - Only include nodes from specific packages
+ * @param {Array<string>} [options.includedPackages=[]] - Packages to include (e.g., ['nl.tudelft.jpacman'])
+ * @param {Array<string>} [options.exceptMethods=[]] - Specific method paths to include even if from excluded packages
+ * @return {Object} Result object containing multiple data representations
  */
 export const callTreeParser = (xmlDoc, options = {}) => {
-  // 带有合理默认值的默认选项
+  // Default options with reasonable defaults
   const config = {
     excludeMethods: ['<init>', '<clinit>'],
     allowExcludedMethodsAtRoot: false,
@@ -35,51 +35,51 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     ...options
   };
 
-  // 用于直接访问的节点映射
+  // Node mapping for direct access
   const nodeMap = {};
   
-  // 保存节点和边的数组（用于图形表示）
+  // Arrays to store nodes and edges (for graph representation)
   const nodes = [];
   const edges = [];
   
-  // 节点ID计数器（从0开始）
+  // Node ID counter (starts from 0)
   let nodeIdCounter = 0;
   
-  // 创建节点过滤器
+  // Create node filter
   const shouldIncludeNode = createNodeFilter(config);
 
   /**
-   * 使用DFS处理节点并构建级联结构
-   * @param {Element} xmlNode - 要遍历的XML节点
-   * @param {string|null} parentId - 父节点的ID，根节点为null
-   * @param {number} depth - 树中的当前深度
-   * @param {number} leftBound - 计算节点位置的左边界
-   * @param {Map} visitedPaths - 用于跟踪递归检测的访问路径映射
-   * @param {boolean} parentIsFanout - 父节点是否有扇出
-   * @return {Object} 节点数据和新的左边界
+   * Process nodes using DFS and build cascade structure
+   * @param {Element} xmlNode - XML node to traverse
+   * @param {string|null} parentId - Parent node ID, null for root
+   * @param {number} depth - Current depth in tree
+   * @param {number} leftBound - Left boundary for calculating node position
+   * @param {Map} visitedPaths - Map of visited paths for recursion detection
+   * @param {boolean} parentIsFanout - Whether parent node has fanout
+   * @return {Object} Node data and new left boundary
    */
   const processNodeDFS = (xmlNode, parentId = null, depth = 0, leftBound = 0, visitedPaths = new Map(), parentIsFanout = false) => {
     const isRoot = !parentId;
     const attributes = getNodeAttributes(xmlNode);
 
-    // 跳过排除的方法（除非在根节点且允许）
+    // Skip excluded methods (unless at root and allowed)
     if (config.excludeMethods.includes(attributes.methodName) && !(isRoot && config.allowExcludedMethodsAtRoot)) {
       return { nodeData: null, newLeftBound: leftBound };
     }
 
-    // 为节点创建唯一的数字ID（从0开始）
+    // Create unique numeric ID for node (starting from 0)
     const nodeId = (nodeIdCounter++).toString();
     
-    // 根据配置筛选子节点
+    // Filter child nodes based on configuration
     const childNodes = getFilteredChildNodes(xmlNode, shouldIncludeNode, isRoot);
 
-    // 创建节点标签
+    // Create node label
     const label = createNodeLabel(isRoot, attributes.className, attributes.methodName);
 
-    // 计算节点位置
+    // Calculate node position
     const position = calculateNodePosition(xmlNode, shouldIncludeNode, depth, leftBound, childNodes);
 
-    // 计算节点状态
+    // Calculate node status
     const { status, visitedPaths: updatedVisitedPaths } = computeNodeStatus(
       isRoot,
       childNodes,
@@ -90,16 +90,16 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       nodeId
     );
 
-    // 计算树度量
+    // Calculate tree metrics
     const treeMetrics = calculateTreeMetrics(xmlNode, shouldIncludeNode);
 
-    // 获取和处理节点数据
+    // Fetch and process node data
     const processedData = fetchNodeData(attributes.className, attributes.methodName, isRoot);
 
-    // 创建包含所有信息的节点数据
+    // Create node data with all information
     const nodeData = {
       id: nodeId,
-      parentId: parentId, // 包含父节点ID
+      parentId: parentId, // Include parent node ID
       label,
       className: attributes.className,
       methodName: attributes.methodName,
@@ -109,39 +109,39 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       isRoot,
       collapsed: false,
       selected: false,
-      // 树统计
+      // Tree statistics
       treeStats: {
         directChildrenCount: treeMetrics.directChildrenCount,
         totalDescendants: treeMetrics.totalDescendants,
         subtreeDepth: treeMetrics.subtreeDepth,
         level: depth
       },
-      // 节点状态
+      // Node status
       status,
-      // 初始化子节点数组
+      // Initialize children array
       children: []
     };
 
-    // 将节点添加到映射中以便直接访问
+    // Add node to mapping for direct access
     nodeMap[nodeId] = nodeData;
     
-    // 创建Cytoscape节点并添加到nodes数组
+    // Create Cytoscape node and add to nodes array
     nodes.push(createCytoscapeNode(nodeData, position));
     
-    // 如果有父节点，创建边并添加到edges数组
+    // If there's a parent, create edge and add to edges array
     if (parentId !== null) {
       edges.push(createCytoscapeEdge(parentId, nodeId));
     }
 
-    // 更新leftBound用于子节点布局
+    // Update leftBound for child node layout
     let newLeftBound = leftBound;
     
-    // 处理子节点并将它们添加到当前节点
+    // Process child nodes and add them to current node
     if (childNodes.length > 0) {
       childNodes.forEach(childNode => {
         const { nodeData: childData, newLeftBound: childLeftBound } = processNodeDFS(
           childNode,
-          nodeId, // 传递当前节点ID作为子节点的父ID
+          nodeId, // Pass current node ID as parent ID for children
           depth + 1,
           newLeftBound,
           new Map(updatedVisitedPaths),
@@ -154,17 +154,17 @@ export const callTreeParser = (xmlDoc, options = {}) => {
         }
       });
     } else {
-      // 如果没有子节点，仅递增leftBound
+      // If no children, just increment leftBound
       newLeftBound += LAYOUT.NODE_SIZE;
     }
 
     return { nodeData, newLeftBound };
   };
 
-  // 获取根节点并开始处理
+  // Get root node and start processing
   const rootNode = xmlDoc.getElementsByTagName('tree')[0];
   if (!rootNode) {
-    console.error("XML文档中未找到根'tree'元素");
+    console.error("Root 'tree' element not found in XML document");
     return { 
       cascadeTree: {}, 
       nodeMap: {}, 
@@ -174,10 +174,10 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     };
   }
 
-  // 从根节点开始处理
+  // Start processing from root node
   const { nodeData: rootData } = processNodeDFS(rootNode, null, 0, 0, new Map(), false);
   
-  // 如果处理失败，返回空结果
+  // Return empty result if processing failed
   if (!rootData) {
     return { 
       cascadeTree: {}, 
@@ -188,29 +188,29 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     };
   }
 
-  // 创建以root子节点的label为key的结构
+  // Create structure with root children's labels as keys
   const labelBasedTree = {};
   
-  // 将根节点的子节点作为顶层条目添加到labelBasedTree
+  // Add root node's children as top-level entries in labelBasedTree
   if (rootData.children && rootData.children.length > 0) {
     rootData.children.forEach(child => {
       labelBasedTree[child.label] = child;
     });
   } else {
-    // 如果根节点没有子节点，则使用根节点本身
+    // Use root node itself if it has no children
     labelBasedTree[rootData.label] = rootData;
   }
 
-  // 获取Cytoscape样式
+  // Get Cytoscape styles
   const styles = getCytoscapeStyles(LAYOUT.NODE_SIZE);
 
-  // 返回综合结果
+  // Return comprehensive result
   return { 
-    cascadeTree: labelBasedTree,  // 以label为key的级联树
-    nodeMap: nodeMap,             // 节点ID映射
-    rootNode: rootData,           // 原始根节点
-    nodes: nodes,                 // 用于图形表示的节点数组
-    edges: edges,                 // 用于图形表示的边数组
-    cytoscapeStyles: styles                // Cytoscape样式
+    cascadeTree: labelBasedTree,  // Cascade tree with labels as keys
+    nodeMap: nodeMap,             // Node ID mapping
+    rootNode: rootData,           // Original root node
+    nodes: nodes,                 // Node array for graph representation
+    edges: edges,                 // Edge array for graph representation
+    cytoscapeStyles: styles       // Cytoscape styles
   };
 };
