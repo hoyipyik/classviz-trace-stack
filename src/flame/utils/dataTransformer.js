@@ -235,3 +235,63 @@ export function mapMethodDataToLogicalFlameGraph(methodNode) {
 
   return node;
 }
+
+
+/**
+ * Generate arrays of nodes and edges from cascade tree and node mapping (nodes without children property)
+ * @param {Object} cascadeTree - Cascade tree structure
+ * @return {Object} Object containing arrays of nodes and edges
+ */
+export function convertToNodesAndEdges(cascadeTree) {
+  const nodes = [];
+  const edges = [];
+  const processedIds = new Set();
+  
+  /**
+   * Recursively process node and its children
+   * @param {Object} node - Node to process
+   */
+  function processNode(node) {
+    // Prevent processing the same node multiple times
+    if (processedIds.has(node.id)) {
+      return;
+    }
+    
+    // Mark as processed
+    processedIds.add(node.id);
+    
+    // Create data portion of node object (excluding children)
+    const nodeData = { ...node };
+    delete nodeData.children;  // Remove children property
+    
+    // Create node object and add to nodes array
+    nodes.push({
+      data: nodeData
+    });
+    
+    // Get children of original node
+    const children = node.children || [];
+    
+    // Process child relationships
+    children.forEach(child => {
+      // Create edge
+      edges.push({
+        data: {
+          id: `e${node.id}-${child.id}`,
+          source: node.id,
+          target: child.id
+        }
+      });
+      
+      // Recursively process child node
+      processNode(child);
+    });
+  }
+  
+  // Start processing from top-level nodes of cascade tree
+  Object.values(cascadeTree).forEach(topNode => {
+    processNode(topNode);
+  });
+  
+  return { nodes, edges };
+}
