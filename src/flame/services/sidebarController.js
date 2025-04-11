@@ -14,10 +14,6 @@ export class FlameSidebarController {
         this.threadSelectionValue = Object.keys(this.dataMap)[0] || null;
         this.graphStyleSelectionValue = 'logical';
         this.showLogical = true;
-        
-        // dataMap
-        this.dataMap = null;
-
 
     }
 
@@ -31,11 +27,11 @@ export class FlameSidebarController {
         this.dataMap = newData;
     }
 
-    selectAllByDefault() {
-        console.log("Selecting all nodes by default");
-        this.selectionManager.selectAll(this.dataMap);
-        this.flameChartContainer.updateSelectionCountDisplay();
-    }
+    // selectAllByDefault() {
+    //     console.log("Selecting all nodes by default");
+    //     this.selectionManager.selectAll(this.dataMap);
+    //     this.flameChartContainer.updateSelectionCountDisplay();
+    // }
 
     createSidebarContentUI() {
         this.container.innerHTML = '';
