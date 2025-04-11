@@ -3,7 +3,7 @@ import { xmlFileReader } from "../../../utils/process/xmlFileReader.js";
 // import { updateTraceNodesOnClassviz } from "../../../utils/traceNodeOnClassviz/nodeManager.js";
 import { renderCallTree } from "../../renderers/callTree/index.js";
 import { rerender } from "../../views/index.js";
-import {loadFlameGraphPlugin} from "../../../../flame/index.js"
+import { loadFlameGraphPlugin } from "../../../../flame/index.js"
 
 export const traceLoader = () => {
     document.addEventListener('DOMContentLoaded', function () {
@@ -22,13 +22,12 @@ export const traceLoader = () => {
             const file = event.target.files[0];
             if (file) {
                 const parsedXml = await xmlFileReader(file);
-                // console.log("context", window.context);
-                const { nodes: parsedNodes, edges: parsedEdges, style } = callTreeParser(parsedXml);
-                const graph = { nodes: parsedNodes, edges: parsedEdges, style };
-                window.graph = graph;
-                rerender(true);
-                renderCallTree(graph);
-                loadFlameGraphPlugin();
+                console.log("context", window.context);
+                const { cascadeTree, nodeMap, nodes: parsedNodes, rootNode,
+                    edges: parsedEdges, cytoscapeStyles: style } = callTreeParser(parsedXml);
+                // const graph = { nodes: parsedNodes, edges: parsedEdges, style };
+                // renderCallTree(graph);
+                loadFlameGraphPlugin(cascadeTree, nodeMap, rootNode);
                 // updateTraceNodesOnClassviz();
 
             }
