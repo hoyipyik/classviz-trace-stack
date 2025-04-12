@@ -430,7 +430,7 @@ export class FlameGraphRenderer {
     handleNodeClick(d) {
         if (!d || !d.data) return;
 
-        // console.info("Clicked on:", d.data);
+        console.info("Clicked on:", d.data);
 
         if (this.selectionManager.isEnabled()) {
             const isSelected = this.selectionManager.toggleNodeSelection(d.data);
