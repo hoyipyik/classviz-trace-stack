@@ -6,8 +6,8 @@
 import { updateTraceNodesOnClassviz } from "../trace/utils/traceNodeOnClassviz/nodeManager.js";
 import { FlameGraphService } from "./services/flameGraphMain.js";
 // Export the flame graph plugin loader
-export const loadFlameGraphPlugin = (cascadeTree, nodeMap, rootNode, packageColorMap) => {
-    const service = new FlameGraphService(cascadeTree, nodeMap, rootNode, packageColorMap);
+export const loadFlameGraphPlugin = (cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap) => {
+    const service = new FlameGraphService(cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap);
     // updateTraceNodesOnClassviz();
     // Use 'DOMContentLoaded' for better performance than document.readyState check
     if (document.readyState === 'loading') {

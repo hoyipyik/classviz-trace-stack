@@ -286,6 +286,29 @@ export const callTreeParser = (xmlDoc, options = {}) => {
   // Get Cytoscape styles
   const styles = getCytoscapeStyles(LAYOUT.NODE_SIZE);
 
+  rootData.children.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+
+  const idRangeByThreadMap = new Map();
+
+  // Process each thread to determine its ID range
+  for (let i = 0; i < rootData.children.length; i++) {
+    const thread = rootData.children[i];
+    const startId = parseInt(thread.id);
+
+    // The end ID is one less than the next thread's ID
+    // If it's the last thread, use the nodeMap's size as the boundary
+    let endId;
+    if (i < rootData.children.length - 1) {
+      endId = parseInt(rootData.children[i + 1].id) - 1;
+    } else {
+      // For the last thread, use the total number of nodes (Object.keys(nodeMap).length)
+      endId = Object.keys(nodeMap).length - 1;
+    }
+
+    // Store the ID range with the thread label as key
+    idRangeByThreadMap.set(thread.label, [startId, endId]);
+  }
+
   // Return comprehensive result
   return {
     cascadeTree: labelBasedTree,    // Cascade tree with labels as keys
@@ -294,6 +317,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     nodes: nodes,                   // Node array for graph representation
     edges: edges,                   // Edge array for graph representation
     cytoscapeStyles: styles,        // Cytoscape styles
-    packageColorMap: packageColorMap // Map of package names to colors
+    packageColorMap: packageColorMap, // Map of package names to colors
+    idRangeByThreadMap: idRangeByThreadMap
   };
 };
