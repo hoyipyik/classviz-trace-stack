@@ -4,11 +4,10 @@ import { CONSTANTS } from "./contants.js";
  * UI Controller for the flame graph container
  */
 export class FlameGraphUIController {
-    constructor(containerId, renderer, selectionManager, packageColorMap) {
+    constructor(containerId, renderer, selectionManager) {
         this.container = document.getElementById(containerId);
         this.renderer = renderer;
         this.selectionManager = selectionManager;
-        this.packageColorMap = packageColorMap;
         this.containerState = CONSTANTS.STATES.MINIMIZED; // Start minimized (hidden)
 
         // Bind methods to preserve 'this' context
