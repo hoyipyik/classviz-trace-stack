@@ -47,7 +47,7 @@ export class MethodsDisplayManager {
     if (this.getThreadClassNamesCallback) {
       try {
         this.EXCEPT_METHODS = this.getThreadClassNamesCallback();
-        console.log("Updated EXCEPT_METHODS from callback:", this.EXCEPT_METHODS);
+        // console.log("Updated EXCEPT_METHODS from callback:", this.EXCEPT_METHODS);
       } catch (error) {
         console.warn("Error getting thread class names:", error);
       }
@@ -86,7 +86,7 @@ export class MethodsDisplayManager {
     if (parentId) {
       nodeParentMap[nodeId] = parentId;
     }
-    console.log(node, "‹€››‹€€€€€€€€€€€€€€€€")
+    // console.log(node, "‹€››‹€€€€€€€€€€€€€€€€")
     // Check if node is selected
     if (node.selected === true) {
       selectedNodes.add(nodeId);
@@ -364,201 +364,186 @@ export class MethodsDisplayManager {
   }
 
   /**
-   * Removes method nodes and their connections from the graph
-   * and restores the original node styles
-   */
-  removeMethodsFromDisplay() {
-    if (!this.methodsGraph) {
-      console.warn("No methods graph data available to remove methods");
-      return;
-    }
+ * Removes method nodes and their connections from the graph
+ * and properly triggers layout recalculation
+ */
+removeMethodsFromDisplay() {
+  if (!this.methodsGraph) {
+    console.warn("No methods graph data available to remove methods");
+    return;
+  }
+  
+  if (!this.cy) {
+    console.error("Main Cytoscape graph is not available");
+    return;
+  }
+  
+  try {
+    const { nodes: methodNodes, edges: methodCallEdges } = this.methodsGraph;
     
-    if (!this.cy) {
-      console.error("Main Cytoscape graph is not available");
-      return;
-    }
+    // Track parent class nodes that need height adjustment
+    const parentIds = new Set();
     
-    try {
-      const { nodes: methodNodes, edges: methodCallEdges } = this.methodsGraph;
-      
-      // Track parent class nodes that need height adjustment
-      const parentIds = new Set();
-      
-      // Collect method IDs to remove
-      const methodIds = methodNodes.map(methodNode => {
-        if (!methodNode || !methodNode.data || !methodNode.data.id) {
-          console.warn("Invalid method node:", methodNode);
-          return null;
-        }
-        
-        const methodId = methodNode.data.id;
-        const parenIndex = methodId.indexOf("(");
-        if (parenIndex === -1) {
-          console.warn(`Invalid method ID format: ${methodId}`);
-          return null;
-        }
-        
-        const lastDotBeforeParens = methodId.lastIndexOf(".", parenIndex);
-        if (lastDotBeforeParens === -1) {
-          console.warn(`Cannot extract class ID from method ID: ${methodId}`);
-          return null;
-        }
-        
-        const classId = methodId.substring(0, lastDotBeforeParens);
-        
-        // Track the parent class for restoring later
-        parentIds.add(classId);
-        
-        return methodId;
-      }).filter(id => id !== null);
-      
-      // Collect edge IDs to remove
-      const edgeIds = methodCallEdges.map(edge => edge.data && edge.data.id).filter(id => id);
-      
-      // Remove all method edges first
-      if (edgeIds.length > 0) {
-        const edgesToRemove = this.cy.collection();
-        edgeIds.forEach(edgeId => {
-          const edge = this.cy.$id(edgeId);
-          if (edge.length > 0) {
-            edgesToRemove.merge(edge);
-          }
-        });
-        
-        if (!edgesToRemove.empty()) {
-          this.cy.remove(edgesToRemove);
-          console.log(`Removed ${edgesToRemove.size()} method call edges`);
-        }
+    // Collect method IDs to remove
+    const methodIds = methodNodes.map(methodNode => {
+      if (!methodNode || !methodNode.data || !methodNode.data.id) {
+        console.warn("Invalid method node:", methodNode);
+        return null;
       }
       
-      // Remove all method nodes
-      if (methodIds.length > 0) {
-        const nodesToRemove = this.cy.collection();
-        methodIds.forEach(methodId => {
-          const node = this.cy.$id(methodId);
-          if (node.length > 0) {
-            nodesToRemove.merge(node);
-          }
-        });
-        
-        if (!nodesToRemove.empty()) {
-          this.cy.remove(nodesToRemove);
-          console.log(`Removed ${nodesToRemove.size()} method nodes`);
-        }
+      const methodId = methodNode.data.id;
+      const parenIndex = methodId.indexOf("(");
+      if (parenIndex === -1) {
+        console.warn(`Invalid method ID format: ${methodId}`);
+        return null;
       }
       
-      // Restore parent class nodes to original style
+      const lastDotBeforeParens = methodId.lastIndexOf(".", parenIndex);
+      if (lastDotBeforeParens === -1) {
+        console.warn(`Cannot extract class ID from method ID: ${methodId}`);
+        return null;
+      }
+      
+      const classId = methodId.substring(0, lastDotBeforeParens);
+      
+      // Track the parent class for restoring later
+      parentIds.add(classId);
+      
+      return methodId;
+    }).filter(id => id !== null);
+    
+    // Collect edge IDs to remove
+    const edgeIds = methodCallEdges.map(edge => edge.data && edge.data.id).filter(id => id);
+    
+    // Remove all method edges first
+    if (edgeIds.length > 0) {
+      const edgesToRemove = this.cy.collection();
+      edgeIds.forEach(edgeId => {
+        const edge = this.cy.$id(edgeId);
+        if (edge.length > 0) {
+          edgesToRemove.merge(edge);
+        }
+      });
+      
+      if (!edgesToRemove.empty()) {
+        this.cy.remove(edgesToRemove);
+        console.log(`Removed ${edgesToRemove.size()} method call edges`);
+      }
+    }
+    
+    // Remove all method nodes
+    if (methodIds.length > 0) {
+      const nodesToRemove = this.cy.collection();
+      methodIds.forEach(methodId => {
+        const node = this.cy.$id(methodId);
+        if (node.length > 0) {
+          nodesToRemove.merge(node);
+        }
+      });
+      
+      if (!nodesToRemove.empty()) {
+        this.cy.remove(nodesToRemove);
+        console.log(`Removed ${nodesToRemove.size()} method nodes`);
+      }
+    }
+    
+    // First restore original styles with clean values
+    this.cy.batch(() => {
       parentIds.forEach(classId => {
         const classNode = this.cy.$id(classId);
         if (classNode.length > 0) {
-          // Get original dimensions if available
           const originalDimensions = this.originalNodeDimensions[classId];
           
           if (originalDimensions) {
-            // Create a complete style object with all properties
-            const styleObj = {
+            // Apply only essential style properties to avoid confusing layout
+            classNode.style({
               'width': originalDimensions.width,
               'height': originalDimensions.height,
-              'text-valign': originalDimensions.textValign,
-              'text-halign': originalDimensions.textHalign,
-              'text-margin-y': originalDimensions.textMarginY,
-              'background-color': originalDimensions.backgroundColor,
-              'color': originalDimensions.color,
-              'border-width': originalDimensions.borderWidth,
-              'border-color': originalDimensions.borderColor,
-              'shape': originalDimensions.shape
-            };
-            
-            // Add additional properties if they exist
-            if (originalDimensions.borderOpacity) styleObj['border-opacity'] = originalDimensions.borderOpacity;
-            if (originalDimensions.fontSize) styleObj['font-size'] = originalDimensions.fontSize;
-            if (originalDimensions.textWrap) styleObj['text-wrap'] = originalDimensions.textWrap;
-            if (originalDimensions.textMaxWidth) styleObj['text-max-width'] = originalDimensions.textMaxWidth;
-            if (originalDimensions.opacity) styleObj['opacity'] = originalDimensions.opacity;
-            
-            // Apply styles in one go
-            classNode.style(styleObj);
+              'text-valign': originalDimensions.textValign || 'center',
+              'text-halign': originalDimensions.textHalign || 'center',
+              'text-margin-y': originalDimensions.textMarginY || 0
+            });
           } else {
-            // Fallback to default styling if original dimensions not available
+            // Standard style reset
             classNode.style({
               'text-valign': 'center',
               'text-halign': 'center',
               'text-margin-y': 0
             });
-            console.warn(`No original dimensions found for class ${classId}, using defaults`);
           }
         }
       });
-      
-      // Force a layout update if needed
-      try {
-        this.cy.layout({
-          name: 'preset',
-          fit: false,
-          animate: false
-        }).run();
-      } catch (error) {
-        console.warn("Error running layout:", error);
-      }
-      
-      // Clear the stored dimensions to prevent stale data
-      this.originalNodeDimensions = {};
-    } catch (error) {
-      console.error("Error removing methods from display:", error);
-    }
-  }
-
-  /**
-   * Stores the original dimensions and styles of parent class nodes before modifications
-   * @param {Array} methodNodes - Method nodes to be added
-   * @private
-   */
-  _storeOriginalDimensions(methodNodes) {
+    });
+    
+    console.log("Restored original dimensions for all parent nodes");
+    
+    // IMPORTANT: Let the layout algorithm run AFTER restoring styles
+    // This allows it to consider the proper dimensions
     try {
-      // Find all parent class IDs
-      methodNodes.forEach(methodNode => {
-        if (!methodNode || !methodNode.data || !methodNode.data.id) {
-          return;
+      // Force a small delay to ensure style changes are processed before layout
+      setTimeout(() => {
+        try {
+          // Get current layout from dropdown
+          const layoutName = $('#selectlayout').options[$('#selectlayout').selectedIndex].value;
+          console.log(`Triggering layout: ${layoutName}`);
+          
+          // Use the existing relayout function
+          relayout(this.cy, layoutName);
+        } catch (layoutError) {
+          console.warn("Error using relayout:", layoutError);
+          // Fallback to direct button click
+          $("#btn-relayout").click();
         }
-        
-        const methodId = methodNode.data.id;
-        const parenIndex = methodId.indexOf("(");
-        if (parenIndex === -1) return;
-        
-        const lastDotBeforeParens = methodId.lastIndexOf(".", parenIndex);
-        if (lastDotBeforeParens === -1) return;
-        
-        const classId = methodId.substring(0, lastDotBeforeParens);
-        
-        // Store dimensions if not already stored and class exists
-        if (!this.originalNodeDimensions[classId]) {
-          const classNode = this.cy.$id(classId);
-          if (classNode.length > 0) {
-            // Store all relevant style properties
-            this.originalNodeDimensions[classId] = {
-              width: classNode.style('width'),
-              height: classNode.style('height'),
-              textValign: classNode.style('text-valign'),
-              textHalign: classNode.style('text-halign'),
-              textMarginY: classNode.style('text-margin-y'),
-              backgroundColor: classNode.style('background-color'),
-              color: classNode.style('color'),
-              borderWidth: classNode.style('border-width'),
-              borderColor: classNode.style('border-color'),
-              borderOpacity: classNode.style('border-opacity'),
-              shape: classNode.style('shape'),
-              fontSize: classNode.style('font-size'),
-              textWrap: classNode.style('text-wrap'),
-              textMaxWidth: classNode.style('text-max-width'),
-              opacity: classNode.style('opacity')
-            };
-          }
-        }
-      });
+      }, 50);
     } catch (error) {
-      console.warn("Error storing original dimensions:", error);
+      console.warn("Error triggering layout:", error);
     }
+    
+    // Clear the stored dimensions
+    this.originalNodeDimensions = {};
+  } catch (error) {
+    console.error("Error removing methods from display:", error);
   }
+}
+
+/**
+ * Stores the original dimensions more cleanly with specific layout-relevant properties
+ */
+_storeOriginalDimensions(methodNodes) {
+  try {
+    methodNodes.forEach(methodNode => {
+      if (!methodNode || !methodNode.data || !methodNode.data.id) return;
+      
+      const methodId = methodNode.data.id;
+      const parenIndex = methodId.indexOf("(");
+      if (parenIndex === -1) return;
+      
+      const lastDotBeforeParens = methodId.lastIndexOf(".", parenIndex);
+      if (lastDotBeforeParens === -1) return;
+      
+      const classId = methodId.substring(0, lastDotBeforeParens);
+      
+      if (!this.originalNodeDimensions[classId]) {
+        const classNode = this.cy.$id(classId);
+        if (classNode.length > 0) {
+          // Store only layout-critical properties
+          this.originalNodeDimensions[classId] = {
+            // Most important for layout calculation
+            width: classNode.style('width'),
+            height: classNode.style('height'),
+            
+            // Text alignment affects internal geometry
+            textValign: classNode.style('text-valign'),
+            textHalign: classNode.style('text-halign'),
+            textMarginY: classNode.style('text-margin-y')
+          };
+        }
+      }
+    });
+  } catch (error) {
+    console.warn("Error storing original dimensions:", error);
+  }
+}
 
   /**
    * Styles method nodes within their parent containers
