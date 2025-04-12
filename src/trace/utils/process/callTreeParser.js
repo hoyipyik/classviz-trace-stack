@@ -8,22 +8,33 @@ import { calculateNodePosition } from './layoutCalculator.js';
 import { LAYOUT } from './constants.js';
 import { getCytoscapeStyles } from './cytoscapeStyles.js';
 
+/**
+ * Extracts the package name from a fully qualified class name
+ * @param {string} className - Fully qualified class name (e.g., nl.tudelft.jpacman.board.Square)
+ * @return {string} Package name (e.g., nl.tudelft.jpacman.board)
+ */
+function extractPackageName(className) {
+  if (!className || typeof className !== 'string') {
+    return '';
+  }
+  
+  // Find the last dot in the className
+  const lastDotIndex = className.lastIndexOf('.');
+  
+  // If there's no dot, return empty string (no package)
+  if (lastDotIndex === -1) {
+    return '';
+  }
+  
+  // Return everything before the last dot
+  return className.substring(0, lastDotIndex);
+}
+
 export const EXCEPT_METHODS = [
   'java.awt.EventDispatchThread.run()', 
   'java.util.concurrent.ThreadPoolExecutor$Worker.run()'
 ];
 
-/**
- * Parses XML document into multiple formats: cascade structure, node mapping, and nodes/edges arrays
- * @param {Document} xmlDoc - XML document to parse
- * @param {Object} options - Configuration options
- * @param {Array<string>} [options.excludeMethods=[]] - Method names to exclude (e.g., ['<init>', '<clinit>'])
- * @param {boolean} [options.allowExcludedMethodsAtRoot=false] - Allow excluded methods if they are at root
- * @param {boolean} [options.onlyPackages=false] - Only include nodes from specific packages
- * @param {Array<string>} [options.includedPackages=[]] - Packages to include (e.g., ['nl.tudelft.jpacman'])
- * @param {Array<string>} [options.exceptMethods=[]] - Specific method paths to include even if from excluded packages
- * @return {Object} Result object containing multiple data representations
- */
 export const callTreeParser = (xmlDoc, options = {}) => {
   // Default options with reasonable defaults
   const config = {
@@ -41,6 +52,9 @@ export const callTreeParser = (xmlDoc, options = {}) => {
   // Arrays to store nodes and edges (for graph representation)
   const nodes = [];
   const edges = [];
+  
+  // Set to store unique package names
+  const packages = new Set();
   
   // Node ID counter (starts from 0)
   let nodeIdCounter = 0;
@@ -65,6 +79,14 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     // Skip excluded methods (unless at root and allowed)
     if (config.excludeMethods.includes(attributes.methodName) && !(isRoot && config.allowExcludedMethodsAtRoot)) {
       return { nodeData: null, newLeftBound: leftBound };
+    }
+
+    // Extract package name and add to packages set if it exists
+    if (attributes.className) {
+      const packageName = extractPackageName(attributes.className);
+      if (packageName) {
+        packages.add(packageName);
+      }
     }
 
     // Create unique numeric ID for node (starting from 0)
@@ -170,7 +192,8 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       nodeMap: {}, 
       nodes: [], 
       edges: [],
-      rootNode: null
+      rootNode: null,
+      packages: new Set()
     };
   }
 
@@ -184,7 +207,8 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       nodeMap: {}, 
       nodes: [], 
       edges: [],
-      rootNode: null
+      rootNode: null,
+      packages: new Set()
     };
   }
 
@@ -211,6 +235,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     rootNode: rootData,           // Original root node
     nodes: nodes,                 // Node array for graph representation
     edges: edges,                 // Edge array for graph representation
-    cytoscapeStyles: styles       // Cytoscape styles
+    cytoscapeStyles: styles,      // Cytoscape styles
+    packages: packages            // Set of unique package names
   };
 };
