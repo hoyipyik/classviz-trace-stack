@@ -202,25 +202,25 @@ export class FlameGraphRenderer {
         // button click handlers - modified to use the passed node data
         const handleShowAllClick = (e, nodeData) => {
             e.stopPropagation();
-            console.log('Select All Descendants clicked for node:', nodeData);
+            // console.log('Select All Descendants clicked for node:', nodeData);
             this.selectionManager.selectAllDescendants(nodeData);
         };
 
         const handleHideAllClick = (e, nodeData) => {
             e.stopPropagation();
-            console.log('Clear All Descendants clicked for node:', nodeData);
+            // console.log('Clear All Descendants clicked for node:', nodeData);
             this.selectionManager.clearAllDescendants(nodeData);
         };
 
         const handleShowDirectClick = (e, nodeData) => {
             e.stopPropagation();
-            console.log('Select Direct Children clicked for node:', nodeData);
+            // console.log('Select Direct Children clicked for node:', nodeData);
             this.selectionManager.selectDirectChildren(nodeData);
         };
 
         const handleHideDirectClick = (e, nodeData) => {
             e.stopPropagation();
-            console.log('Clear Direct Children clicked for node:', nodeData);
+            // console.log('Clear Direct Children clicked for node:', nodeData);
             this.selectionManager.clearDirectChildren(nodeData);
         };
 
@@ -430,7 +430,7 @@ export class FlameGraphRenderer {
     handleNodeClick(d) {
         if (!d || !d.data) return;
 
-        console.info("Clicked on:", d.data);
+        // console.info("Clicked on:", d.data);
 
         if (this.selectionManager.isEnabled()) {
             const isSelected = this.selectionManager.toggleNodeSelection(d.data);
@@ -505,7 +505,7 @@ export class FlameGraphRenderer {
             this.showError("No data available for update");
             return;
         }
-        console.log(newData);
+        // console.log(newData);
 
         this.graphData = newData;
 
