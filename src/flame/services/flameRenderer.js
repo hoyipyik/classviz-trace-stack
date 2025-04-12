@@ -338,15 +338,15 @@ export class FlameGraphRenderer {
             const viewportHeight = window.innerHeight;
 
             // position the card
-            let left = x + 10;
-            let top = y + 10;
+            let left = x + 1;
+            let top = y + 1;
 
             // check if the card goes out of the viewport
             if (left + cardWidth > viewportWidth) {
-                left = Math.max(5, x - cardWidth - 10);
+                left = Math.max(5, x - cardWidth - 1);
             }
             if (top + cardHeight > viewportHeight) {
-                top = Math.max(5, viewportHeight - cardHeight - 10);
+                top = Math.max(5, viewportHeight - cardHeight - 1);
             }
 
             hoverCard.style.left = `${left}px`;
