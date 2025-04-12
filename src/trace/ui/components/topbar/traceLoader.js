@@ -1,8 +1,8 @@
 import { callTreeParser } from "../../../utils/process/callTreeParser.js";
 import { xmlFileReader } from "../../../utils/process/xmlFileReader.js";
 // import { updateTraceNodesOnClassviz } from "../../../utils/traceNodeOnClassviz/nodeManager.js";
-import { renderCallTree } from "../../renderers/callTree/index.js";
-import { rerender } from "../../views/index.js";
+// import { renderCallTree } from "../../renderers/callTree/index.js";
+// import { rerender } from "../../views/index.js";
 import { loadFlameGraphPlugin } from "../../../../flame/index.js"
 
 export const traceLoader = () => {
@@ -24,10 +24,10 @@ export const traceLoader = () => {
                 const parsedXml = await xmlFileReader(file);
                 console.log("context", window.context);
                 const { cascadeTree, nodeMap, nodes: parsedNodes, rootNode,
-                    edges: parsedEdges, cytoscapeStyles: style } = callTreeParser(parsedXml);
+                    edges: parsedEdges, cytoscapeStyles: style, packageColorMap  } = callTreeParser(parsedXml);
                 // const graph = { nodes: parsedNodes, edges: parsedEdges, style };
                 // renderCallTree(graph);
-                loadFlameGraphPlugin(cascadeTree, nodeMap, rootNode);
+                loadFlameGraphPlugin(cascadeTree, nodeMap, rootNode, packageColorMap);
                 // updateTraceNodesOnClassviz();
 
             }

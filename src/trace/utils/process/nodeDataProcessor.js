@@ -1,5 +1,5 @@
 import { nodeDataFetcher } from "../context/nodeDataFetcher.js";
-import { getLayerColor, getPackageColor } from './constants.js';
+// import { getLayerColor, getPackageColor } from './constants.js';
 
 /**
  * Fetches and processes node data for a specific class and method
@@ -23,14 +23,12 @@ export const fetchNodeData = (className, methodName, isRoot) => {
  */
 export const processNodeData = (nodeData, isRoot, className) => {
   const properties = nodeData?.properties || {};
-  const layerColor = getLayerColor(properties.layer || '', isRoot);
+  // const layerColor = getLayerColor(properties.layer || '', isRoot);
   const packageName = className.split('.').slice(0, -1).join('.');
-  const packageColor = getPackageColor(packageName, isRoot);
+  // const packageColor = getPackageColor(packageName, isRoot);
 
   return {
     packageName: packageName || '',
-    layerColor,
-    packageColor,
     sourceCode: properties.sourceText || '',
     visibility: properties.visibility || '',
     simpleName: properties.simpleName || '',
@@ -48,7 +46,6 @@ export const processNodeData = (nodeData, isRoot, className) => {
     howItWorks: properties.howItWorks || '',
     assertions: properties.assertions || '',
     layer: properties.layer || '',
-    color: packageColor
   };
 };
 

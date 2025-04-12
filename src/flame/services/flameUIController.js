@@ -4,10 +4,11 @@ import { CONSTANTS } from "./contants.js";
  * UI Controller for the flame graph container
  */
 export class FlameGraphUIController {
-    constructor(containerId, renderer, selectionManager) {
+    constructor(containerId, renderer, selectionManager, packageColorMap) {
         this.container = document.getElementById(containerId);
         this.renderer = renderer;
         this.selectionManager = selectionManager;
+        this.packageColorMap = packageColorMap;
         this.containerState = CONSTANTS.STATES.MINIMIZED; // Start minimized (hidden)
 
         // Bind methods to preserve 'this' context
@@ -17,6 +18,8 @@ export class FlameGraphUIController {
         this.selectAllHandler = this.selectAllHandler.bind(this);
         this.selectGraphHandler = this.selectGraphHandler.bind(this);
         this.clearGraphSelectionHandler = this.clearGraphSelectionHandler.bind(this);
+
+        console.log("pacakge color map", this.packageColorMap);
     }
 
     initialize() {

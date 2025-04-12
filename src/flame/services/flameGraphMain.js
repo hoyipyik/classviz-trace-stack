@@ -10,7 +10,7 @@ import { MethodsDisplayManager } from "./methodDisplayManager.js";
  * FlameGraph service that ties everything together
  */
 export class FlameGraphService {
-    constructor(cascadeTreeData, nodeMap, rootNode) {
+    constructor(cascadeTreeData, nodeMap, rootNode, packageColorMap) {
         // Core data management
         this.methodDisplayManager = new MethodsDisplayManager(window.cy, rootNode, nodeMap);
         this.dataManager = new TraceDataManager(this.methodDisplayManager, cascadeTreeData, nodeMap);
@@ -21,6 +21,7 @@ export class FlameGraphService {
         this.uiController = null;
         this.sidebarController = null;
         this.traceDataMap = null;
+        this.packageColorMap = packageColorMap;
 
         // Bind methods
         this.initialize = this.initialize.bind(this);
@@ -44,7 +45,8 @@ export class FlameGraphService {
         this.uiController = new FlameGraphUIController(
             CONSTANTS.CONTAINER_ID, 
             this.renderer, 
-            this.selectionManager
+            this.selectionManager,
+            this.packageColorMap
         );
         this.uiController.initialize();
 
