@@ -175,11 +175,42 @@ export class FlameGraphSelectionManager {
 
     }
 
+    selectByPackageName(packageName, select) {
+        const selectedIds = [];
+        const traverser = (node) => {
+            if (!node)
+                return;
+            if (node.packageName === packageName) {
+                const nodeId = this.getNodeId(node);
+                selectedIds.push(nodeId);
+            }
+            if (node.children && node.children.length > 0) {
+                for (const child of node.children) {
+                    traverser(child);
+                }
+            }
+        }
+        const dataMap = this.dataManager.getData();
+        if (!dataMap) return;
+        
+        for (const key in dataMap) {
+            const rootNode = dataMap[key];
+            if (!rootNode) continue;
+            traverser(rootNode);
+        }
+
+        if (selectedIds.length > 0) {
+            this.dataManager.updateSelectionForMultiNodes(selectedIds, select);
+            this.renderData();
+        }
+    }
+
+
     /**
- * Selects all direct children of the given node
- * @param {Object} nodeData - The parent node whose direct children should be selected
- * @param {boolean} includeItself - Whether to include the parent node in selection (default: true)
- */
+    * Selects all direct children of the given node
+    * @param {Object} nodeData - The parent node whose direct children should be selected
+    * @param {boolean} includeItself - Whether to include the parent node in selection (default: true)
+    */
     selectDirectChildren(nodeData, includeItself = true) {
         if (!nodeData) return;
 
