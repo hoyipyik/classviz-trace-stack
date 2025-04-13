@@ -3,7 +3,7 @@ import { CONSTANTS } from "./contants.js";
 
 export class FlameSidebarController {
     constructor(containerId, dataManager, flameRenderer, flameChartContainer,
-        selectionManager, packageColorMap, idRangeByThreadMap) {
+        selectionManager, packageColorMap, idRangeByThreadMap, sharedStates) {
         this.dataManager = dataManager;
         this.renderer = flameRenderer;
         this.container = document.getElementById(containerId);
@@ -11,7 +11,8 @@ export class FlameSidebarController {
         this.selectionManager = selectionManager;
         this.packageColorMap = packageColorMap;
         this.idRangeByThreadMap = idRangeByThreadMap;
-        this.traceMode = false;
+
+        this.sharedStates = sharedStates;
 
         // Initialize selection values with defaults
         this.dataMap = this.dataManager.getData();
