@@ -96,7 +96,7 @@ export class FlameSidebarController {
         startSlider.max = '100';
         startSlider.value = '0';
         startSlider.id = 'start-percent-slider';
-        startSlider.style.cssText = 'position: absolute; width: 100%; top: -1px; -webkit-appearance: none; pointer-events: none; background: transparent; z-index: 3;';
+        startSlider.style.cssText = 'position: absolute; width: 100%; top: -2px; -webkit-appearance: none; pointer-events: none; background: transparent; z-index: 3;';
 
         // Customize the thumb appearance
         startSlider.style.cssText += `
@@ -262,7 +262,7 @@ export class FlameSidebarController {
                 const [startId, endId] = this.selectedIdRange;
                 this.selectionManager.selectOrClearByIdRange(originalStartId, startId - 1, false);
                 this.selectionManager.selectOrClearByIdRange(startId, endId, true);
-                this.selectedIdRange.selectOrClearByIdRange(endId + 1, originalEndId, false);
+                this.selectionManager.selectOrClearByIdRange(endId + 1, originalEndId, false);
             }
         });
 
