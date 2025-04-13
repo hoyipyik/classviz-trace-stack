@@ -386,15 +386,15 @@ export const callTreeParser = (xmlDoc, options = {}) => {
         }
       });
 
-      if (sourceCode) {
-        const methodCallOrder = extractMethodCalls(sourceCode);
-        nodeData.methodCallOrder = methodCallOrder;
+      // if (sourceCode) {
+      //   const methodCallOrder = extractMethodCalls(sourceCode);
+      //   nodeData.methodCallOrder = methodCallOrder;
         
-        // Sort children based on methodCallOrder if methods were found
-        if (methodCallOrder.length > 0) {
-          nodeData.children = sortChildrenByMethodCalls(nodeData.children, methodCallOrder);
-        }
-      }
+      //   // Sort children based on methodCallOrder if methods were found
+      //   if (methodCallOrder.length > 0) {
+      //     nodeData.children = sortChildrenByMethodCalls(nodeData.children, methodCallOrder);
+      //   }
+      // }
     } else {
       // If no children, just increment leftBound
       newLeftBound += LAYOUT.NODE_SIZE;
@@ -433,7 +433,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
   }
   
   // Reassign all node IDs to ensure consistent ordering
-  reassignAllNodeIds(rootData, nodeMap, nodes, edges);
+  // reassignAllNodeIds(rootData, nodeMap, nodes, edges);
 
   // Create structure with root children's labels as keys
   const labelBasedTree = {};
