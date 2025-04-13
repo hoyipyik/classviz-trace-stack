@@ -175,7 +175,7 @@ export class FlameGraphSelectionManager {
 
     }
 
-    selectByPackageName(packageName, select) {
+    selectOrClearByPackageName(packageName, select) {
         const selectedIds = [];
         const traverser = (node) => {
             if (!node)
@@ -354,6 +354,19 @@ export class FlameGraphSelectionManager {
             this.dataManager.updateSelectionForMultiNodes(nodeIdsToClear, false);
             this.renderData();
         }
+    }
+
+    selectOrClearByIdRange(startId, endId, selectFlag) {
+        const nodeIdsToSelect = [];
+        for(let i = startId; i <= endId; i ++){
+            const nodeId = i.toString();
+            nodeIdsToSelect.push(nodeId);
+        }
+        if(nodeIdsToSelect.length > 0){
+            this.dataManager.updateSelectionForMultiNodes(nodeIdsToSelect, selectFlag);
+            this.renderData();
+        }
+
     }
 
     getSelectedNodeIds() {

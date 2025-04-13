@@ -11,6 +11,7 @@ export class FlameSidebarController {
         this.selectionManager = selectionManager;
         this.packageColorMap = packageColorMap;
         this.idRangeByThreadMap = idRangeByThreadMap;
+        this.traceMode = false;
 
         // Initialize selection values with defaults
         this.dataMap = this.dataManager.getData();
@@ -44,8 +45,267 @@ export class FlameSidebarController {
 
         this.createToggleButtonsUI();
         this.createThreadSelectorUI();
-        this.createPackageFilterSelectorUI();
         this.createFlameWidthStyleSelectorUI();
+        this.createPackageFilterSelectorUI();
+        this.createSliderFilterUI();
+    }
+
+    createSliderFilterUI() {
+        const sectionContainer = document.createElement('div');
+        sectionContainer.className = 'package-filter-section';
+        sectionContainer.id = 'slider-filter-section';
+        sectionContainer.style.cssText = 'margin-top: 10px; padding: 5px; border-top: 1px solid #eee;';
+
+        const h2Element = document.createElement('h2');
+        h2Element.textContent = 'DFS Trace Range Filter';
+        h2Element.style.marginBottom = '15px';
+        sectionContainer.appendChild(h2Element);
+
+        // Slider container
+        const sliderContainer = document.createElement('div');
+        sliderContainer.style.cssText = 'position: relative; width: 100%; height: 40px; margin: 10px 0 3px 0;';
+
+        // Display for percentages
+        const percentageDisplay = document.createElement('div');
+        percentageDisplay.style.cssText = 'display: flex; justify-content: space-between; margin-bottom: 2px;';
+
+        const startPercentDisplay = document.createElement('span');
+        startPercentDisplay.textContent = 'Start: 0%';
+        startPercentDisplay.id = 'start-percent-display';
+
+        const endPercentDisplay = document.createElement('span');
+        endPercentDisplay.textContent = 'End: 100%';
+        endPercentDisplay.id = 'end-percent-display';
+
+        percentageDisplay.appendChild(startPercentDisplay);
+        percentageDisplay.appendChild(endPercentDisplay);
+
+        // Track for the slider
+        const sliderTrack = document.createElement('div');
+        sliderTrack.style.cssText = 'position: absolute; width: 100%; height: 4px; background-color: #ddd; top: 8px; border-radius: 2px;';
+
+        // Selected range visualization
+        const selectedRange = document.createElement('div');
+        selectedRange.id = 'selected-range';
+        selectedRange.style.cssText = 'position: absolute; height: 4px; background-color: #4a86e8; top: 8px; border-radius: 2px; left: 0%; width: 100%;';
+
+        // Start slider thumb
+        const startSlider = document.createElement('input');
+        startSlider.type = 'range';
+        startSlider.min = '0';
+        startSlider.max = '100';
+        startSlider.value = '0';
+        startSlider.id = 'start-percent-slider';
+        startSlider.style.cssText = 'position: absolute; width: 100%; top: -1px; -webkit-appearance: none; pointer-events: none; background: transparent; z-index: 3;';
+
+        // Customize the thumb appearance
+        startSlider.style.cssText += `
+            -webkit-appearance: none;
+            pointer-events: none;
+            width: 100%;
+            height: 20px;
+            background: transparent;
+            outline: none;
+        `;
+
+        // End slider thumb
+        const endSlider = document.createElement('input');
+        endSlider.type = 'range';
+        endSlider.min = '0';
+        endSlider.max = '100';
+        endSlider.value = '100';
+        endSlider.id = 'end-percent-slider';
+        endSlider.style.cssText = 'position: absolute; width: 100%; top: -1px; -webkit-appearance: none; pointer-events: none; background: transparent; z-index: 3;';
+
+        // Custom CSS for slider thumbs
+        const thumbCSS = `
+            input[type=range]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                pointer-events: auto;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background: #4a86e8;
+                cursor: pointer;
+                border: none;
+                margin-top: -6px;
+            }
+            input[type=range]::-moz-range-thumb {
+                pointer-events: auto;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background: #4a86e8;
+                cursor: pointer;
+                border: none;
+            }
+        `;
+
+        // Add custom CSS to document
+        const style = document.createElement('style');
+        style.textContent = thumbCSS;
+        document.head.appendChild(style);
+
+        // Results section
+        const resultsSection = document.createElement('div');
+        resultsSection.style.cssText = 'margin-top: 5px; padding: 10px; background-color: #f5f5f5; border-radius: 4px;';
+
+        const selectedIdsTitle = document.createElement('div');
+        selectedIdsTitle.textContent = 'Selected Trace Range:';
+        selectedIdsTitle.style.fontWeight = 'bold';
+
+        const selectedIdsRange = document.createElement('div');
+        selectedIdsRange.id = 'selected-ids-range';
+        selectedIdsRange.textContent = 'Calculating...';
+
+        // Create buttons container
+        const buttonsContainer = document.createElement('div');
+        buttonsContainer.style.cssText = 'margin-top: 10px; display: flex; gap: 10px;';
+
+        // Apply button
+        const applyButton = document.createElement('button');
+        applyButton.textContent = 'Select';
+        applyButton.style.cssText = 'padding: 5px 15px; background-color: white;  border: 1px solid #888; border-radius: 4px; cursor: pointer;';
+
+        // Clear button
+        const clearButton = document.createElement('button');
+        clearButton.textContent = 'Unselect Range';
+        clearButton.style.cssText = 'padding: 5px 15px; background-color: white;  border: 1px solid #888; border-radius: 4px; cursor: pointer;';
+
+        // Assemble the components
+        sliderContainer.appendChild(sliderTrack);
+        sliderContainer.appendChild(selectedRange);
+        sliderContainer.appendChild(startSlider);
+        sliderContainer.appendChild(endSlider);
+
+        resultsSection.appendChild(selectedIdsTitle);
+        resultsSection.appendChild(selectedIdsRange);
+
+        // Add buttons to the container
+        buttonsContainer.appendChild(applyButton);
+        buttonsContainer.appendChild(clearButton);
+        resultsSection.appendChild(buttonsContainer);
+
+        sectionContainer.appendChild(percentageDisplay);
+        sectionContainer.appendChild(sliderContainer);
+        sectionContainer.appendChild(resultsSection);
+
+        this.container.appendChild(sectionContainer);
+
+        // Store references for later removal
+        this.sliderSection = sectionContainer;
+        this.sliderStyle = style;
+
+        // Event listeners for the sliders
+        let startPercent = 0;
+        let endPercent = 100;
+
+        const updateSliderUI = () => {
+            // Update the visual representation
+            selectedRange.style.left = startPercent + '%';
+            selectedRange.style.width = (endPercent - startPercent) + '%';
+
+            // Update text displays
+            startPercentDisplay.textContent = 'Start: ' + startPercent + '%';
+            endPercentDisplay.textContent = 'End: ' + endPercent + '%';
+
+            // Calculate selected IDs from thread map
+            if (this.threadSelectionValue && this.idRangeByThreadMap.has(this.threadSelectionValue)) {
+                const [startId, endId] = this.idRangeByThreadMap.get(this.threadSelectionValue);
+                this.currentIdRangeStore = [startId, endId];
+                const totalRange = endId - startId + 1;
+
+                const calculatedStartId = Math.round(startId + (startPercent / 100) * (totalRange - 1));
+                const calculatedEndId = Math.round(startId + (endPercent / 100) * (totalRange - 1));
+
+                // Display the ID range
+                selectedIdsRange.innerHTML = `Start ID: ${calculatedStartId}, End ID: ${calculatedEndId} <br>
+                  Start Step: ${calculatedStartId - startId}, End Step: ${calculatedEndId - startId} <br>
+                  Total: ${calculatedEndId - calculatedStartId + 1} Nodes`;
+
+                // Store the selected range for use when applying the filter
+                this.selectedIdRange = [calculatedStartId, calculatedEndId];
+            } else {
+                selectedIdsRange.textContent = 'No thread selected or range available';
+                this.selectedIdRange = null;
+            }
+        };
+
+        // Initialize UI
+        updateSliderUI();
+
+        startSlider.addEventListener('input', (e) => {
+            startPercent = parseInt(e.target.value, 10);
+            // Ensure start doesn't go past end
+            if (startPercent > endPercent) {
+                startPercent = endPercent;
+                startSlider.value = endPercent;
+            }
+            updateSliderUI();
+        });
+
+        endSlider.addEventListener('input', (e) => {
+            endPercent = parseInt(e.target.value, 10);
+            // Ensure end doesn't go before start
+            if (endPercent < startPercent) {
+                endPercent = startPercent;
+                endSlider.value = startPercent;
+            }
+            updateSliderUI();
+        });
+
+        // Apply filter button event listener
+        applyButton.addEventListener('click', () => {
+            if (this.selectedIdRange) {
+                // Generate the full list of IDs
+                const [originalStartId, originalEndId] = this.currentIdRangeStore;
+                const [startId, endId] = this.selectedIdRange;
+                this.selectionManager.selectOrClearByIdRange(originalStartId, startId - 1, false);
+                this.selectionManager.selectOrClearByIdRange(startId, endId, true);
+                this.selectedIdRange.selectOrClearByIdRange(endId + 1, originalEndId, false);
+            }
+        });
+
+        // Clear button event listener
+        clearButton.addEventListener('click', () => {
+            // Reset the sliders to their default positions
+            // startSlider.value = 0;
+            // endSlider.value = 100;
+            // startPercent = 0;
+            // endPercent = 100;
+            // updateSliderUI();
+
+            if (this.selectedIdRange) {
+                // const [originalStartId, originalEndId] = this.currentIdRangeStore;
+                const [startId, endId] = this.selectedIdRange;
+                // this.selectionManager.selectOrClearByIdRange(originalStartId, startId - 1, true);
+                this.selectionManager.selectOrClearByIdRange(startId, endId, false);
+                // this.selectedIdRange.selectOrClearByIdRange(endId + 1, originalEndId, false);
+            }
+        });
+
+        // Return the container for reference
+        return sectionContainer;
+    }
+
+    // Function to remove the slider filter UI
+    removeSliderFilterUI() {
+        if (this.sliderSection) {
+            // Remove the slider section from DOM
+            if (this.sliderSection.parentNode) {
+                this.sliderSection.parentNode.removeChild(this.sliderSection);
+            }
+
+            // Remove the custom style element if it exists
+            if (this.sliderStyle && this.sliderStyle.parentNode) {
+                this.sliderStyle.parentNode.removeChild(this.sliderStyle);
+            }
+
+            // Clear references
+            this.sliderSection = null;
+            this.sliderStyle = null;
+            this.selectedIdRange = null;
+        }
     }
 
     createPackageFilterSelectorUI() {
@@ -56,7 +316,7 @@ export class FlameSidebarController {
         const h2Element = document.createElement('h2');
         h2Element.textContent = 'Package Filters';
         sectionContainer.appendChild(h2Element);
-        
+
         // Create the details element for collapsible functionality
         const details = document.createElement('details');
         details.open = true; // Start expanded by default
@@ -200,7 +460,7 @@ export class FlameSidebarController {
     }
 
     onFilterButtonClicked(packageName, selectedFlag) {
-        this.selectionManager.selectByPackageName(packageName, selectedFlag);
+        this.selectionManager.selectOrClearByPackageName(packageName, selectedFlag);
     }
 
     createToggleButtonsUI() {
@@ -317,6 +577,8 @@ export class FlameSidebarController {
             radioInput.addEventListener('change', () => {
                 if (radioInput.checked) {
                     this.threadSelectionValue = key;
+                    this.removeSliderFilterUI();
+                    this.createSliderFilterUI();
                     this.renderData();
                 }
             });
