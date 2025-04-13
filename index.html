@@ -1,54 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
- 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Class Diagram Visualization</title>
-  
-  <!-- Stylesheets -->
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="traceTree.css" />
-  <link rel="stylesheet" href="traceFlame.css" />
-  <link rel="icon" href="favicon.ico" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Class Diagram Visualization</title>
 
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="traceTree.css" />
+    <link rel="stylesheet" href="traceFlame.css" />
+    <link rel="icon" href="favicon.ico" />
 
-  <script type="text/javascript" src="https://d3js.org/d3.v7.js"></script>
-  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/d3-flame-graph@4.1.3/dist/d3-flamegraph.min.js"></script>
-  <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/d3-flame-graph@4.1.3/dist/d3-flamegraph-tooltip.js"></script> -->
-  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/d3-flame-graph@4.1.3/dist/d3-flamegraph.css">
-  <!-- External Libraries (Optimized Order) -->
-  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.31.0/dist/cytoscape.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/cytoscape-navigator@2.0.2/cytoscape-navigator.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.0.0/dist/fetch.umd.js"></script>
-  
-  <!-- Required Dependencies for Layouts -->
-  <script src="https://cdn.jsdelivr.net/npm/layout-base/layout-base.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/cose-base/cose-base.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/avsdf-base@1.0.0/avsdf-base.js"></script> <!-- Required for CISE -->
+    <script type="text/javascript" src="https://d3js.org/d3.v7.js"></script>
+    <script
+      type="text/javascript"
+      src="https://cdn.jsdelivr.net/npm/d3-flame-graph@4.1.3/dist/d3-flamegraph.min.js"
+    ></script>
+    <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/d3-flame-graph@4.1.3/dist/d3-flamegraph-tooltip.js"></script> -->
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdn.jsdelivr.net/npm/d3-flame-graph@4.1.3/dist/d3-flamegraph.css"
+    />
+    <!-- External Libraries (Optimized Order) -->
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.31.0/dist/cytoscape.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-navigator@2.0.2/cytoscape-navigator.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.0.0/dist/fetch.umd.js"></script>
 
-  <!-- Layout Engines (Load after dependencies) -->
-  <script src="https://cdn.jsdelivr.net/npm/webcola@3.4.0/WebCola/cola.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/cytoscape-cola/cytoscape-cola.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/klayjs@0.4.1/klay.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/cytoscape-klay@3.1.4/cytoscape-klay.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dagre@0.7.4/dist/dagre.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.4.0/cytoscape-dagre.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/cytoscape-fcose/cytoscape-fcose.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/cytoscape-cose-bilkent/cytoscape-cose-bilkent.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/cytoscape-euler@1.2.2/cytoscape-euler.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/cytoscape-cise@1.0.0/cytoscape-cise.min.js"></script>
+    <!-- Required Dependencies for Layouts -->
+    <script src="https://cdn.jsdelivr.net/npm/layout-base/layout-base.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cose-base/cose-base.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/avsdf-base@1.0.0/avsdf-base.js"></script>
+    <!-- Required for CISE -->
 
-  <!-- Utility Libraries -->
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@1.3.8/FileSaver.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/cytoscape-svg/cytoscape-svg.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2/dist/umd/popper.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/cytoscape-popper/cytoscape-popper.min.js"></script>
-  <!-- <script src="https://cdn.jsdelivr.net/npm/tippy.js@6" type="module"></script> -->
-  <script src="https://cdn.jsdelivr.net/npm/cytoscape-expand-collapse@4.1.0/cytoscape-expand-collapse.min.js"></script>
-</head>
+    <!-- Layout Engines (Load after dependencies) -->
+    <script src="https://cdn.jsdelivr.net/npm/webcola@3.4.0/WebCola/cola.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-cola/cytoscape-cola.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/klayjs@0.4.1/klay.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-klay@3.1.4/cytoscape-klay.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dagre@0.7.4/dist/dagre.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.4.0/cytoscape-dagre.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-fcose/cytoscape-fcose.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-cose-bilkent/cytoscape-cose-bilkent.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-euler@1.2.2/cytoscape-euler.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-cise@1.0.0/cytoscape-cise.min.js"></script>
 
+    <!-- Utility Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@1.3.8/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-svg/cytoscape-svg.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-popper/cytoscape-popper.min.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/tippy.js@6" type="module"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-expand-collapse@4.1.0/cytoscape-expand-collapse.min.js"></script>
+  </head>
 
   <body>
     <div class="titlebar">
@@ -72,7 +77,7 @@
         <img class="icon icon-fit icon-upload" src="img/resize.png" alt="fit" />
       </button>
       <!-- fit changer -->
-      <div class="fit-switcher">
+      <!-- <div class="fit-switcher">
         <select id="fit-mode" class="view-dropdown">
           <option value="preset">Preset</option>
           <option value="breadthfirst">Breadthfirst</option>
@@ -84,11 +89,8 @@
           <option value="circle">Circle</option>
           <option value="concentric">Concentric</option>
           <option value="grid">Grid</option>
-          
-
-          <!-- <option value="klay">Klay</option> -->
         </select>
-      </div>
+      </div> -->
       <div class="view-switcher">
         <select id="view-mode" class="view-dropdown">
           <option value="diagram">Class Diagram</option>
@@ -230,7 +232,8 @@
 
       <div class="sidebar-tab" id="tab-traces" style="display: none">
         <div id="flame-sidebar-container" class="menu">
-          Please click the second button on the top bar to upload trace file to show trace info.
+          Please click the second button on the top bar to upload trace file to
+          show trace info.
         </div>
       </div>
       <!-- <div class="sidebar-tab" id="tab-bugs" style="display:none;"></div> -->
@@ -252,8 +255,12 @@
         <button class="control-btn" id="selection-btn">Enable Selection</button>
         <button class="control-btn" id="selection-all-btn">Select All</button>
         <button class="control-btn" id="clear-all-btn">Unselect All</button>
-        <button class="control-btn" id="select-graph-btn">Select current thread</button>
-        <button class="control-btn" id="clear-graph-btn">Clear current thread</button>
+        <button class="control-btn" id="select-graph-btn">
+          Select current thread
+        </button>
+        <button class="control-btn" id="clear-graph-btn">
+          Clear current thread
+        </button>
         <span id="selection-count">0 node(s) selected</span>
       </div>
       <div class="content">
