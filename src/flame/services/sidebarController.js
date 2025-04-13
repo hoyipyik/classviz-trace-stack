@@ -2,8 +2,8 @@ import { mapMethodDataToLogicalFlameGraph, mapMethodDataToTemporalFlameGraph } f
 import { CONSTANTS } from "./contants.js";
 
 export class FlameSidebarController {
-    constructor(containerId, dataManager, flameRenderer, flameChartContainer,
-        selectionManager, packageColorMap, idRangeByThreadMap, sharedStates) {
+    constructor(containerId, dataManager, flameRenderer, flameChartContainer, selectionManager, 
+        packageColorMap, idRangeByThreadMap, sharedStates, methodDisplayManager) {
         this.dataManager = dataManager;
         this.renderer = flameRenderer;
         this.container = document.getElementById(containerId);
@@ -11,6 +11,7 @@ export class FlameSidebarController {
         this.selectionManager = selectionManager;
         this.packageColorMap = packageColorMap;
         this.idRangeByThreadMap = idRangeByThreadMap;
+        this.methodDisplayManager = methodDisplayManager;
 
         this.sharedStates = sharedStates;
 
@@ -47,6 +48,7 @@ export class FlameSidebarController {
         this.createToggleButtonsUI();
         this.createThreadSelectorUI();
         this.createFlameWidthStyleSelectorUI();
+        this.createTraceModeSelectorUI();
         this.createPackageFilterSelectorUI();
         this.createSliderFilterUI();
     }
@@ -710,6 +712,101 @@ export class FlameSidebarController {
         if (selectedOption) {
             this.showLogical = selectedOption.value;
             this.renderData();
+        }
+    }
+
+    createTraceModeSelectorUI() {
+        const styleContainer = document.createElement('div');
+        styleContainer.className = 'style-selector';
+    
+        const header = document.createElement('h2');
+        header.textContent = 'Classivz Trace Mode';
+        styleContainer.appendChild(header);
+    
+        const form = document.createElement('form');
+        form.className = 'style-selector-form';
+    
+        const styleOptions = [
+            { id: 'graph', text: 'Call Graph Mode', value: false, description: 'Show call graph' },
+            { id: 'trace', text: 'Trace Mode', value: true, description: 'Show linear trace of method calls in DFS order' }
+        ];
+    
+        styleOptions.forEach((option) => {
+            const radioContainer = document.createElement('div');
+            radioContainer.className = 'radio-container';
+    
+            const radioInput = document.createElement('input');
+            radioInput.type = 'radio';
+            radioInput.id = `style-trace-${option.id}`;
+            radioInput.name = 'style-selection';
+            radioInput.value = option.id;
+            radioInput.checked = option.value === this.sharedStates.traceMode;
+            radioInput.style.verticalAlign = 'top';
+            radioInput.style.cursor = "pointer";
+    
+            radioInput.addEventListener('change', () => {
+                if (radioInput.checked) {
+                    this.sharedStates.traceMode = option.value;
+                    this.renderData();
+                    this.methodDisplayManager.updateMethodsOnClassviz();
+                }
+            });
+    
+            const labelContainer = document.createElement('div');
+            labelContainer.className = 'label-container';
+    
+            const label = document.createElement('label');
+            label.htmlFor = `style-trace-${option.id}`;
+            label.textContent = option.text;
+            label.className = 'style-label';
+            label.style.cursor = "pointer";
+    
+            labelContainer.appendChild(label);
+    
+            const description = document.createElement('div');
+            description.className = 'style-description';
+            description.textContent = option.description;
+            labelContainer.appendChild(description);
+    
+            radioContainer.appendChild(radioInput);
+            radioContainer.appendChild(labelContainer);
+            form.appendChild(radioContainer);
+        });
+    
+        const style = document.createElement('style');
+        style.textContent = `
+            .style-selector {
+                margin-top: 10px;
+                padding: 5px;
+                border-top: 1px solid #eee;
+            }
+            .style-description {
+                font-size: 12px;
+                color: #666;
+                margin-left: 5px;
+                margin-top: 2px;
+            }
+            .label-container {
+                display: inline-block;
+                vertical-align: top;
+                margin-left: 5px;
+                max-width: calc(100% - 30px);
+            }
+            .style-label {
+                font-weight: bold;
+            }
+            .radio-container {
+                margin-bottom: 8px;
+            }
+        `;
+        document.head.appendChild(style);
+    
+        styleContainer.appendChild(form);
+        this.container.appendChild(styleContainer);
+    
+        // Initialize traceMode if it doesn't exist in sharedState
+        if (this.sharedStates.traceMode === undefined) {
+            this.sharedStates.traceMode = styleOptions.find(option => option.id === 'trace').value;
         }
     }
 }

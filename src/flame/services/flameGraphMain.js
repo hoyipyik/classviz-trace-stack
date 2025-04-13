@@ -62,7 +62,8 @@ export class FlameGraphService {
             this.selectionManager,
             this.packageColorMap,
             this.idRangeByThreadMap,
-            this.sharedStates
+            this.sharedStates,
+            this.methodDisplayManager
         );
         this.sidebarController.initialize();
 
