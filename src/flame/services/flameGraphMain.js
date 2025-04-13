@@ -11,8 +11,11 @@ import { MethodsDisplayManager } from "./methodDisplayManager.js";
  */
 export class FlameGraphService {
     constructor(cascadeTreeData, nodeMap, rootNode, packageColorMap, idRangeByThreadMap) {
+        this.sharedStates = {
+            traceMode: false
+        }
         // Core data management
-        this.methodDisplayManager = new MethodsDisplayManager(window.cy, rootNode, nodeMap);
+        this.methodDisplayManager = new MethodsDisplayManager(window.cy, rootNode, nodeMap, this.sharedStates);
         this.dataManager = new TraceDataManager(this.methodDisplayManager, cascadeTreeData, nodeMap);
         this.selectionManager = new FlameGraphSelectionManager(this.dataManager);
         
@@ -58,7 +61,8 @@ export class FlameGraphService {
             this.uiController, 
             this.selectionManager,
             this.packageColorMap,
-            this.idRangeByThreadMap
+            this.idRangeByThreadMap,
+            this.sharedStates
         );
         this.sidebarController.initialize();
 
