@@ -1,6 +1,6 @@
 import { hslString, role_stereotype_colors, whiten, blacken } from './colors.js';
 import { $, h, r } from './shorthands.js';
-import { explainSubTreeFromEnterPoint } from './trace/ui/components/cytoscape/subTreeExplain.js';
+// import { explainSubTreeFromEnterPoint } from './trace/ui/components/cytoscape/subTreeExplain.js';
 
 const stringToNode = (s) => {
 	console.log(s);
@@ -189,7 +189,7 @@ const handleExplain = async (node, type = null) => {
     
     try {
         // Call the actual explain function
-        await explainSubTreeFromEnterPoint(window.cytrace, node.data('originalId'), true);
+        // await explainSubTreeFromEnterPoint(window.cytrace, node.data('originalId'), true);
         console.log(`Explanation for ${type || 'region'} of ${node.data('properties.simpleName')} completed!`);
     } catch (error) {
         console.error('Error during explanation:', error);
@@ -228,32 +228,32 @@ export const displayInfo = (sel) => (node) => {
             propDiv.id = `${prop.key}-classvizContainer-value`;
             
             // Add explain button to these specific containers if it's a method
-            if (node.data('properties.kind') === "method") {
-                const containerExplainButton = h('button', {
-                    class: 'explain-button',
-                    style: 'background-color: hsl(333, 70%, 50%); color: white; border: none; padding: 6px 12px; border-radius: 4px; margin-top: 8px; cursor: pointer; display: flex; align-items: center;'
-                }, [
-                    h('span', { 
-                        class: 'play-icon',
-                        style: 'display: inline-block; width: 0; height: 0; border-style: solid; border-width: 6px 0 6px 10px; border-color: transparent transparent transparent white; margin-right: 6px;'
-                    }, []),
-                    `Explain ${prop.key}`
-                ]);
+        //     if (node.data('properties.kind') === "method") {
+        //         const containerExplainButton = h('button', {
+        //             class: 'explain-button',
+        //             style: 'background-color: hsl(333, 70%, 50%); color: white; border: none; padding: 6px 12px; border-radius: 4px; margin-top: 8px; cursor: pointer; display: flex; align-items: center;'
+        //         }, [
+        //             h('span', { 
+        //                 class: 'play-icon',
+        //                 style: 'display: inline-block; width: 0; height: 0; border-style: solid; border-width: 6px 0 6px 10px; border-color: transparent transparent transparent white; margin-right: 6px;'
+        //             }, []),
+        //             `Explain ${prop.key}`
+        //         ]);
                 
-                containerExplainButton.addEventListener('click', () => handleExplain(node, prop.key));
+        //         containerExplainButton.addEventListener('click', () => handleExplain(node, prop.key));
                 
-                // Add loading container for this specific section
-                const sectionLoadingContainer = h('div', { class: 'loading-container', id: `${prop.key}-loading-container` }, [
-                    h('div', { class: 'loading-text' }, [`Explaining ${prop.key}...`]),
-                    h('div', { class: 'loading-bar' }, [
-                        h('div', { class: 'loading-progress' }, [])
-                    ])
-                ]);
+        //         // Add loading container for this specific section
+        //         const sectionLoadingContainer = h('div', { class: 'loading-container', id: `${prop.key}-loading-container` }, [
+        //             h('div', { class: 'loading-text' }, [`Explaining ${prop.key}...`]),
+        //             h('div', { class: 'loading-bar' }, [
+        //                 h('div', { class: 'loading-progress' }, [])
+        //             ])
+        //         ]);
                 
-                // Append button and loading container to this section
-                propChildren.push(containerExplainButton);
-                propChildren.push(sectionLoadingContainer);
-            }
+        //         // Append button and loading container to this section
+        //         propChildren.push(containerExplainButton);
+        //         propChildren.push(sectionLoadingContainer);
+        //     }
         }
 
         const li = h('li', { class: 'info' }, [

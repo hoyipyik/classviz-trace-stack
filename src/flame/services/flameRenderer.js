@@ -254,7 +254,7 @@ export class FlameGraphRenderer {
             currentHoverNode = nodeData;
 
             let content = `
-            <div style="font-weight: bold; margin-bottom: 6px; word-break: break-word; color: #24292e; font-size: 14px;">${nodeData.name || 'Unnamed'}</div>
+            <div style="font-weight: bold; margin-bottom: 6px; word-break: break-word; color: #24292e; font-size: 14px;">${nodeData.label || 'Unnamed'}</div>
             <div>ID: ${nodeData.id}</div>
             <div style="margin-bottom: 12px; word-break: break-word; color: #586069;">${nodeData.description || 'No description available'}</div>
             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
