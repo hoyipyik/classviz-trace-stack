@@ -215,7 +215,7 @@ const PACKAGE_COLORS = [
 ];
 
 
-export const EXCEPT_METHODS = [
+export const ALLOWED_LIB_METHODS = [
   'java.awt.EventDispatchThread.run()',
   'java.util.concurrent.ThreadPoolExecutor$Worker.run()'
 ];
@@ -227,7 +227,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     allowExcludedMethodsAtRoot: false,
     onlyPackages: true,
     includedPackages: ['nl.tudelft.jpacman'],
-    exceptMethods: EXCEPT_METHODS,
+    allowedLibMethods: ALLOWED_LIB_METHODS,
     ...options
   };
 

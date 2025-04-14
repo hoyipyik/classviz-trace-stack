@@ -11,7 +11,7 @@ export class MethodsDisplayManager {
     this.nodeMap = nodeMap || {};
     this.originalNodeDimensions = {};
     this.methodsGraph = null;
-    this.EXCEPT_METHODS = [];
+    this.ALLOWED_LIB_METHODS = [];
     this.getThreadClassNamesCallback = null;
     this.sharedStates = sharedStates;
     this.displayedMethodIds = [];
@@ -37,7 +37,7 @@ export class MethodsDisplayManager {
   updateMethodsOnClassviz() {
     // Update exception methods if callback available
     if (this.getThreadClassNamesCallback) {
-      try { this.EXCEPT_METHODS = this.getThreadClassNamesCallback(); } 
+      try { this.ALLOWED_LIB_METHODS = this.getThreadClassNamesCallback(); } 
       catch (e) { console.warn("Error getting thread class names:", e); }
     }
     
@@ -98,7 +98,7 @@ export class MethodsDisplayManager {
         }
         
         const classId = label.substring(0, lastDotBeforeParens);
-        const parent = this.EXCEPT_METHODS.includes(label) ? '' : classId;
+        const parent = this.ALLOWED_LIB_METHODS.includes(label) ? '' : classId;
         
         // Create node data
         specialNodes.push({

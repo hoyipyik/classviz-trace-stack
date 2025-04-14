@@ -35,7 +35,7 @@ export const createNodeFilter = (config) => {
         const fullMethod = `${className}.${methodName}()`;
   
         // Check if it's in the exceptions list
-        if (config.exceptMethods.includes(fullMethod)) {
+        if (config.allowedLibMethods.includes(fullMethod)) {
           return true;
         }
   

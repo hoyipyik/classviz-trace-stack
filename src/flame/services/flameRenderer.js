@@ -466,33 +466,6 @@ export class FlameGraphRenderer {
         }
     }
 
-    // 直接使用D3操作SVG实现30%-70%区间显示
-    zoomFlameGraphWithD3(chartSelector = ".d3-flame-graph", minPercent = 30, maxPercent = 70) {
-        // 获取火焰图SVG
-        const svg = d3.select(`${chartSelector}`);
-        if (svg.empty()) {
-            console.warn('火焰图SVG元素不存在');
-            return;
-        }
-
-        // 获取SVG尺寸
-        const width = parseInt(svg.attr('width')) || 960;
-        const height = parseInt(svg.attr('height')) || 500;
-
-        // 保存原始宽度（如果需要恢复）
-        if (!svg.attr('data-original-width')) {
-            svg.attr('data-original-width', width);
-        }
-
-        // 计算可视区域
-        const xStart = (minPercent / 100) * width;
-        const viewWidth = ((maxPercent - minPercent) / 100) * width;
-
-        // 设置viewBox来仅显示指定区域
-        svg.attr('viewBox', `${xStart} 0 ${viewWidth} ${height}`)
-        .attr('preserveAspectRatio', 'none');; // 可选：调整SVG宽度以匹配可视区域
-    }
-
     /**
      * Updates the flame graph with new data
      * 
