@@ -85,6 +85,10 @@ class FlameGraphRenderer {
         this.eventBus.subscribe('refreshFlame', () =>{
             this.update();
         });
+
+        this.eventBus.subscribe('changeLogicalStyle', () => {
+            this.update();
+        });
     }
     
     // Create container
