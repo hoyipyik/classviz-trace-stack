@@ -255,245 +255,298 @@
               </div>
             </div>
 
-              <!-- Options -->
-          <div class="sidebar-section options-section">
-            <div class="options">
-              <label>
-                <input type="checkbox" id="autoExpandToSelect" />
-                Auto-expand to selection
-              </label>
-              <label class="highlight-all-container">
-                <input type="checkbox" id="highlightAll" />
-                Highlight all search results
-              </label>
-              <label class="package-item">
-                <div id="selectAllSearched" class="tri-state-checkbox"></div>
-                <span style="margin-left: 5px">Select all search results</span>
-              </label>
-            </div>
-          </div>
-
-
-
-          <!-- Package Filter -->
-          <div class="sidebar-section collapsible">
-            <div class="section-header" data-toggle="packageFilterContent">
-              <h4>Select by Package Name</h4>
-              <span class="toggle-icon">▼</span>
-            </div>
-            <div class="section-content" id="packageFilterContent">
-              <div class="package-filter" id="packageFilter"></div>
-            </div>
-          </div>
-
-          <!-- Method Details -->
-          <div id="methodDetailsContainer">
-            <!-- Method Details Modal -->
-            <div class="method-details-modal" id="methodDetailsModal">
-              <div class="method-details-modal-content">
-                <div class="method-details-header">
-                  <h3>Method Details</h3>
-                  <button class="close-modal-btn" id="closeMethodDetails">
-                    ×
-                  </button>
-                </div>
-                <div class="method-details-body">
-                  <div class="method-details-tabs">
-                    <div class="method-detail-tab active" data-tab="general">
-                      General
-                    </div>
-                    <div class="method-detail-tab" data-tab="metrics">
-                      Metrics
-                    </div>
-                    <div class="method-detail-tab" data-tab="source">
-                      Source Code
-                    </div>
-                  </div>
-
-                  <div
-                    class="method-details-tab-content active"
-                    id="generalTab"
+            <!-- Options -->
+            <div class="sidebar-section options-section">
+              <div class="options">
+                <label>
+                  <input type="checkbox" id="autoExpandToSelect" />
+                  Auto-expand to selection
+                </label>
+                <label class="highlight-all-container">
+                  <input type="checkbox" id="highlightAll" />
+                  Highlight all search results
+                </label>
+                <label class="package-item">
+                  <div id="selectAllSearched" class="tri-state-checkbox"></div>
+                  <span style="margin-left: 5px"
+                    >Select all search results</span
                   >
-                    <div class="method-details-section">
-                      <div class="method-details-row">
-                        <span class="method-details-label">ID:</span>
-                        <span class="method-details-value" id="methodId"
-                          >-</span
-                        >
-                      </div>
-                      <div class="method-details-row">
-                        <span class="method-details-label">Class Name:</span>
-                        <span class="method-details-value" id="methodClassName"
-                          >-</span
-                        >
-                      </div>
-                      <div class="method-details-row">
-                        <span class="method-details-label">Method Name:</span>
-                        <span class="method-details-value" id="methodMethodName"
-                          >-</span
-                        >
-                      </div>
-                      <div class="method-details-row">
-                        <span class="method-details-label">Package Name:</span>
-                        <span
-                          class="method-details-value"
-                          id="methodPackageName"
-                          >-</span
-                        >
-                      </div>
-                      <div class="method-details-row">
-                        <span class="method-details-label">Visibility:</span>
-                        <span class="method-details-value" id="methodVisibility"
-                          >-</span
-                        >
-                      </div>
-                      <div class="method-details-row">
-                        <span class="method-details-label">Layer:</span>
-                        <span class="method-details-value" id="methodLayer"
-                          >-</span
-                        >
-                      </div>
-                    </div>
+                </label>
+              </div>
+            </div>
 
-                    <div class="method-details-section">
-                      <div class="method-details-row">
-                        <span class="method-details-label">Fan Out:</span>
-                        <span
-                          class="method-details-value checkbox-container"
-                          id="methodFanOut"
-                        ></span>
-                      </div>
-                      <div class="method-details-row">
-                        <span class="method-details-label"
-                          >Implementation Entry Point:</span
-                        >
-                        <span
-                          class="method-details-value checkbox-container"
-                          id="methodImplementationEntryPoint"
-                        ></span>
-                      </div>
-
-                      <div class="method-details-row">
-                        <span class="method-details-label"
-                          >Recursive Entry Point:</span
-                        >
-                        <span
-                          class="method-details-value checkbox-container"
-                          id="methodRecursiveEntryPoint"
-                        ></span>
-                      </div>
-                      <div class="method-details-row">
-                        <span class="method-details-label">Is Summarized:</span>
-                        <span
-                          class="method-details-value"
-                          id="methodIsSummarised"
-                          >-</span
-                        >
-                      </div>
-                    </div>
-
-                    <div class="method-details-section">
-                      <div class="method-details-row">
-                        <span class="method-details-label">Description:</span>
-                        <span
-                          class="method-details-value"
-                          id="methodDescription"
-                          >-</span
-                        >
-                      </div>
-                      <div class="method-details-row">
-                        <span class="method-details-label">Brief Summary:</span>
-                        <span
-                          class="method-details-value"
-                          id="methodBriefSummary"
-                          >-</span
-                        >
-                      </div>
-                    </div>
+            <details class="sidebar-section" style="border-top: 1px solid #cacaca">
+              <summary class="section-header">
+                <h4>FlameChart Style</h4>
+                <span class="toggle-icon">▲</span>
+              </summary>
+              <div>
+                <div class="radio-option">
+                  <input
+                    checked
+                    type="radio"
+                    id="logical"
+                    name="flame-style"
+                    value="logical"
+                  />
+                  <label for="logical">Logical</label>
+                  <div>
+                    Ignores time information, focuses on method call
+                    relationships
                   </div>
+                </div>
+                <div class="radio-option">
+                  <input
+                    type="radio"
+                    id="temporal"
+                    name="flame-style"
+                    value="temporal"
+                  />
+                  <label for="temporal">Temporal</label>
+                  <div>Sets block widths based on actual time usage</div>
+                </div>
+              </div>
+            </details>
 
-                  <div class="method-details-tab-content" id="metricsTab">
-                    <div class="method-details-section">
-                      <div class="method-details-row">
-                        <span class="method-details-label"
-                          >Execution Time:</span
-                        >
-                        <span class="method-details-value" id="methodTime"
-                          >-</span
-                        >
-                      </div>
-                      <div class="method-details-row">
-                        <span class="method-details-label">Self Time:</span>
-                        <span class="method-details-value" id="methodSelfTime"
-                          >-</span
-                        >
-                      </div>
-                    </div>
+            <!-- Package Filter -->
+            <details class="sidebar-section collapsible">
+              <summary
+                class="section-header"
+                data-toggle="packageFilterContent"
+              >
+                <h4>Select by Package Name</h4>
+                <span class="toggle-icon">▲</span>
+              </summary>
+              <div class="section-content" id="packageFilterContent">
+                <div class="package-filter" id="packageFilter"></div>
+              </div>
+            </details>
 
-                    <div class="method-details-section">
-                      <div class="method-details-row">
-                        <span class="method-details-label"
-                          >Direct Children:</span
-                        >
-                        <span
-                          class="method-details-value"
-                          id="methodDirectChildren"
-                          >-</span
-                        >
-                      </div>
-                      <div class="method-details-row">
-                        <span class="method-details-label"
-                          >Total Descendants:</span
-                        >
-                        <span
-                          class="method-details-value"
-                          id="methodTotalDescendants"
-                          >-</span
-                        >
-                      </div>
-                      <div class="method-details-row">
-                        <span class="method-details-label">Subtree Depth:</span>
-                        <span
-                          class="method-details-value"
-                          id="methodSubtreeDepth"
-                          >-</span
-                        >
-                      </div>
-                      <div class="method-details-row">
-                        <span class="method-details-label">Level:</span>
-                        <span class="method-details-value" id="methodLevel"
-                          >-</span
-                        >
-                      </div>
-                    </div>
+            <!-- Method Details -->
+            <div id="methodDetailsContainer">
+              <!-- Method Details Modal -->
+              <div class="method-details-modal" id="methodDetailsModal">
+                <div class="method-details-modal-content">
+                  <div class="method-details-header">
+                    <h3>Method Details</h3>
+                    <button class="close-modal-btn" id="closeMethodDetails">
+                      ×
+                    </button>
                   </div>
+                  <div class="method-details-body">
+                    <div class="method-details-tabs">
+                      <div class="method-detail-tab active" data-tab="general">
+                        General
+                      </div>
+                      <div class="method-detail-tab" data-tab="metrics">
+                        Metrics
+                      </div>
+                      <div class="method-detail-tab" data-tab="source">
+                        Source Code
+                      </div>
+                    </div>
 
-                  <div class="method-details-tab-content" id="sourceTab">
-                    <div class="method-details-section full-height">
-                      <div class="method-details-row detailed-behavior">
-                        <span class="method-details-label"
-                          >Detailed Behavior:</span
-                        >
-                        <div
-                          class="method-details-value method-details-multiline"
-                          id="methodDetailedBehavior"
-                        >
-                          -
+                    <div
+                      class="method-details-tab-content active"
+                      id="generalTab"
+                    >
+                      <div class="method-details-section">
+                        <div class="method-details-row">
+                          <span class="method-details-label">ID:</span>
+                          <span class="method-details-value" id="methodId"
+                            >-</span
+                          >
+                        </div>
+                        <div class="method-details-row">
+                          <span class="method-details-label">Class Name:</span>
+                          <span
+                            class="method-details-value"
+                            id="methodClassName"
+                            >-</span
+                          >
+                        </div>
+                        <div class="method-details-row">
+                          <span class="method-details-label">Method Name:</span>
+                          <span
+                            class="method-details-value"
+                            id="methodMethodName"
+                            >-</span
+                          >
+                        </div>
+                        <div class="method-details-row">
+                          <span class="method-details-label"
+                            >Package Name:</span
+                          >
+                          <span
+                            class="method-details-value"
+                            id="methodPackageName"
+                            >-</span
+                          >
+                        </div>
+                        <div class="method-details-row">
+                          <span class="method-details-label">Visibility:</span>
+                          <span
+                            class="method-details-value"
+                            id="methodVisibility"
+                            >-</span
+                          >
+                        </div>
+                        <div class="method-details-row">
+                          <span class="method-details-label">Layer:</span>
+                          <span class="method-details-value" id="methodLayer"
+                            >-</span
+                          >
                         </div>
                       </div>
 
-                      <div class="method-details-row source-code">
-                        <span class="method-details-label">Source Code:</span>
-                        <pre class="method-details-code" id="methodSourceCode">
+                      <div class="method-details-section">
+                        <div class="method-details-row">
+                          <span class="method-details-label">Fan Out:</span>
+                          <span
+                            class="method-details-value checkbox-container"
+                            id="methodFanOut"
+                          ></span>
+                        </div>
+                        <div class="method-details-row">
+                          <span class="method-details-label"
+                            >Implementation Entry Point:</span
+                          >
+                          <span
+                            class="method-details-value checkbox-container"
+                            id="methodImplementationEntryPoint"
+                          ></span>
+                        </div>
+
+                        <div class="method-details-row">
+                          <span class="method-details-label"
+                            >Recursive Entry Point:</span
+                          >
+                          <span
+                            class="method-details-value checkbox-container"
+                            id="methodRecursiveEntryPoint"
+                          ></span>
+                        </div>
+                        <div class="method-details-row">
+                          <span class="method-details-label"
+                            >Is Summarized:</span
+                          >
+                          <span
+                            class="method-details-value"
+                            id="methodIsSummarised"
+                            >-</span
+                          >
+                        </div>
+                      </div>
+
+                      <div class="method-details-section">
+                        <div class="method-details-row">
+                          <span class="method-details-label">Description:</span>
+                          <span
+                            class="method-details-value"
+                            id="methodDescription"
+                            >-</span
+                          >
+                        </div>
+                        <div class="method-details-row">
+                          <span class="method-details-label"
+                            >Brief Summary:</span
+                          >
+                          <span
+                            class="method-details-value"
+                            id="methodBriefSummary"
+                            >-</span
+                          >
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="method-details-tab-content" id="metricsTab">
+                      <div class="method-details-section">
+                        <div class="method-details-row">
+                          <span class="method-details-label"
+                            >Execution Time:</span
+                          >
+                          <span class="method-details-value" id="methodTime"
+                            >-</span
+                          >
+                        </div>
+                        <div class="method-details-row">
+                          <span class="method-details-label">Self Time:</span>
+                          <span class="method-details-value" id="methodSelfTime"
+                            >-</span
+                          >
+                        </div>
+                      </div>
+
+                      <div class="method-details-section">
+                        <div class="method-details-row">
+                          <span class="method-details-label"
+                            >Direct Children:</span
+                          >
+                          <span
+                            class="method-details-value"
+                            id="methodDirectChildren"
+                            >-</span
+                          >
+                        </div>
+                        <div class="method-details-row">
+                          <span class="method-details-label"
+                            >Total Descendants:</span
+                          >
+                          <span
+                            class="method-details-value"
+                            id="methodTotalDescendants"
+                            >-</span
+                          >
+                        </div>
+                        <div class="method-details-row">
+                          <span class="method-details-label"
+                            >Subtree Depth:</span
+                          >
+                          <span
+                            class="method-details-value"
+                            id="methodSubtreeDepth"
+                            >-</span
+                          >
+                        </div>
+                        <div class="method-details-row">
+                          <span class="method-details-label">Level:</span>
+                          <span class="method-details-value" id="methodLevel"
+                            >-</span
+                          >
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="method-details-tab-content" id="sourceTab">
+                      <div class="method-details-section full-height">
+                        <div class="method-details-row detailed-behavior">
+                          <span class="method-details-label"
+                            >Detailed Behavior:</span
+                          >
+                          <div
+                            class="method-details-value method-details-multiline"
+                            id="methodDetailedBehavior"
+                          >
+                            -
+                          </div>
+                        </div>
+
+                        <div class="method-details-row source-code">
+                          <span class="method-details-label">Source Code:</span>
+                          <pre
+                            class="method-details-code"
+                            id="methodSourceCode"
+                          >
 -</pre
-                        >
+                          >
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
           </div>
         </div>
       </div>
@@ -508,7 +561,7 @@
     <div id="cy"></div>
 
     <!-- Main Content -->
-    <div style="display: none;" id="mainContent" class="main-content">
+    <div style="display: none" id="mainContent" class="main-content">
       <div id="handlerBar" class="handler-bar"></div>
       <!-- Action Toolbar -->
       <div class="action-toolbar">
