@@ -36,6 +36,8 @@ class DataStore {
 
     // Flame Chart related settings
     this.showLogical = true; // Default display logical view
+    // Trace mode for classviz
+    this.traceMode = false  // Default trace mode is call graph mode
   
     // Application settings
     this.settings = {
@@ -55,7 +57,15 @@ class DataStore {
 
   setShowLogical(showLogical) {
     this.showLogical = showLogical;
-    console.log(this.showLogical);
+    // console.log(this.showLogical);
+  }
+
+  //================================================
+  // Trace mode settings
+  //================================================
+  setTraceMode(traceMode) {
+    this.traceMode = traceMode;
+    // console.log(this.traceMode);
   }
   
   //===============================================

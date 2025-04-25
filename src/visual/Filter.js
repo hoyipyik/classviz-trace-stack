@@ -64,6 +64,9 @@ class Filter {
 
     // Set up search results selection event handling
     this.setupSearchedItemsSelection();
+
+    // Set up trace mode switcher for Classviz
+    this.setupTraceModeSwitcher();
   }
 
   // Set up thread filter
@@ -116,6 +119,31 @@ class Filter {
     };
   }
 
+  // setupTraceModeSwitcher();
+
+  setupTraceModeSwitcher()  {
+    const traceBtn = document.getElementById('trace');
+    const graphBtn = document.getElementById('graph');
+    // console.log("FlameChart style filter initialized", logicalBtn, temporalBtn);
+    
+    traceBtn.addEventListener('change', (event) => {
+      traceModeSwitcher(event.target.value);
+    });
+    
+    graphBtn.addEventListener('change', (event) => {
+      traceModeSwitcher(event.target.value);
+    });
+    
+    const traceModeSwitcher = (value) => {
+      // console.log("Selected FlameChart style:", value);
+      if (value === "trace") {
+        this.data.setTraceMode(true);
+      } else {
+        this.data.setTraceMode(false);
+      }
+      this.eventBus.publish('changeTraceMode', {});
+    };
+  }
 
   // Update the createThreadFilterUI method in Filter.js
 

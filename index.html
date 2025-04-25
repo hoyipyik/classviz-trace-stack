@@ -275,7 +275,11 @@
               </div>
             </div>
 
-            <details class="sidebar-section" style="border-top: 1px solid #cacaca">
+            <!-- FlameChart Style -->
+            <details
+              class="sidebar-section"
+              style="border-top: 1px solid #cacaca"
+            >
               <summary class="section-header">
                 <h4>FlameChart Style</h4>
                 <span class="toggle-icon">▲</span>
@@ -547,6 +551,40 @@
                 </div>
               </div>
             </div>
+
+            <!-- Trace mode switcher on Classviz -->
+            <details
+              class="sidebar-section"
+              
+            >
+              <summary class="section-header">
+                <h4>Trace Mode</h4>
+                <span class="toggle-icon">▲</span>
+              </summary>
+              <div>
+                <div class="radio-option">
+                  <input
+                    checked
+                    type="radio"
+                    id="graph"
+                    name="trace-mode"
+                    value="graph"
+                  />
+                  <label for="graph">Call Graph Mode</label>
+                  <div>Show call graph mode</div>
+                </div>
+                <div class="radio-option">
+                  <input
+                    type="radio"
+                    id="trace"
+                    name="trace-mode"
+                    value="trace"
+                  />
+                  <label for="trace">Trace Mode</label>
+                  <div>Show linear trace of method calls in DFS order</div>
+                </div>
+              </div>
+            </details>
           </div>
         </div>
       </div>

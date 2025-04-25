@@ -10,6 +10,7 @@ export const eventNames = {
   searchResultsChanged: 'searchResultsChanged',
   scrollToFocusedNode: 'scrollToFocusedNode',
   changeLogicalStyle: 'changeLogicalStyle',
+  changeTraceMode: 'changeTraceMode',
 }
 
 class EventBus {
