@@ -337,8 +337,9 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       ...processedData,
       time: attributes.time,
       selfTime: attributes.selfTime,
+      percent: attributes.percent,
       isRoot,
-      collapsed: false,
+      collapsed: true,
       selected: false,
       // Tree statistics
       treeStats: {
