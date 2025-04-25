@@ -48,6 +48,15 @@ class DataStore {
       this.switchThread(threadNames[0]);
     }
   }
+
+  //===============================================
+  // Flamechart style settings
+  //===============================================
+
+  setShowLogical(showLogical) {
+    this.showLogical = showLogical;
+    console.log(this.showLogical);
+  }
   
   //===============================================
   // Thread switching
