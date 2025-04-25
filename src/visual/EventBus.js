@@ -8,7 +8,8 @@ export const eventNames = {
   viewModeChanged: 'viewModeChanged',
   nodeDataChanged: 'nodeDataChanged',
   searchResultsChanged: 'searchResultsChanged',
-  scrollToFocusedNode: 'scrollToFocusedNode'
+  scrollToFocusedNode: 'scrollToFocusedNode',
+  changeLogicalStyle: 'changeLogicalStyle',
 }
 
 class EventBus {
