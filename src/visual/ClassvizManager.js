@@ -273,7 +273,7 @@ export class ClassvizManager {
         const dfs = (currentId) => {
             if (visited.has(currentId)) return;
             visited.add(currentId);
-            console.log(`Visiting node ${currentId}`);
+            // console.log(`Visiting node ${currentId}`);
 
             const currentNode = this.data.nodes.get(currentId);
             if (!currentNode) return;
@@ -281,8 +281,8 @@ export class ClassvizManager {
             // 對非源節點的選中節點創建邊緣
             if (currentId !== originalId && currentNode.data.selected) {
                 const targetNodeLabel = this.getMethodLabelById(currentId);
-                if (targetNodeLabel && this.insertedNodes.has(targetNodeLabel) &&
-                    sourceNodeLabel !== targetNodeLabel) { // 避免自引用
+                if (targetNodeLabel && this.insertedNodes.has(targetNodeLabel)) {
+                    // Removed the condition "sourceNodeLabel !== targetNodeLabel" to allow self-referencing edges
                     this.createEdge(originalId, sourceNodeLabel, currentId, targetNodeLabel);
                     // 找到選中節點後不再深入遍歷
                     return;
@@ -346,6 +346,17 @@ export class ClassvizManager {
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier'
         });
+
+        // For self-referential edges, adjust the curve style to make them visible
+        if (sourceNodeLabel === targetNodeLabel) {
+            edge.style({
+                'curve-style': 'unbundled-bezier',
+                'control-point-distances': [50],
+                'control-point-weights': [0.5],
+                'loop-direction': '0deg',
+                'loop-sweep': '90deg'
+            });
+        }
 
         // Store the edge in our map
         this.insertedEdges.set(edgeId, edge);
