@@ -4,10 +4,9 @@
  * Responsible for managing all node data, states, and relationships
  */
 class DataStore {
-  constructor(threadsData, eventBus, methodDisplayManager) {
+  constructor(threadsData, eventBus) {
     // Original thread data, contains multiple threads
     this.threadsData = threadsData;
-    this.methodDisplayManager = methodDisplayManager;
 
     this.currentViewMode = 'callTree';
 
@@ -153,7 +152,7 @@ class DataStore {
       if (!this.packageInfo.has(node.packageName)) {
         this.packageInfo.set(node.packageName, {
           totalCount: 0,
-          color: node.packageColor || ''
+          color: node.color || ''
         });
         this.packageIDs.set(node.packageName, []);
         this.packageSelectedIDs.set(node.packageName, []);
@@ -162,8 +161,8 @@ class DataStore {
       // Update package information
       const info = this.packageInfo.get(node.packageName);
       info.totalCount++;
-      if (!info.color && node.packageColor) {
-        info.color = node.packageColor;
+      if (!info.color && node.color) {
+        info.color = node.color;
       }
       
       // Add node ID to package ID list
@@ -343,7 +342,7 @@ class DataStore {
   //===============================================
   
   // Select node
-  select(nodeId, selected = true) {
+  select(nodeId, selected = true, batch = false) {
     if (!this.nodes.has(nodeId)) return false;
     
     const state = this.state.get(nodeId);
@@ -384,6 +383,14 @@ class DataStore {
           });
       }
 
+      // if(!batch){
+        // triger single insertion event
+        this.eventBus.publish('changeSingleMethodByIdToClassviz', {
+          nodeId,
+          selected
+        });
+      // }
+
       return true;
     }
     
@@ -391,8 +398,8 @@ class DataStore {
   }
   
   // Deselect node
-  deselect(nodeId) {
-    return this.select(nodeId, false);
+  deselect(nodeId, batch = false) {
+    return this.select(nodeId, false, batch);
   }
   
   // Select direct child nodes
@@ -401,17 +408,17 @@ class DataStore {
     const changed = [];
     
     // Select current node
-    if (this.select(nodeId)) {
+    if (this.select(nodeId, true, true)) {
       changed.push(nodeId);
     }
     
     // Select all direct child nodes
     children.forEach(childId => {
-      if (this.select(childId)) {
+      if (this.select(childId, true, true)) {
         changed.push(childId);
       }
     });
-    this.methodDisplayManager.updateMethodsOnClassviz()
+    // publish insert mutli node in manage
     return changed;
   }
   
@@ -421,11 +428,11 @@ class DataStore {
     const changed = [];
     
     children.forEach(childId => {
-      if (this.deselect(childId)) {
+      if (this.deselect(childId, true)) {
         changed.push(childId);
       }
     });
-    this.methodDisplayManager.updateMethodsOnClassviz()
+    // publish insert mutli node in manage
     return changed;
   }
   
@@ -434,7 +441,7 @@ class DataStore {
     const changed = [];
     
     // Select current node
-    if (this.select(nodeId)) {
+    if (this.select(nodeId, true, true)) {
       changed.push(nodeId);
     }
     
@@ -443,7 +450,7 @@ class DataStore {
       const children = this.getChildrenIds(parentId);
       
       children.forEach(childId => {
-        if (this.select(childId)) {
+        if (this.select(childId, true, true)) {
           changed.push(childId);
         }
         
@@ -453,7 +460,7 @@ class DataStore {
     };
     
     processChildren(nodeId);
-    this.methodDisplayManager.updateMethodsOnClassviz()
+    // publish insert mutli node in manage
     return changed;
   }
   
@@ -466,7 +473,7 @@ class DataStore {
       const children = this.getChildrenIds(parentId);
       
       children.forEach(childId => {
-        if (this.deselect(childId)) {
+        if (this.deselect(childId, true)) {
           changed.push(childId);
         }
         
@@ -476,7 +483,7 @@ class DataStore {
     };
     
     processChildren(nodeId);
-    this.methodDisplayManager.updateMethodsOnClassviz()
+    // publish insert mutli node in manage
     return changed;
   }
   
@@ -486,11 +493,11 @@ class DataStore {
     const changed = [];
     
     ancestors.forEach(ancestorId => {
-      if (this.select(ancestorId)) {
+      if (this.select(ancestorId, true, true)) {
         changed.push(ancestorId);
       }
     });
-    this.methodDisplayManager.updateMethodsOnClassviz()
+    // publish insert mutli node in manage
     return changed;
   }
   
@@ -500,11 +507,11 @@ class DataStore {
     const changed = [];
     
     ancestors.forEach(ancestorId => {
-      if (this.deselect(ancestorId)) {
+      if (this.deselect(ancestorId, true)) {
         changed.push(ancestorId);
       }
     });
-    this.methodDisplayManager.updateMethodsOnClassviz()
+    // publish insert mutli node in manage
     
     return changed;
   }
@@ -514,11 +521,11 @@ class DataStore {
     const changed = [];
     
     this.nodes.forEach((_, nodeId) => {
-      if (this.select(nodeId)) {
+      if (this.select(nodeId, true, true)) {
         changed.push(nodeId);
       }
     });
-    this.methodDisplayManager.updateMethodsOnClassviz()
+    // publish insert mutli node in manage
     
     return changed;
   }
@@ -528,12 +535,12 @@ class DataStore {
     const changed = [];
     
     this.nodes.forEach((_, nodeId) => {
-      if (this.deselect(nodeId)) {
+      if (this.deselect(nodeId, true)) {
         changed.push(nodeId);
       }
     });
     
-    this.methodDisplayManager.updateMethodsOnClassviz()
+    // publish insert mutli node in manage
     return changed;
   }
   
@@ -554,12 +561,12 @@ class DataStore {
       const ids = this.packageIDs.get(packageName);
       
       ids.forEach(nodeId => {
-        if (selected ? this.select(nodeId) : this.deselect(nodeId)) {
+        if (selected ? this.select(nodeId, true, true) : this.deselect(nodeId, true)) {
           changed.push(nodeId);
         }
       });
     }
-    this.methodDisplayManager.updateMethodsOnClassviz()
+    // publish insert mutli node in manage
     
     return changed;
   }
