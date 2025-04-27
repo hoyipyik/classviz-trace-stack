@@ -2,8 +2,7 @@ import { ALLOWED_LIB_METHODS } from "../trace/utils/process/callTreeParser.js";
 
 export class ClassvizManager {
     constructor(data, cy, eventBus) {
-        this.ALLOWED_LIB_METHODS = ALLOWED_LIB_METHODS;
-        
+        this.ALLOWED_LIB_METHODS = ALLOWED_LIB_METHODS
         this.data = data;
         this.cy = cy;
         this.eventBus = eventBus;
@@ -11,7 +10,7 @@ export class ClassvizManager {
         this.originalDimensions = {}; // class node id -> original dimensions
         this.insertedNodes = new Map(); // cy method node id (nodeData.label) -> cy method node
         this.insertedEdges = new Map(); // edge node id -> cy edge 
-       
+
         this.classToMethodsMap = new Map(); // class node id -> method node cy ids list (nodeData.label)
 
         this.methodLabelToOriginalIds = new Map(); // method node label -> original ID set
@@ -64,17 +63,17 @@ export class ClassvizManager {
             console.error(`Could not get label for node with id ${id}`);
             return;
         }
-    
+
         // Update the methodLabelToOriginalIds map
         if (!this.methodLabelToOriginalIds.has(nodeLabel)) {
             this.methodLabelToOriginalIds.set(nodeLabel, new Set());
         }
         this.methodLabelToOriginalIds.get(nodeLabel).add(id);
-    
+
         // Check if the node already exists - if so, we only need to handle edges
         const nodeExists = this.insertedNodes.has(nodeLabel);
         let addedNode = null;
-    
+
         if (!nodeExists) {
             // Node creation logic - only execute if the node doesn't exist
             // Find the corresponding class node
@@ -83,10 +82,10 @@ export class ClassvizManager {
                 console.warn(`Class node for method ${nodeLabel} not found in cytoscape`);
                 return;
             }
-    
+
             const classId = classNode.id();
             const currentPosition = classNode.position();
-    
+
             // If we haven't stored the original dimensions and position of the class node, save them (for potential restoration later)
             if (!this.originalDimensions[classId]) {
                 this.originalDimensions[classId] = {
@@ -98,9 +97,9 @@ export class ClassvizManager {
                     position: { x: currentPosition.x, y: currentPosition.y }
                 };
             }
-    
+
             const nodeData = this.data.nodes.get(id).data;
-    
+
             // Create method node (note that this node's data.parent is set to classNode)
             const methodNodeData = {
                 group: 'nodes',
@@ -118,23 +117,23 @@ export class ClassvizManager {
                     }
                 }
             };
-    
+
             // Add method node to cytoscape
             addedNode = this.cy.add(methodNodeData);
             this.insertedNodes.set(nodeLabel, addedNode);
-    
+
             // Update the classToMethodsMap
             if (!this.classToMethodsMap.has(classId)) {
                 this.classToMethodsMap.set(classId, new Set());
             }
             this.classToMethodsMap.get(classId).add(nodeLabel);
-    
+
             // Adjust the parent (class) node's style while maintaining its position
             // Dynamically adjust the height based on the number of method nodes
             const methodCount = classNode.children().length;
             const newHeight = Math.max(150, 80 + (methodCount * 110)); // Increased spacing between methods
             const newWidth = Math.max(parseInt(this.originalDimensions[classId].width), 800); // Greatly increased width
-    
+
             classNode.style({
                 'width': newWidth,
                 'height': newHeight,
@@ -142,29 +141,29 @@ export class ClassvizManager {
                 'text-halign': 'center',
                 'text-margin-y': 18
             });
-    
+
             // Explicitly reset the class node's position to avoid offset due to style changes
             classNode.position(currentPosition);
-    
+
             // Calculate the position for the method node
             const methodIndex = classNode.children().length - 1;
             const parentCenter = currentPosition;
             const parentTopY = parentCenter.y - (newHeight / 2);
-    
+
             // Improved positioning calculation to prevent overlap
             const offsetY = 60 + (methodIndex * 40); // Increased vertical spacing
             const methodAbsoluteY = parentTopY + offsetY;
-    
+
             // Horizontal centering with variance for many methods
             const horizontalVariance = methodCount > 4 ? (methodIndex % 2) * 20 - 10 : 0;
             const methodAbsoluteX = parentCenter.x + horizontalVariance;
-    
+
             // Set the method node's position
             addedNode.position({
                 x: methodAbsoluteX,
                 y: methodAbsoluteY
             });
-    
+
             // Set other styles for the method node (excluding position)
             const color = nodeData.color || nodeData.nodeColor || '#D3D3D3';
             addedNode.style({
@@ -188,11 +187,11 @@ export class ClassvizManager {
             addedNode = this.insertedNodes.get(nodeLabel);
             console.log(`Method node ${nodeLabel} already exists, proceeding with edge creation`);
         }
-    
+
         // Whether the node is new or existing, create the edges
         this.createEdgesForNode(id, nodeLabel);
     }
-    
+
     removeSingleMethodById(id) {
         // Get the node label which is used as the cy node id
         const nodeLabel = this.getMethodLabelById(id);
@@ -200,25 +199,25 @@ export class ClassvizManager {
             console.error(`Could not get label for node with id ${id}`);
             return;
         }
-    
+
         // Check if the node exists
         const nodeExists = this.insertedNodes.has(nodeLabel);
         if (!nodeExists) {
             console.warn(`Method node ${nodeLabel} not found, nothing to remove`);
             return;
         }
-    
+
         // Check if this id is associated with the method label
-        if (!this.methodLabelToOriginalIds.has(nodeLabel) || 
+        if (!this.methodLabelToOriginalIds.has(nodeLabel) ||
             !this.methodLabelToOriginalIds.get(nodeLabel).has(id)) {
             console.warn(`ID ${id} not associated with method ${nodeLabel}`);
             return;
         }
-    
+
         // Get the actual node
         const methodNode = this.insertedNodes.get(nodeLabel);
         if (!methodNode) return;
-    
+
         // Get the class node
         const classNode = this.findClassNodeByNodeLabel(nodeLabel);
         if (!classNode || classNode.length === 0) {
@@ -226,11 +225,11 @@ export class ClassvizManager {
             return;
         }
         const classId = classNode.id();
-    
+
         // Collect parents and children
         const targetChildrenOriginalIds = [];
         let parentOriginalId = null;
-    
+
         // Process edges where this node is the source
         if (this.originalIdToSourceEdges.has(id)) {
             this.originalIdToSourceEdges.get(id).forEach(edgeId => {
@@ -238,11 +237,11 @@ export class ClassvizManager {
                 if (edge) {
                     const targetOriginalId = edge.data('targetOriginalId');
                     targetChildrenOriginalIds.push(targetOriginalId);
-                    
+
                     // Remove the edge
                     this.cy.remove(edge);
                     this.insertedEdges.delete(edgeId);
-                    
+
                     // Update tracking maps
                     if (this.originalIdToTargetEdges.has(targetOriginalId)) {
                         this.originalIdToTargetEdges.get(targetOriginalId).delete(edgeId);
@@ -250,27 +249,27 @@ export class ClassvizManager {
                 }
             });
         }
-    
+
         // Process edges where this node is the target
         if (this.originalIdToTargetEdges.has(id)) {
             const parentEdges = Array.from(this.originalIdToTargetEdges.get(id));
-            
+
             // Assert that there's only one parent
             if (parentEdges.length > 1) {
                 console.warn(`Method ${nodeLabel} has multiple parents, expected only one in tree structure`);
             }
-            
+
             // Process the parent edge (should be only one in a tree)
             if (parentEdges.length > 0) {
                 const edgeId = parentEdges[0];
                 const edge = this.insertedEdges.get(edgeId);
                 if (edge) {
                     parentOriginalId = edge.data('sourceOriginalId');
-                    
+
                     // Remove the edge
                     this.cy.remove(edge);
                     this.insertedEdges.delete(edgeId);
-                    
+
                     // Update tracking maps
                     if (this.originalIdToSourceEdges.has(parentOriginalId)) {
                         this.originalIdToSourceEdges.get(parentOriginalId).delete(edgeId);
@@ -278,11 +277,11 @@ export class ClassvizManager {
                 }
             }
         }
-    
+
         // Create edges between parent and children
         if (parentOriginalId && targetChildrenOriginalIds.length > 0) {
             const parentNodeLabel = this.getMethodLabelById(parentOriginalId);
-            
+
             if (parentNodeLabel && this.insertedNodes.has(parentNodeLabel)) {
                 // Create direct edges from parent to each child
                 targetChildrenOriginalIds.forEach(childId => {
@@ -293,25 +292,25 @@ export class ClassvizManager {
                 });
             }
         }
-    
+
         // Update the methodLabelToOriginalIds map
         this.methodLabelToOriginalIds.get(nodeLabel).delete(id);
-        
+
         // Only remove the node if no more original IDs are associated with it
         const shouldRemoveNode = this.methodLabelToOriginalIds.get(nodeLabel).size === 0;
-        
+
         if (shouldRemoveNode) {
             // Remove the node itself from cytoscape
             this.cy.remove(methodNode);
-            
+
             // Update our tracking data structures
             this.insertedNodes.delete(nodeLabel);
             this.methodLabelToOriginalIds.delete(nodeLabel);
-            
+
             // Update the class-to-methods mapping
             if (this.classToMethodsMap.has(classId)) {
                 this.classToMethodsMap.get(classId).delete(nodeLabel);
-                
+
                 // If this was the last method in the class, restore original dimensions
                 if (this.classToMethodsMap.get(classId).size === 0) {
                     this.restoreClassOriginalDimensions(classId);
@@ -321,17 +320,17 @@ export class ClassvizManager {
                 }
             }
         }
-        
+
         // Clean up tracking maps regardless of whether we removed the node
         this.originalIdToSourceEdges.delete(id);
         this.originalIdToTargetEdges.delete(id);
     }
-    
+
     // Helper method to restore class to original dimensions
     restoreClassOriginalDimensions(classId) {
         const classNode = this.cy.$id(classId);
         if (!classNode || classNode.length === 0) return;
-        
+
         const originalDim = this.originalDimensions[classId];
         if (originalDim) {
             classNode.style({
@@ -341,60 +340,60 @@ export class ClassvizManager {
                 'text-halign': originalDim.textHalign,
                 'text-margin-y': originalDim.textMarginY
             });
-            
+
             // Reset position if needed
             if (originalDim.position) {
                 classNode.position(originalDim.position);
             }
         }
     }
-    
+
     // Helper method to adjust class size based on number of methods
     adjustClassSize(classId) {
         const classNode = this.cy.$id(classId);
         if (!classNode || classNode.length === 0) return;
-        
+
         const methodCount = classNode.children().length;
         const newHeight = Math.max(150, 80 + (methodCount * 110));
         const newWidth = Math.max(
-            parseInt(this.originalDimensions[classId]?.width || 150), 
+            parseInt(this.originalDimensions[classId]?.width || 150),
             800
         );
-        
+
         const currentPosition = classNode.position();
-        
+
         classNode.style({
             'width': newWidth,
             'height': newHeight
         });
-        
+
         // Explicitly reset position to avoid offset
         classNode.position(currentPosition);
-        
+
         // Reposition the remaining methods
         this.repositionMethodsInClass(classId);
     }
-    
+
     // Helper method to reposition methods after one is removed
     repositionMethodsInClass(classId) {
         const classNode = this.cy.$id(classId);
         if (!classNode || classNode.length === 0) return;
-        
+
         const children = classNode.children();
         const methodCount = children.length;
         const parentCenter = classNode.position();
         const newHeight = parseInt(classNode.style('height'));
         const parentTopY = parentCenter.y - (newHeight / 2);
-        
+
         children.forEach((methodNode, index) => {
             // Recalculate position for each method
             const offsetY = 60 + (index * 40);
             const methodAbsoluteY = parentTopY + offsetY;
-            
+
             // Horizontal centering with variance for many methods
             const horizontalVariance = methodCount > 4 ? (index % 2) * 20 - 10 : 0;
             const methodAbsoluteX = parentCenter.x + horizontalVariance;
-            
+
             // Set new position
             methodNode.position({
                 x: methodAbsoluteX,
