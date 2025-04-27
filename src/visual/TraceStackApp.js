@@ -10,7 +10,7 @@ import { FlameGraphRenderer } from './FlameGraphRenderer.js';
 import { ViewSwitcher } from './ViewSwitcher.js'; // Add new import
 import { ResizeManager } from './ResizeManager.js';
 import { SidebarController } from './SidebarController.js';
-import { MethodsDisplayManager } from '../flame/services/methodDisplayManager.js';
+import { ClassvizManager } from './ClassvizManager.js'; // Import ClassvizManager
 
 /**
  * Call Tree Visualization Application Main Entry
@@ -18,10 +18,10 @@ import { MethodsDisplayManager } from '../flame/services/methodDisplayManager.js
 class TraceStackApp {
   constructor(rawThreadData, nodeMap, rootNode) {
     this.rawData = rawThreadData || null; // Raw data from external source
-    this.sharedStates = {
-      traceMode: false
-  }
-    this.methodDisplayManager = new MethodsDisplayManager(window.cy, rootNode, nodeMap, this.sharedStates);
+  //   this.sharedStates = {
+  //     traceMode: false
+  // }
+    // this.methodDisplayManager = new MethodsDisplayManager(window.cy, rootNode, nodeMap, this.sharedStates);
             
     // Module instances
     this.data = null;    // DataStore instance
@@ -61,7 +61,10 @@ class TraceStackApp {
     const threadsData = this.rawData;
 
     // Initialize data store
-    this.data = new DataStore(threadsData, this.eventBus, this.methodDisplayManager);
+    this.data = new DataStore(threadsData, this.eventBus);
+
+    // Initialize methods display manager
+    this.classvizManager = new ClassvizManager(this.data, window.cy, this.eventBus);
 
     // Get DOM container
     const container = document.getElementById('callTree');
@@ -70,7 +73,7 @@ class TraceStackApp {
       return;
     }
 
-    // Initialize sidebar controller (new)
+    // Initialize sidebar controller 
     this.sidebar = new SidebarController(this.eventBus);
 
     // Initialize renderer
