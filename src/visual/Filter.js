@@ -99,15 +99,15 @@ class Filter {
     const logicalBtn = document.getElementById('logical');
     const temporalBtn = document.getElementById('temporal');
     // console.log("FlameChart style filter initialized", logicalBtn, temporalBtn);
-    
+
     logicalBtn.addEventListener('change', (event) => {
       flameStyleHandler(event.target.value);
     });
-    
+
     temporalBtn.addEventListener('change', (event) => {
       flameStyleHandler(event.target.value);
     });
-    
+
     const flameStyleHandler = (value) => {
       // console.log("Selected FlameChart style:", value);
       if (value === "logical") {
@@ -121,19 +121,19 @@ class Filter {
 
   // setupTraceModeSwitcher();
 
-  setupTraceModeSwitcher()  {
+  setupTraceModeSwitcher() {
     const traceBtn = document.getElementById('trace');
     const graphBtn = document.getElementById('graph');
     // console.log("FlameChart style filter initialized", logicalBtn, temporalBtn);
-    
+
     traceBtn.addEventListener('change', (event) => {
       traceModeSwitcher(event.target.value);
     });
-    
+
     graphBtn.addEventListener('change', (event) => {
       traceModeSwitcher(event.target.value);
     });
-    
+
     const traceModeSwitcher = (value) => {
       // console.log("Selected FlameChart style:", value);
       if (value === "trace") {
@@ -344,16 +344,33 @@ class Filter {
       return;
     }
 
+    // Create a wrapper for horizontal scrolling
+    const containerWrapper = document.createElement('div');
+    containerWrapper.className = 'package-filter-container';
+
+    // Wrap the existing container with the scroll wrapper
+    container.parentNode.insertBefore(containerWrapper, container);
+    containerWrapper.appendChild(container);
+
+    // Make sure the container has the right class
+    container.className = 'package-filter';
+
     // Create checkbox for each package name
     packageNames.forEach(packageName => {
       const packageItem = document.createElement('div');
       packageItem.className = 'package-item';
       packageItem.dataset.package = packageName;
+      const legendColor = this.data.getPackageColor(packageName);
 
       // Create checkbox container (for custom styling)
       const checkboxWrapper = document.createElement('div');
       checkboxWrapper.className = 'tri-state-checkbox';
       checkboxWrapper.dataset.package = packageName;
+
+      // Add color indicator circle
+      const colorIndicator = document.createElement('div');
+      colorIndicator.className = 'color-indicator';
+      colorIndicator.style.backgroundColor = legendColor || '#999'; // Use package color or default
 
       // Add click event
       checkboxWrapper.addEventListener('click', () => {
@@ -367,6 +384,7 @@ class Filter {
 
       // Add elements to filter item
       packageItem.appendChild(checkboxWrapper);
+      packageItem.appendChild(colorIndicator); // Add the color indicator
       packageItem.appendChild(packageLabel);
 
       // Add filter item to container
