@@ -1,5 +1,9 @@
+import { ALLOWED_LIB_METHODS } from "../trace/utils/process/callTreeParser.js";
+
 export class ClassvizManager {
     constructor(data, cy, eventBus) {
+        this.ALLOWED_LIB_METHODS = ALLOWED_LIB_METHODS;
+        
         this.data = data;
         this.cy = cy;
         this.eventBus = eventBus;
