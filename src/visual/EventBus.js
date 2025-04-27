@@ -11,6 +11,10 @@ export const eventNames = {
   scrollToFocusedNode: 'scrollToFocusedNode',
   changeLogicalStyle: 'changeLogicalStyle',
   changeTraceMode: 'changeTraceMode',
+  // classviz relavant events
+  changeSingleMethodByIdToClassviz: 'changeSingleMethodByIdToClassviz',
+  changeMultiMethodByIdsToClassviz: 'changeMultiMethodByIdsToClassviz'
+  
 }
 
 class EventBus {
