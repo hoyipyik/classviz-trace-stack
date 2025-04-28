@@ -334,6 +334,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       methodName: attributes.methodName,
       // packageName,
       color: packageColor,
+      originalColor: packageColor,
       ...processedData,
       time: attributes.time,
       selfTime: attributes.selfTime,
