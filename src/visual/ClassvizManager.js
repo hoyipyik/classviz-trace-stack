@@ -29,7 +29,9 @@ export class ClassvizManager {
         // Uses the original ID from call tree as key: stores edge IDs where this original node is the source/target
         this.originalIdToSourceEdges = new Map(); // originalId -> Set(edge id) edges where this original node is the source
         this.originalIdToTargetEdges = new Map(); // originalId -> Set(edge id) edges where this original node is the target
-
+        window.originalIdToSourceEdges = this.originalIdToSourceEdges;
+        window.originalIdToTargetEdges = this.originalIdToTargetEdges;
+        window.inwsertedEdges = this.insertedEdges;
         this.eventBus.subscribe('changeSingleMethodByIdToClassviz', (
             { nodeId, selected }) => {
             if (selected) {
@@ -432,10 +434,13 @@ export class ClassvizManager {
                     }
                 }
             });
-        }
+        }  
+        
 
         // Process edges where this node is the target
         if (this.originalIdToTargetEdges.has(id)) {
+            console.log(`Debuggging !!!! ${this.originalIdToTargetEdges.get(id)}`);
+            window.edges123 = this.originalIdToTargetEdges.get(id);
             const parentEdges = Array.from(this.originalIdToTargetEdges.get(id));
 
             // Assert that there's only one parent
@@ -630,6 +635,11 @@ export class ClassvizManager {
                     const edge = this.insertedEdges.get(edgeId);
                     this.cy.remove(edge);
                     this.insertedEdges.delete(edgeId);
+                    this.originalIdToTargetEdges.forEach((edges, targetId) => {
+                        if (edges.has(edgeId)) {
+                            edges.delete(edgeId);
+                        }
+                    });
                 }
             }
             // Clear the set of source edges
