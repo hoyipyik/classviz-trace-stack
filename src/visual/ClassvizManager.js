@@ -1,11 +1,22 @@
 import { ALLOWED_LIB_METHODS } from "../trace/utils/process/callTreeParser.js";
 
 export class ClassvizManager {
-    constructor(data, cy, eventBus) {
+    constructor(data, cy, eventBus, idRangeByThreadMap) {
+        this.stepByStepMode = false;
         this.ALLOWED_LIB_METHODS = ALLOWED_LIB_METHODS
         this.data = data;
         this.cy = cy;
         this.eventBus = eventBus;
+
+        this.idRangeByThreadMap = idRangeByThreadMap; // Map of thread names to ID ranges;
+        this.threadToMethodNodesInOrder = new Map(); // threadname -> method node list {originalId, label(cy node id)}  in order of orignaiId
+        this.currentIndexByThread = new Map(); // threadname -> current index in the method node list
+       
+        // init this.threadToMethodNodesInOrder with the data
+        idRangeByThreadMap.forEach((_, threadName) => {
+            this.threadToMethodNodesInOrder.set(threadName, []);
+            this.currentIndexByThread.set(threadName, 0);
+        });
 
         this.originalDimensions = {}; // class node id -> original dimensions
         this.insertedNodes = new Map(); // cy method node id (nodeData.label) -> cy method node
@@ -33,6 +44,18 @@ export class ClassvizManager {
         this.eventBus.subscribe('changeMultiMethodByIdsToClassviz', (ids) => {
 
         });
+
+        this.eventBus.subscribe('changeCurrentFocusedNode', ({nodeId}) => {
+            const currentThreadName = this.data.currentThreadName;
+            if (!currentThreadName) return;
+            // find index in this.threadToMethodNodesInOrder for the current nodeId
+            this.threadToMethodNodesInOrder.forEach((methodNodes, threadName) => {
+                const index = methodNodes.findIndex(node => node.originalId === nodeId);
+                if (index !== -1 && threadName === currentThreadName) {
+                    this.currentIndexByThread.set(threadName, index);
+                }
+            });
+        });
     }
 
     getMethodLabelById(id) {
@@ -45,6 +68,28 @@ export class ClassvizManager {
         }
 
     }
+    
+    changeAllMethodNodesColor(color) {
+        this.insertedNodes.forEach((node, _) => {
+            if(node) {
+                node.style({
+                    'background-color': color,
+                    'border-color': '#999',
+                });
+            }
+        });
+    }
+
+    changeColorOfNodeById(id, color){
+        const nodeLabel = this.data.getNodeDataById(id).label;
+        const node = this.cy.$id(nodeLabel);
+        if (node) {
+            node.style({
+                'background-color': color,
+                'border-color': '#999',
+            });
+        }
+    }
 
     findClassNodeByNodeLabel(label) {
         const parenIndex = label.indexOf("(");
@@ -55,7 +100,7 @@ export class ClassvizManager {
         return this.cy.$id(classId);
     }
 
-
+    // Updated insertSingleMethodById function to maintain threadToMethodNodesInOrder
     insertSingleMethodById(id) {
         // Get the node label (which will be used as the cy node id)
         const nodeLabel = this.getMethodLabelById(id);
@@ -69,6 +114,32 @@ export class ClassvizManager {
             this.methodLabelToOriginalIds.set(nodeLabel, new Set());
         }
         this.methodLabelToOriginalIds.get(nodeLabel).add(id);
+
+        // Add to threadToMethodNodesInOrder map based on current thread
+        const currentThreadName = this.data.currentThreadName;
+        if (currentThreadName) {
+            if (!this.threadToMethodNodesInOrder.has(currentThreadName)) {
+                this.threadToMethodNodesInOrder.set(currentThreadName, []);
+            }
+
+            // Check if this node is already in the thread's list
+            const threadNodes = this.threadToMethodNodesInOrder.get(currentThreadName);
+            const existingNodeIndex = threadNodes.findIndex(node => node.originalId === id);
+
+            // Only add if not already in the list
+            if (existingNodeIndex === -1) {
+                threadNodes.push({
+                    originalId: id,
+                    label: nodeLabel
+                });
+
+                // Sort the array by originalId to maintain order
+                threadNodes.sort((a, b) => {
+                    // Convert originalIds to integers for proper numeric comparison
+                    return parseInt(a.originalId) - parseInt(b.originalId);
+                });
+            }
+        }
 
         // Check if the node already exists - if so, we only need to handle edges
         const nodeExists = this.insertedNodes.has(nodeLabel);
@@ -281,12 +352,30 @@ export class ClassvizManager {
         this.createEdgesForNode(id, nodeLabel);
     }
 
+    // Updated removeSingleMethodById function to maintain threadToMethodNodesInOrder
     removeSingleMethodById(id) {
         // Get the node label which is used as the cy node id
         const nodeLabel = this.getMethodLabelById(id);
         if (!nodeLabel) {
             console.error(`Could not get label for node with id ${id}`);
             return;
+        }
+
+        // Remove from threadToMethodNodesInOrder map based on current thread
+        const currentThreadName = this.data.currentThreadName;
+        if (currentThreadName && this.threadToMethodNodesInOrder.has(currentThreadName)) {
+            const threadNodes = this.threadToMethodNodesInOrder.get(currentThreadName);
+            const nodeIndex = threadNodes.findIndex(node => node.originalId === id);
+
+            if (nodeIndex !== -1) {
+                // Remove the node from the thread's ordered list
+                threadNodes.splice(nodeIndex, 1);
+
+                // // If the thread's list is now empty, we can remove the thread entry
+                // if (threadNodes.length === 0) {
+                //     this.threadToMethodNodesInOrder.delete(currentThreadName);
+                // }
+            }
         }
 
         // Check if the node exists
@@ -420,7 +509,6 @@ export class ClassvizManager {
         this.originalIdToSourceEdges.delete(id);
         this.originalIdToTargetEdges.delete(id);
     }
-
     // Helper method to restore class to original dimensions
     restoreClassOriginalDimensions(classId) {
         const classNode = this.cy.$id(classId);
@@ -515,7 +603,7 @@ export class ClassvizManager {
         if (!this.data.traceMode) {
             // Find the parent node by traversing up the call tree
             const parentInfo = this.findFirstSelectedParent(id);
-            console.log(`Parent info for node ${id}:`, parentInfo);
+            // console.log(`Parent info for node ${id}:`, parentInfo);
 
             if (parentInfo) {
                 const { parentId, parentNodeLabel } = parentInfo;
@@ -546,7 +634,7 @@ export class ClassvizManager {
             }
             // Clear the set of source edges
             this.originalIdToSourceEdges.set(originalId, new Set());
-            console.log(`Removed all edges from node ${originalId}`);
+            // console.log(`Removed all edges from node ${originalId}`);
         }
     }
 
@@ -585,7 +673,7 @@ export class ClassvizManager {
     // Uses DFS traversal to create edges
     traverseDownAndCreateEdges(originalId, sourceNodeLabel) {
         const visited = new Set();
-        console.log(`Traversing down from ${originalId}  ${sourceNodeLabel} to create edges`);
+        // console.log(`Traversing down from ${originalId}  ${sourceNodeLabel} to create edges`);
 
         // Helper function using DFS traversal
         const dfs = (currentId) => {
@@ -632,7 +720,7 @@ export class ClassvizManager {
 
         // Check if this edge already exists
         if (this.insertedEdges.has(edgeId)) {
-            console.log(`Edge ${edgeId} already exists, skipping creation`);
+            // console.log(`Edge ${edgeId} already exists, skipping creation`);
             return;
         }
 
@@ -652,7 +740,7 @@ export class ClassvizManager {
 
         // Add the edge to cytoscape
         const edge = this.cy.add(edgeData);
-        console.log(`Edge created: ${edgeId} from ${sourceNodeLabel} to ${targetNodeLabel}`);
+        // console.log(`Edge created: ${edgeId} from ${sourceNodeLabel} to ${targetNodeLabel}`);
 
         // Style the edge
         edge.style({
@@ -688,6 +776,6 @@ export class ClassvizManager {
         }
         this.originalIdToTargetEdges.get(targetOriginalId).add(edgeId);
 
-        console.log(`Created edge from ${sourceNodeLabel} to ${targetNodeLabel}`);
+        // console.log(`Created edge from ${sourceNodeLabel} to ${targetNodeLabel}`);
     }
 }
