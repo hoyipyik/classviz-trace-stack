@@ -26,6 +26,8 @@ class Filter {
         }
         // Update search results selection status
         this.updateSearchedItemsCheckboxUI();
+        // Update current thread search results selection status
+        this.updateCurrentThreadSearchedItemsCheckboxUI();
       });
 
       // Subscribe to search results change events
@@ -35,6 +37,8 @@ class Filter {
 
         // Update search results selection status
         this.updateSearchedItemsCheckboxUI();
+        // Update current thread search results selection status
+        this.updateCurrentThreadSearchedItemsCheckboxUI();
       });
 
       // Subscribe to thread change events
@@ -47,6 +51,8 @@ class Filter {
 
         // Update search results selection status
         this.updateSearchedItemsCheckboxUI();
+        // Update current thread search results selection status
+        this.updateCurrentThreadSearchedItemsCheckboxUI();
       });
     }
   }
@@ -64,6 +70,9 @@ class Filter {
 
     // Set up search results selection event handling
     this.setupSearchedItemsSelection();
+
+    // Set up current thread search results selection event handling
+    this.setupCurrentThreadSearchedItemsSelection();
 
     // Set up trace mode switcher for Classviz
     this.setupTraceModeSwitcher();
@@ -521,6 +530,108 @@ class Filter {
     this.setNodesVisibility(allNodeIds, true);
 
     return allNodeIds;
+  }
+
+  // Add a new method to set up event handling for current thread search results selection
+  setupCurrentThreadSearchedItemsSelection() {
+    // Find checkbox
+    const checkboxWrapper = document.getElementById('selectAllSearchedCurrentThread');
+    if (!checkboxWrapper) {
+      console.error("Current thread search results selection checkbox not found!");
+      return;
+    }
+
+    // Add click event
+    checkboxWrapper.addEventListener('click', () => {
+      this.toggleCurrentThreadSearchedItemsSelection();
+    });
+  }
+
+  // Toggle current thread search results selection state
+  toggleCurrentThreadSearchedItemsSelection() {
+    // Get current search results in current thread only
+    const currentThread = this.data.getCurrentThreadName();
+    const searchResults = this.getSearchResults().filter(
+      result => result.threadName === currentThread
+    );
+
+    if (!searchResults || searchResults.length === 0) return;
+
+    // Check current state
+    const selectionState = this.getCurrentThreadSearchedItemsSelectionState(searchResults);
+    // If all selected or partially selected, then deselect all; if all unselected, then select all
+    const newState = selectionState === true ? false : true;
+
+    // Perform selection operation
+    const changedIds = [];
+    searchResults.forEach(result => {
+      if (this.data.select(result.id, newState)) {
+        changedIds.push(result.id);
+      }
+    });
+
+    // Update UI
+    if (changedIds.length > 0) {
+      this.view.batchUpdateNodes(changedIds);
+      this.eventBus.publish('refreshFlame', {});
+    }
+  }
+
+  // Get selection state of current thread search results
+  getCurrentThreadSearchedItemsSelectionState(searchResults) {
+    if (!searchResults || searchResults.length === 0) return null;
+
+    let selectedCount = 0;
+
+    // Check selection state of each search result
+    searchResults.forEach(result => {
+      const nodeState = this.data.getNodeState(result.id);
+      if (nodeState && nodeState.selected) {
+        selectedCount++;
+      }
+    });
+
+    if (selectedCount === 0) {
+      return false; // All unselected
+    } else if (selectedCount === searchResults.length) {
+      return true;  // All selected
+    } else {
+      return null;  // Partially selected
+    }
+  }
+
+  // Update current thread search results selection state UI
+  updateCurrentThreadSearchedItemsCheckboxUI() {
+    const currentThread = this.data.getCurrentThreadName();
+    const searchResults = this.getSearchResults().filter(
+      result => result.threadName === currentThread
+    );
+    const checkbox = document.getElementById('selectAllSearchedCurrentThread');
+
+    if (!checkbox) return;
+
+    // If no search results, disable checkbox
+    if (!searchResults || searchResults.length === 0) {
+      checkbox.classList.remove('checked', 'unchecked', 'indeterminate');
+      checkbox.classList.add('unchecked');
+      checkbox.classList.add('disabled');
+      return;
+    }
+
+    // Enable checkbox
+    checkbox.classList.remove('disabled');
+
+    // Update checkbox state
+    const state = this.getCurrentThreadSearchedItemsSelectionState(searchResults);
+
+    checkbox.classList.remove('checked', 'unchecked', 'indeterminate');
+    if (state === true) {
+      checkbox.classList.add('checked');
+    } else if (state === false) {
+      checkbox.classList.add('unchecked');
+    } else {
+      checkbox.classList.add('indeterminate');
+    }
   }
 }
 
