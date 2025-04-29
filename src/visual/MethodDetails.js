@@ -7,9 +7,6 @@ class MethodDetails {
     // Event bus
     this.eventBus = eventBus;
     
-    // Current displayed node ID
-    this.currentNodeId = null;
-    
     // Initialize
     this.init();
   }
@@ -26,9 +23,6 @@ class MethodDetails {
     if (this.eventBus) {
       this.eventBus.subscribe('changeCurrentFocusedNode', (data) => {
         if (data && data.nodeId) {
-          // Save the current node ID
-          this.currentNodeId = data.nodeId;
-          
           // Enable the view details button
           const viewBtn = document.getElementById('viewMethodDetailsBtn');
           if (viewBtn) {
@@ -36,7 +30,6 @@ class MethodDetails {
           }
         } else {
           // If no node is selected, disable the button
-          this.currentNodeId = null;
           const viewBtn = document.getElementById('viewMethodDetailsBtn');
           if (viewBtn) {
             viewBtn.disabled = true;
@@ -85,9 +78,9 @@ class MethodDetails {
     const viewBtn = document.getElementById('viewMethodDetailsBtn');
     if (viewBtn) {
       viewBtn.addEventListener('click', () => {
-        if (this.currentNodeId) {
+        if (this.data.current) {
           this.showModal();
-          this.updateMethodDetails(this.currentNodeId);
+          this.updateMethodDetails(this.data.current);
         }
       });
     }
@@ -129,9 +122,9 @@ class MethodDetails {
   
   // Update boolean status
   updateBooleanStatus(fieldId, value) {
-    if (!this.currentNodeId) return;
+    if (!this.data.current) return;
     
-    const nodeData = this.data.getNodeData(this.currentNodeId);
+    const nodeData = this.data.getNodeDataById(this.data.current);
     if (!nodeData || !nodeData.status) return;
     
     // Determine which property to update based on field ID
@@ -156,7 +149,7 @@ class MethodDetails {
     // If there's an event bus, notify other components that data has been updated
     if (this.eventBus) {
       this.eventBus.publish('nodeDataChanged', {
-        nodeId: this.currentNodeId,
+        nodeId: this.data.current,
         field: property,
         value: value
       });
@@ -165,7 +158,7 @@ class MethodDetails {
   
   // Update method details display
   updateMethodDetails(nodeId) {
-    const nodeData = this.data.getNodeData(nodeId);
+    const nodeData = this.data.getNodeDataById(nodeId);
     if (!nodeData) {
       return;
     }
