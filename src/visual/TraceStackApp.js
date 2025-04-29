@@ -11,13 +11,15 @@ import { ViewSwitcher } from './ViewSwitcher.js'; // Add new import
 import { ResizeManager } from './ResizeManager.js';
 import { SidebarController } from './SidebarController.js';
 import { ClassvizManager } from './ClassvizManager.js'; // Import ClassvizManager
+import { StepByStepPlayController } from './StepByStepPlayController.js';
 
 /**
  * Call Tree Visualization Application Main Entry
  */
 class TraceStackApp {
-  constructor(rawThreadData, nodeMap, rootNode) {
+  constructor(rawThreadData, idRangeByThreadMap) {
     this.rawData = rawThreadData || null; // Raw data from external source
+    this.idRangeByThreadMap = idRangeByThreadMap || null; // ID range map for threads
   //   this.sharedStates = {
   //     traceMode: false
   // }
@@ -64,7 +66,12 @@ class TraceStackApp {
     this.data = new DataStore(threadsData, this.eventBus);
 
     // Initialize methods display manager
-    this.classvizManager = new ClassvizManager(this.data, window.cy, this.eventBus);
+    this.classvizManager = new ClassvizManager(this.data, window.cy, this.eventBus, this.idRangeByThreadMap);
+
+    // Initialize StepByStepPlayController
+    this.stepByStepPlayController = new StepByStepPlayController(this.eventBus, this.data, this.classvizManager);
+
+    this.stepByStepPlayController.init();
 
     // Get DOM container
     const container = document.getElementById('callTree');
