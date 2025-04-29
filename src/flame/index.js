@@ -8,7 +8,7 @@ import { FlameGraphService } from "./services/flameGraphMain.js";
 // Export the flame graph plugin loader
 export const loadFlameGraphPlugin = (cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap) => {
     // const service = new FlameGraphService(cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap);
-    const traceStackApp = new TraceStackApp(cascadeTree, nodeMap, rootNode);
+    const traceStackApp = new TraceStackApp(cascadeTree, idRangeByThreadMap);
     document.getElementById('mainContent').style.display = 'block'; // Show the main content
     $("#btn-relayout").click();
     // updateTraceNodesOnClassviz();
