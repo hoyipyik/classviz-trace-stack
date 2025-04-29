@@ -13,7 +13,8 @@ export const eventNames = {
   changeTraceMode: 'changeTraceMode',
   // classviz relavant events
   changeSingleMethodByIdToClassviz: 'changeSingleMethodByIdToClassviz',
-  changeMultiMethodByIdsToClassviz: 'changeMultiMethodByIdsToClassviz'
+  changeMultiMethodByIdsToClassviz: 'changeMultiMethodByIdsToClassviz',
+  changeClassvizFocus: 'changeClassvizFocus'
   
 }
 
