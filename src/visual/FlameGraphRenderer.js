@@ -327,6 +327,11 @@ class FlameGraphRenderer {
         this.eventBus.publish('changeCurrentFocusedNode', {
             nodeId: nodeId
         });
+
+        this.eventBus.publish('changeClassvizFocus', {
+            nodeId: nodeId
+        });
+        
     }
     
     // Update node selection state

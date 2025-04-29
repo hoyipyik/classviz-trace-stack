@@ -34,8 +34,10 @@ class Renderer {
       
       this.eventBus.subscribe('changeCurrentFocusedNode', (data) => {
         if (data && data.nodeId) {
-          const label = this.data.nodes.get(data.nodeId).data.label;
+          const label = this.data.getNodeDataById(data.nodeId).label;
           this.updateCurrentMethodDisplay(label);
+          this.updateCurrentNodeFocusUI(data.nodeId);
+          this.scrollToNode(data.nodeId);
         }
       });
       
@@ -116,7 +118,7 @@ class Renderer {
 
   // Create a node element
   createNodeElement(nodeId) {
-    const nodeData = this.data.getNodeData(nodeId);
+    const nodeData = this.data.getNodeDataById(nodeId);
     const nodeState = this.data.getNodeState(nodeId);
 
     if (!nodeData) return null;
@@ -182,7 +184,11 @@ class Renderer {
           this.eventBus.publish('changeCurrentFocusedNode', {
             nodeId: nodeId
           });
+          this.eventBus.publish('changeClassvizFocus', {
+            nodeId: nodeId
+        });
         }
+
       }
     });
     itemDiv.appendChild(checkbox);
@@ -213,6 +219,9 @@ class Renderer {
           this.eventBus.publish('changeCurrentFocusedNode', {
             nodeId: nodeId
           });
+          this.eventBus.publish('changeClassvizFocus', {
+            nodeId: nodeId
+        });
         }
 
         // Toggle node expansion
@@ -271,6 +280,9 @@ class Renderer {
           this.eventBus.publish('changeCurrentFocusedNode', {
             nodeId: nodeId
           });
+          this.eventBus.publish('changeClassvizFocus', {
+            nodeId: nodeId
+        });
         }
       }
     });
@@ -378,7 +390,7 @@ class Renderer {
       return;
     }
 
-    const nodeData = this.data.getNodeData(nodeId);
+    const nodeData = this.data.getNodeDataById(nodeId);
     const nodeState = this.data.getNodeState(nodeId);
     const nodeElement = this.data.getNodeElement(nodeId);
 
