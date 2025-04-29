@@ -272,11 +272,18 @@
                     >Select all search results</span
                   >
                 </label>
+                <label class="package-item">
+                  <div id="selectAllSearchedCurrentThread" class="tri-state-checkbox"></div>
+                  <span style="margin-left: 5px">Select all search results in current thread</span>
+                </label>
               </div>
             </div>
 
-             <!-- Step by step play  -->
-             <details class="sidebar-section collapsible">
+            <!-- Step by step play  -->
+            <details
+              class="sidebar-section collapsible"
+              style="border-top: 1px solid #cacaca"
+            >
               <summary
                 class="section-header"
                 data-toggle="packageFilterContent"
@@ -290,10 +297,7 @@
             </details>
 
             <!-- FlameChart Style -->
-            <details
-              class="sidebar-section"
-              style="border-top: 1px solid #cacaca"
-            >
+            <details class="sidebar-section">
               <summary class="section-header">
                 <h4>FlameChart Style</h4>
                 <span class="toggle-icon">▲</span>
@@ -567,10 +571,7 @@
             </div>
 
             <!-- Trace mode switcher on Classviz -->
-            <details
-              class="sidebar-section"
-              
-            >
+            <details class="sidebar-section">
               <summary class="section-header">
                 <h4>Trace Mode</h4>
                 <span class="toggle-icon">▲</span>
