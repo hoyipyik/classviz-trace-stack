@@ -93,7 +93,7 @@ class TraceStackApp {
     this.actions = new Actions(this.data, this.view, this.eventBus);
     this.viewSwitcher = new ViewSwitcher(this.data, this.flameGraph, this.eventBus);
     this.search = new Search(this.data, this.view, this.eventBus, this.viewSwitcher);
-    this.filter = new Filter(this.data, this.view, this.eventBus);
+    this.filter = new Filter(this.data, this.view, this.eventBus, this.search);
     this.methodDetails = new MethodDetails(this.data, this.eventBus);
 
     // Subscribe to view mode changes to update sidebar UI (new)
