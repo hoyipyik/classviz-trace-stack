@@ -18,23 +18,27 @@ class DataStore {
     // Current active thread tree data
     this.tree = null;
 
-    // Maps and collections for current active thread
+    // Maps and collections for ALL threads
     this.nodes = new Map();  // Mapping from node ID to node data
     this.state = new Map();  // Mapping from node ID to node state
     this.parents = new Map(); // Mapping from node ID to parent node ID
     this.children = new Map(); // Mapping from node ID to child node ID array
     this.selected = new Set(); // Set of all selected node IDs
 
+    // Thread to nodes mapping
+    this.originalIdToThreadMap = new Map(); // Mapping from original ID to thread name
+    this.threadToNodesMap = new Map(); // Mapping from thread name to array of node IDs
+
     // Package name mapping related
     this.packageInfo = new Map(); // Mapping from package name to {totalCount:0, color:""}
     this.packageIDs = new Map(); // Mapping from package name to all node ID arrays
     this.packageSelectedIDs = new Map(); // Mapping from package name to selected node ID arrays
 
-    // Current node
+    // Current node id
     this.current = null;
 
-    // 新增: 所有线程的节点映射
-    // 格式: threadName -> Map(nodeId -> nodeData)
+    // All threads' nodes mapping
+    // Format: threadName -> Map(nodeId -> nodeData)
     this.allThreadsNodes = new Map();
 
     // Flame Chart related settings
@@ -49,6 +53,9 @@ class DataStore {
 
     // Initialize all threads node mappings first
     this.initAllThreadsNodes();
+
+    // Initialize all data from all threads
+    this.initAllThreadsData();
 
     // Initialize data - select the first thread as the default thread
     const threadNames = Object.keys(threadsData);
@@ -99,15 +106,93 @@ class DataStore {
     buildNodeMap(threadData);
   }
 
-  getNodeDataById(nodeId) {
-    // 方法1：使用 for...of 循环，可以使用 return 直接返回
-    for (const [threadName, threadNodes] of this.allThreadsNodes.entries()) {
-      const node = threadNodes.get(nodeId);
-      if (node) {
-        return node.data;
+  //===============================================
+  // 初始化所有线程的数据
+  //===============================================
+
+  // 初始化所有线程的所有数据
+  initAllThreadsData() {
+    // 遍历所有线程
+    Object.entries(this.threadsData).forEach(([threadName, threadData]) => {
+      // 为每个线程创建节点ID数组
+      this.threadToNodesMap.set(threadName, []);
+      
+      // 初始化该线程的所有数据
+      this.initThreadData(threadName, threadData);
+    });
+  }
+
+  // 初始化特定线程的数据
+  initThreadData(threadName, node, parentId = null) {
+    if (!node || !node.id) return;
+
+    // 存储节点数据
+    this.nodes.set(node.id, { data: node });
+    
+    // 存储节点ID到线程的映射
+    this.originalIdToThreadMap.set(node.id, threadName);
+    
+    // 存储线程到节点ID的映射
+    this.threadToNodesMap.get(threadName).push(node.id);
+
+    // 设置初始状态
+    this.state.set(node.id, {
+      selected: node.selected || false,
+      expanded: !node.collapsed,
+      highlight: false
+    });
+
+    // 处理包名映射
+    if (node.packageName) {
+      // 初始化包信息
+      if (!this.packageInfo.has(node.packageName)) {
+        this.packageInfo.set(node.packageName, {
+          totalCount: 0,
+          color: node.color || ''
+        });
+        this.packageIDs.set(node.packageName, []);
+        this.packageSelectedIDs.set(node.packageName, []);
+      }
+
+      // 更新包信息
+      const info = this.packageInfo.get(node.packageName);
+      info.totalCount++;
+      if (!info.color && node.color) {
+        info.color = node.color;
+      }
+
+      // 添加节点ID到包ID列表
+      this.packageIDs.get(node.packageName).push(node.id);
+
+      // 如果节点已经被选中，添加到选中ID列表
+      if (node.selected) {
+        this.packageSelectedIDs.get(node.packageName).push(node.id);
+        this.selected.add(node.id);
       }
     }
-    return null;
+
+    // 设置父子关系
+    if (parentId) {
+      this.parents.set(node.id, parentId);
+
+      if (!this.children.has(parentId)) {
+        this.children.set(parentId, []);
+      }
+      this.children.get(parentId).push(node.id);
+    }
+
+    // 递归处理子节点
+    if (node.children && node.children.length > 0) {
+      node.children.forEach(child => {
+        this.initThreadData(threadName, child, node.id);
+      });
+    }
+  }
+
+  getNodeDataById(nodeId) {
+    // 直接从全局nodes表中获取
+    const node = this.nodes.get(nodeId);
+    return node ? node.data : null;
   }
   
   // 根据线程名称和节点ID获取节点数据
@@ -121,10 +206,12 @@ class DataStore {
 
   // 获取特定线程中的所有节点ID
   getAllNodeIdsForThread(threadName) {
-    const threadNodes = this.allThreadsNodes.get(threadName);
-    if (!threadNodes) return [];
+    return this.threadToNodesMap.get(threadName) || [];
+  }
 
-    return Array.from(threadNodes.keys());
+  // 获取节点ID所属的线程
+  getThreadForNodeId(nodeId) {
+    return this.originalIdToThreadMap.get(nodeId);
   }
 
   //===============================================
@@ -145,7 +232,7 @@ class DataStore {
   }
 
   //===============================================
-  // Thread switching
+  // Thread switching - Optimized
   //===============================================
 
   // Get all thread names
@@ -158,7 +245,7 @@ class DataStore {
     return this.currentThreadName;
   }
 
-  // Switch to specified thread
+  // Switch to specified thread - Optimized
   switchThread(threadName) {
     if (!this.threadsData[threadName]) {
       console.error(`Thread '${threadName}' not found!`);
@@ -176,11 +263,8 @@ class DataStore {
     // Set current active thread tree data
     this.tree = this.threadsData[threadName];
 
-    // Clear existing data
-    this.resetDataStructures();
-
-    // Reinitialize with new thread data
-    this.initFromData(this.tree);
+    // No need to reset data structures or reinitialize
+    // since we already have all data loaded
 
     // Trigger thread change event
     if (this.eventBus) {
@@ -192,89 +276,21 @@ class DataStore {
     return true;
   }
 
-  // Reset data structures
+  // This method is kept for backward compatibility but is now a no-op
   resetDataStructures() {
-    this.nodes.clear();
-    this.state.clear();
-    this.parents.clear();
-    this.children.clear();
-    this.selected.clear();
-    this.packageInfo.clear();
-    this.packageIDs.clear();
-    this.packageSelectedIDs.clear();
-    this.current = null;
+    // No longer needed as we keep all data in memory
+    console.warn('resetDataStructures called but is now a no-op');
   }
 
-  //===============================================
-  // Initialization and data access
-  //===============================================
-
-  // Initialize all mappings from raw data
+  // This method is kept for backward compatibility but is now a no-op
   initFromData(node, parentId = null) {
-    if (!node || !node.id) return;
-
-    // Store node data
-    this.nodes.set(node.id, { data: node });
-
-    // Set initial state
-    this.state.set(node.id, {
-      selected: node.selected || false,
-      expanded: !node.collapsed,
-      highlight: false
-    });
-
-    // Handle package name mapping
-    if (node.packageName) {
-      // Initialize package information
-      if (!this.packageInfo.has(node.packageName)) {
-        this.packageInfo.set(node.packageName, {
-          totalCount: 0,
-          color: node.color || ''
-        });
-        this.packageIDs.set(node.packageName, []);
-        this.packageSelectedIDs.set(node.packageName, []);
-      }
-
-      // Update package information
-      const info = this.packageInfo.get(node.packageName);
-      info.totalCount++;
-      if (!info.color && node.color) {
-        info.color = node.color;
-      }
-
-      // Add node ID to package ID list
-      this.packageIDs.get(node.packageName).push(node.id);
-
-      // If node is already selected, add to selected ID list
-      if (node.selected) {
-        this.packageSelectedIDs.get(node.packageName).push(node.id);
-        this.selected.add(node.id);
-      }
-    }
-
-    // Set parent-child relationship
-    if (parentId) {
-      this.parents.set(node.id, parentId);
-
-      if (!this.children.has(parentId)) {
-        this.children.set(parentId, []);
-      }
-      this.children.get(parentId).push(node.id);
-    }
-
-    // Recursively process child nodes
-    if (node.children && node.children.length > 0) {
-      node.children.forEach(child => {
-        this.initFromData(child, node.id);
-      });
-    }
+    // No longer needed as we load all data at initialization
+    console.warn('initFromData called but is now a no-op');
   }
 
-  // Get node raw data
-  getNodeData(nodeId) {
-    const node = this.nodes.get(nodeId);
-    return node ? node.data : null;
-  }
+  //===============================================
+  // Node state and data access methods
+  //===============================================
 
   // Get node state
   getNodeState(nodeId) {
@@ -305,7 +321,7 @@ class DataStore {
   }
 
   //===============================================
-  // Node expand/collapse operations
+  // Node expand/collapse operations - Unchanged
   //===============================================
 
   // Expand node
@@ -364,7 +380,6 @@ class DataStore {
     return true;
   }
 
-
   // Expand all descendant nodes
   expandAllDescendants(nodeId) {
     const changed = [];
@@ -415,7 +430,7 @@ class DataStore {
   }
 
   //===============================================
-  // Node select/deselect operations
+  // Node select/deselect operations - Unchanged
   //===============================================
 
   // Select node
@@ -473,6 +488,10 @@ class DataStore {
 
     return false;
   }
+
+  // Other methods remain unchanged...
+  // The rest of your class methods can be left as they are since they
+  // operate on the global data structures which now contain data from all threads
 
   // Deselect node
   deselect(nodeId, batch = false) {
@@ -627,7 +646,7 @@ class DataStore {
   }
 
   //===============================================
-  // Package related operations
+  // Package related operations - Unchanged
   //===============================================
 
   // Select nodes by package name - optimized version
@@ -688,7 +707,7 @@ class DataStore {
   }
 
   //===============================================
-  // Highlight and focus related operations
+  // Highlight and focus related operations - Unchanged
   //===============================================
 
   // Set current focus node
@@ -731,7 +750,7 @@ class DataStore {
   }
 
   //===============================================
-  // DOM elements and helper methods
+  // DOM elements and helper methods - Unchanged
   //===============================================
 
   // Set DOM element reference
