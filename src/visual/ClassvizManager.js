@@ -643,44 +643,6 @@ export class ClassvizManager {
             // 如果没有找到选中的父节点，只处理当前节点的连接
             this.traverseDownAndCreateEdges(id, nodeLabel);
         } else {
-            // 新增的traceMode逻辑
-            // 在traceMode下，我们根据threadToMethodNodesInOrder中的顺序创建边
-            this.createEdgesBasedOnThreadOrder(id);
-        }
-    }
-    
-    createEdgesForNode(id, nodeLabel) {
-        // 如果只有一个插入的节点，还不需要创建边
-        if (this.insertedNodes.size <= 1) {
-            console.log("Only one node exists, skipping edge creation");
-            return;
-        }
-    
-        // 从原始数据源获取节点数据
-        const nodeData = this.data.nodes.get(id).data;
-        if (!nodeData) {
-            console.error(`Node data not found for id ${id}`);
-            return;
-        }
-    
-        // 根据traceMode决定边的创建方式
-        if (!this.data.traceMode) {
-            // 原有的非traceMode逻辑
-            // 通过向上遍历调用树查找父节点
-            const parentInfo = this.findFirstSelectedParent(id);
-    
-            if (parentInfo) {
-                const { parentId, parentNodeLabel } = parentInfo;
-    
-                // 移除从父节点发出的所有边
-                this.removeAllEdgesFromNode(parentId);
-    
-                // 现在从父节点向下遍历以创建新边
-                this.traverseDownAndCreateEdges(parentId, parentNodeLabel);
-            }
-            // 如果没有找到选中的父节点，只处理当前节点的连接
-            this.traverseDownAndCreateEdges(id, nodeLabel);
-        } else {
             // 处理traceMode下的边缘创建
             this.createSequentialEdges();
         }
