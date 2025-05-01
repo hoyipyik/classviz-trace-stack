@@ -21,31 +21,20 @@ export class StepByStepPlayController {
 
         this.init();
 
-
-        this.eventBus.subscribe('changeCurrentFocusedNode', () => {
+        this.eventBus.subscribe('changeClassvizFocus', () => {
             this.refresh();
-            // this.onModeToggle(this.classvizManager.stepByStepMode);
+            this.onModeToggle(this.classvizManager.stepByStepMode);
         });
 
         this.eventBus.subscribe('changeSingleMethodByIdToClassviz', () => {
-            // const threadNames = Array.from(this.classvizManager.threadToMethodNodesInOrder.keys());
-            // threadNames.forEach(threadName => {
-            //     this.updateUI(threadName);
-            // });
             this.refresh();
-            // console.log("changeSingleMethodByIdToClassviz mode: !!!", this.classvizManager.stepByStepMode);
             this.onModeToggle(this.classvizManager.stepByStepMode);
         });
 
         this.eventBus.subscribe('changeMultiMethodByIdsToClassviz', () => {
-            // const threadNames = Array.from(this.classvizManager.threadToMethodNodesInOrder.keys());
-            // threadNames.forEach(threadName => {
-            //     this.updateUI(threadName);
-            // });
             this.refresh();
             this.onModeToggle(this.classvizManager.stepByStepMode);
         });
-
     }
 
     init() {
@@ -373,26 +362,32 @@ export class StepByStepPlayController {
             });
         }
     
-        // Set current node with bounds check
-        if (newIndex < 0 || newIndex >= threadNodes.length) {
+        if(newIndex >= threadNodes.length){
             console.error("Invalid index for thread nodes: ", newIndex);
+            this.classvizManager.currentIndexByThread.set(threadName, threadNodes.length - 1);
+            return;
+        }
+        // Set current node with bounds check
+        if (newIndex < 0) {
+            console.error("Invalid index for thread nodes: ", newIndex);
+            this.classvizManager.currentIndexByThread.set(threadName, 0);
             return;
         }
         const currentNodeId = threadNodes[newIndex].originalId;
         this.data.current = currentNodeId;
+     
         this.eventBus.publish('changeCurrentFocusedNode', { nodeId: currentNodeId });
+        
         this.refresh();
     }
     
     onModeToggle(on) {
         this.classvizManager.stepByStepMode = on;
-    
         if (!on) {
             // When step-by-step mode is turned off, reset all thread nodes to their original colors
             for (const [threadName, nodes] of this.classvizManager.threadToMethodNodesInOrder.entries()) {
                 nodes.forEach(node => {
                     const nodeId = node.originalId;
-                    console.log(nodeId, "originalId");
                     
                     // 使用全局节点映射获取节点数据，不受当前活跃线程影响
                     const nodeData = this.data.getNodeDataByThreadAndId(threadName, nodeId);
@@ -406,7 +401,6 @@ export class StepByStepPlayController {
                     }
                 });
             }
-            // this.refresh();
         } else {
             // When turned on, immediately apply the step-by-step coloring to the current thread
             for (const [threadName, currentIndex] of this.classvizManager.currentIndexByThread.entries()) {
@@ -421,14 +415,6 @@ export class StepByStepPlayController {
     refresh() {
         this.init();
     }
-
-
-
-
-    // Set callback for mode toggle
-    // setOnModeToggleCallback(callback) {
-    //     this.onModeToggle = callback;
-    // }
 
     // Public methods to turn step-by-step mode on/off
     enableStepByStepMode() {
@@ -460,5 +446,4 @@ export class StepByStepPlayController {
         }
         return `${className}.${methodName}`;
     }
-
 }
