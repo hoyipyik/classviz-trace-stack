@@ -150,8 +150,14 @@ class Filter {
       // console.log("Selected FlameChart style:", value);
       if (value === "trace") {
         this.data.setTraceMode(true);
+        this.eventBus.publish('switchTraceMode', {
+          traceMode: true,
+        });
       } else {
         this.data.setTraceMode(false);
+        this.eventBus.publish('switchTraceMode', {
+          traceMode: false,
+        });
       }
       this.eventBus.publish('changeTraceMode', {});
     };
