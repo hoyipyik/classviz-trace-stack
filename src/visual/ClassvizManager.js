@@ -41,7 +41,7 @@ export class ClassvizManager {
 
         });
 
-        this.eventBus.subscribe('changeMultiMethodByIdToClassviz', (
+        this.eventBus.subscribe('changeMultiMethodByIdsToClassviz', (
             { nodeIds, selected }) => {
             if (selected) {
                 nodeIds.forEach((nodeId) => {
@@ -53,6 +53,10 @@ export class ClassvizManager {
                     this.removeSingleMethodById(nodeId);
                 });
             }
+        });
+
+        this.eventBus.subscribe('switchTraceMode', ({ traceMode }) => {
+            this.switchTraceMode(traceMode);
         });
 
         this.eventBus.subscribe('changeCurrentFocusedNode', ({ nodeId }) => {
@@ -397,6 +401,137 @@ export class ClassvizManager {
         // 更新映射并决定是否删除节点
         this.updateMappingsAndRemoveNode(id, nodeLabel, methodNode);
     }
+    /**
+ * 切换图表的边创建模式并重新创建所有边
+ * @param {boolean} traceMode - 是否启用时序模式的边创建
+ */
+    switchTraceMode(traceMode) {
+        // 更新模式设置
+        this.data.traceMode = traceMode;
+        console.log(`Switched to ${traceMode ? 'trace' : 'call tree'} mode`);
+
+        // 如果没有足够的节点，则无需处理
+        if (this.insertedNodes.size <= 1) {
+            console.log("Less than 2 nodes exist, no edges to recreate");
+            return;
+        }
+
+        // 清除所有现有边
+        this.clearAllEdges();
+
+        // 根据当前模式重新创建边
+        if (traceMode) {
+            // 时序模式：调用创建顺序边的方法
+            this.createSequentialEdges();
+        } else {
+            // 调用树模式：为每个选中的节点创建边
+            this.rebuildCallTreeEdges();
+        }
+    }
+
+    /**
+     * 清除图表中的所有边
+     */
+    clearAllEdges() {
+        // 收集所有需要移除的边的ID
+        const edgeIds = [];
+        this.insertedEdges.forEach((_, id) => {
+            edgeIds.push(id);
+        });
+
+        // 循环移除每条边
+        for (const edgeId of edgeIds) {
+            if (this.insertedEdges.has(edgeId)) {
+                const edge = this.insertedEdges.get(edgeId);
+                // 从cytoscape中移除边
+                this.cy.remove(edge);
+                // 从我们的映射中移除边
+                this.insertedEdges.delete(edgeId);
+
+                // 获取源和目标节点信息
+                const sourceOriginalId = edge.data('sourceOriginalId');
+                const targetOriginalId = edge.data('targetOriginalId');
+
+                // 从源节点的边集合中移除
+                if (sourceOriginalId && this.originalIdToSourceEdges.has(sourceOriginalId)) {
+                    this.originalIdToSourceEdges.get(sourceOriginalId).delete(edgeId);
+                }
+
+                // 从目标节点的边集合中移除
+                if (targetOriginalId && this.originalIdToTargetEdges.has(targetOriginalId)) {
+                    this.originalIdToTargetEdges.get(targetOriginalId).delete(edgeId);
+                }
+            }
+        }
+
+        console.log(`Cleared all ${edgeIds.length} edges`);
+    }
+
+    /**
+ * 为调用树模式重建所有边
+ */
+    rebuildCallTreeEdges() {
+        // 利用已有的树结构数据重建边
+        this.threadToMethodNodesInOrder.forEach((_, threadName) => {
+            // 获取该线程的树数据
+            const treeData = this.data.threadsData[threadName];
+            if (!treeData) return;
+
+            // 获取该树的根节点
+            const rootNode = treeData;
+            if (!rootNode) return;
+
+            // 从根节点开始遍历树，创建所有边
+            this.traverseTreeAndCreateEdges(rootNode);
+        });
+
+        console.log(`Recreated call tree edges for all threads`);
+    }
+
+    /**
+     * 遍历树并创建边
+     * @param {Object} node - 当前树节点
+     * @param {Set} visited - 已访问节点的集合（防止循环引用）
+     * @param {String|null} lastSelectedParentId - 上一个选中的父节点ID
+     * @param {String|null} lastSelectedParentLabel - 上一个选中的父节点标签
+     */
+    traverseTreeAndCreateEdges(node, visited = new Set(), lastSelectedParentId = null, lastSelectedParentLabel = null) {
+        if (!node || visited.has(node.id)) return;
+        visited.add(node.id);
+
+        // 获取当前节点信息
+        const nodeData = this.data.nodes.get(node.id)?.data;
+        if (!nodeData) return; // 节点不存在，跳过处理
+
+        const nodeLabel = this.getMethodLabelById(node.id);
+        const isCurrentNodeSelected = nodeData.selected && nodeLabel && this.insertedNodes.has(nodeLabel);
+
+        // 如果当前节点被选中，更新"最后选中的父节点"为当前节点
+        let currentSelectedParentId = lastSelectedParentId;
+        let currentSelectedParentLabel = lastSelectedParentLabel;
+
+        if (isCurrentNodeSelected) {
+            // 当前节点被选中，更新为新的父节点
+            currentSelectedParentId = node.id;
+            currentSelectedParentLabel = nodeLabel;
+
+            // 如果有上一个选中的父节点，创建从父节点到当前节点的边
+            if (lastSelectedParentId && lastSelectedParentLabel) {
+                this.createEdge(lastSelectedParentId, lastSelectedParentLabel, node.id, nodeLabel);
+            }
+        }
+
+        // 递归处理所有子节点，无论当前节点是否被选中
+        const children = node.children || [];
+        for (const child of children) {
+            this.traverseTreeAndCreateEdges(
+                child,
+                visited,
+                currentSelectedParentId,
+                currentSelectedParentLabel
+            );
+        }
+    }
 
     // 从线程方法节点列表中移除节点
     removeFromThreadMethodNodes(id, nodeLabel) {
@@ -617,26 +752,26 @@ export class ClassvizManager {
             console.log("Only one node exists, skipping edge creation");
             return;
         }
-    
+
         // 从原始数据源获取节点数据
         const nodeData = this.data.nodes.get(id).data;
         if (!nodeData) {
             console.error(`Node data not found for id ${id}`);
             return;
         }
-    
+
         // 根据traceMode决定边的创建方式
         if (!this.data.traceMode) {
             // 原有的非traceMode逻辑
             // 通过向上遍历调用树查找父节点
             const parentInfo = this.findFirstSelectedParent(id);
-    
+
             if (parentInfo) {
                 const { parentId, parentNodeLabel } = parentInfo;
-    
+
                 // 移除从父节点发出的所有边
                 this.removeAllEdgesFromNode(parentId);
-    
+
                 // 现在从父节点向下遍历以创建新边
                 this.traverseDownAndCreateEdges(parentId, parentNodeLabel);
             }
@@ -647,33 +782,33 @@ export class ClassvizManager {
             this.createSequentialEdges();
         }
     }
-    
+
     // 在traceMode下按照线程内节点的序列顺序创建边
     createSequentialEdges() {
         // 遍历每个线程
         this.threadToMethodNodesInOrder.forEach((methodNodes, threadName) => {
             // 获取已插入的节点（已选中的节点）
-            const selectedNodes = methodNodes.filter(node => 
-                this.insertedNodes.has(node.label) && 
+            const selectedNodes = methodNodes.filter(node =>
+                this.insertedNodes.has(node.label) &&
                 this.data.nodes.get(node.originalId)?.data?.selected
             );
-            
+
             // 如果线程中少于2个已选中的节点，则无需创建边
             if (selectedNodes.length < 2) {
                 return;
             }
-            
+
             // 清除所有现有边，为重建边做准备
             // 我们只需清除与这个线程中节点相关的边
             selectedNodes.forEach(node => {
                 this.removeAllEdgesFromNode(node.originalId);
             });
-            
+
             // 按照节点在列表中的顺序创建边（链表式连接）
             for (let i = 0; i < selectedNodes.length - 1; i++) {
                 const currentNode = selectedNodes[i];
                 const nextNode = selectedNodes[i + 1];
-                
+
                 // 创建从当前节点到下一个节点的边
                 this.createEdge(
                     currentNode.originalId,
@@ -684,7 +819,7 @@ export class ClassvizManager {
             }
         });
     }
-  
+
     // Helper method to remove all edges that originate from the given node
     removeAllEdgesFromNode(originalId) {
         if (this.originalIdToSourceEdges.has(originalId)) {
