@@ -486,13 +486,13 @@ class DataStore {
         });
       }
 
-      // if (!batch) {
+      if (!batch) {
         // triger single insertion event
         this.eventBus.publish('changeSingleMethodByIdToClassviz', {
           nodeId,
           selected
         });
-      // }
+      }
 
       return true;
     }
