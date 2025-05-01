@@ -165,7 +165,7 @@ class Search {
   find(query) {
     // Switch to call tree view if not already active
     this._ensureCallTreeView();
-
+    
     // Clear existing search results
     this.clearSearch();
 
@@ -230,7 +230,7 @@ class Search {
     if (this.highlightAll) {
       this.highlightAllResults();
     }
-
+    
     if (this.searchResults.length > 0) {
       // Navigate to first result if results exist
       this.navigateNext();
@@ -351,7 +351,7 @@ class Search {
    */
   _handleThreadSwitchIfNeeded(resultThreadName) {
     const currentThreadName = this.data.getCurrentThreadName();
-
+    
     if (resultThreadName !== currentThreadName) {
       // Remember the highlightAll setting
       const wasHighlightAll = this.highlightAll;
@@ -371,10 +371,10 @@ class Search {
       if (wasHighlightAll) {
         this.highlightAllResults();
       }
-
+      
       return true;
     }
-
+    
     return false;
   }
 
@@ -418,6 +418,36 @@ class Search {
     this.data.setCurrent(nodeId);
     this.view.updateCurrentNodeFocusUI(nodeId);
     this.view.updateCurrentMethodDisplay(label);
+  }
+  
+  /**
+   * Reset search position to first result in current thread
+   * Called when switching threads to ensure navigation starts from the first result in the new thread
+   */
+  resetToFirstResultInCurrentThread() {
+    if (this.searchResults.length === 0) return;
+    
+    // Get current thread name
+    const currentThreadName = this.data.getCurrentThreadName();
+    
+    // Find the first result in the current thread
+    const firstResultIndexInThread = this.searchResults.findIndex(
+      result => result.threadName === currentThreadName
+    );
+    
+    // If found, set current index to the result before it (so navigateNext will select it)
+    // If not found, set to -1 (default state)
+    if (firstResultIndexInThread >= 0) {
+      this.currentResultIndex = firstResultIndexInThread - 1;
+      
+      // Navigate to the first result
+      this.navigateNext();
+    } else {
+      this.currentResultIndex = -1;
+      
+      // Update display to show no results in current thread
+      this.updateResultsDisplay();
+    }
   }
 
   /**
@@ -516,7 +546,7 @@ class Search {
 
     // Calculate position information
     const positionInfo = this._calculatePositionInfo(currentThread, currentThreadResults);
-
+    
     // Format and display result text
     resultsElement.textContent = this._formatResultText(positionInfo);
   }
@@ -536,7 +566,7 @@ class Search {
 
     const currentResult = this.searchResults[this.currentResultIndex];
     const isInCurrentThread = currentResult.threadName === currentThread;
-
+    
     let currentThreadIndex = -1;
     if (isInCurrentThread) {
       currentThreadIndex = currentThreadResults.findIndex(
