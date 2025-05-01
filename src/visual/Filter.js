@@ -200,7 +200,7 @@ class Filter {
         // Use setTimeout to ensure the thread switch is complete
         setTimeout(() => {
           // Manually trigger highlighting
-          this.search.clearAllHighlightsStyle();
+          this.search.clearAllHighlights();
           this.search.highlightAllResults();
         }, 200); // Small delay to ensure the thread switch and rendering is complete
       }
