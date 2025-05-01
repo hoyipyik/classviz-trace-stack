@@ -4,7 +4,7 @@
  * Responsible for handling node filtering
  */
 class Filter {
-  constructor(dataStore, renderer, eventBus) {
+  constructor(dataStore, renderer, eventBus, search) {
     // Data store reference
     this.data = dataStore;
 
@@ -13,6 +13,9 @@ class Filter {
 
     // Event 
     this.eventBus = eventBus;
+
+    // Search reference
+    this.search = search;
 
     // Store current search results
     this.currentSearchResults = [];
@@ -192,6 +195,15 @@ class Filter {
       const selectedThreadName = select.value;
       select.title = selectedThreadName; // Update tooltip
       this.switchThread(selectedThreadName);
+      this.search.resetToFirstResultInCurrentThread();
+      if (this.search && this.search.highlightAll) {
+        // Use setTimeout to ensure the thread switch is complete
+        setTimeout(() => {
+          // Manually trigger highlighting
+          this.search.clearAllHighlightsStyle();
+          this.search.highlightAllResults();
+        }, 200); // Small delay to ensure the thread switch and rendering is complete
+      }
     });
 
     container.appendChild(select);
