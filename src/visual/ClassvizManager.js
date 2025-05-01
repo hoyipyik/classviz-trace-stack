@@ -612,42 +612,117 @@ export class ClassvizManager {
     }
 
     createEdgesForNode(id, nodeLabel) {
-        // If there's only one inserted node, no edges need to be created yet
+        // 如果只有一个插入的节点，还不需要创建边
         if (this.insertedNodes.size <= 1) {
             console.log("Only one node exists, skipping edge creation");
             return;
         }
-
-        // Get the node data from the original data source
+    
+        // 从原始数据源获取节点数据
         const nodeData = this.data.nodes.get(id).data;
         if (!nodeData) {
             console.error(`Node data not found for id ${id}`);
             return;
         }
-
-        // If traceMode is not enabled (the default false branch)
+    
+        // 根据traceMode决定边的创建方式
         if (!this.data.traceMode) {
-            // Find the parent node by traversing up the call tree
+            // 原有的非traceMode逻辑
+            // 通过向上遍历调用树查找父节点
             const parentInfo = this.findFirstSelectedParent(id);
-            // console.log(`Parent info for node ${id}:`, parentInfo);
-
+    
             if (parentInfo) {
                 const { parentId, parentNodeLabel } = parentInfo;
-
-                // Remove all edges originating from the parent node
+    
+                // 移除从父节点发出的所有边
                 this.removeAllEdgesFromNode(parentId);
-
-                // Now traverse downward from the parent node to create new edges
+    
+                // 现在从父节点向下遍历以创建新边
                 this.traverseDownAndCreateEdges(parentId, parentNodeLabel);
             }
-            // If no selected parent found, just handle the current node's connections
+            // 如果没有找到选中的父节点，只处理当前节点的连接
             this.traverseDownAndCreateEdges(id, nodeLabel);
-
         } else {
-
+            // 新增的traceMode逻辑
+            // 在traceMode下，我们根据threadToMethodNodesInOrder中的顺序创建边
+            this.createEdgesBasedOnThreadOrder(id);
         }
     }
-
+    
+    createEdgesForNode(id, nodeLabel) {
+        // 如果只有一个插入的节点，还不需要创建边
+        if (this.insertedNodes.size <= 1) {
+            console.log("Only one node exists, skipping edge creation");
+            return;
+        }
+    
+        // 从原始数据源获取节点数据
+        const nodeData = this.data.nodes.get(id).data;
+        if (!nodeData) {
+            console.error(`Node data not found for id ${id}`);
+            return;
+        }
+    
+        // 根据traceMode决定边的创建方式
+        if (!this.data.traceMode) {
+            // 原有的非traceMode逻辑
+            // 通过向上遍历调用树查找父节点
+            const parentInfo = this.findFirstSelectedParent(id);
+    
+            if (parentInfo) {
+                const { parentId, parentNodeLabel } = parentInfo;
+    
+                // 移除从父节点发出的所有边
+                this.removeAllEdgesFromNode(parentId);
+    
+                // 现在从父节点向下遍历以创建新边
+                this.traverseDownAndCreateEdges(parentId, parentNodeLabel);
+            }
+            // 如果没有找到选中的父节点，只处理当前节点的连接
+            this.traverseDownAndCreateEdges(id, nodeLabel);
+        } else {
+            // 处理traceMode下的边缘创建
+            this.createSequentialEdges();
+        }
+    }
+    
+    // 在traceMode下按照线程内节点的序列顺序创建边
+    createSequentialEdges() {
+        // 遍历每个线程
+        this.threadToMethodNodesInOrder.forEach((methodNodes, threadName) => {
+            // 获取已插入的节点（已选中的节点）
+            const selectedNodes = methodNodes.filter(node => 
+                this.insertedNodes.has(node.label) && 
+                this.data.nodes.get(node.originalId)?.data?.selected
+            );
+            
+            // 如果线程中少于2个已选中的节点，则无需创建边
+            if (selectedNodes.length < 2) {
+                return;
+            }
+            
+            // 清除所有现有边，为重建边做准备
+            // 我们只需清除与这个线程中节点相关的边
+            selectedNodes.forEach(node => {
+                this.removeAllEdgesFromNode(node.originalId);
+            });
+            
+            // 按照节点在列表中的顺序创建边（链表式连接）
+            for (let i = 0; i < selectedNodes.length - 1; i++) {
+                const currentNode = selectedNodes[i];
+                const nextNode = selectedNodes[i + 1];
+                
+                // 创建从当前节点到下一个节点的边
+                this.createEdge(
+                    currentNode.originalId,
+                    currentNode.label,
+                    nextNode.originalId,
+                    nextNode.label
+                );
+            }
+        });
+    }
+  
     // Helper method to remove all edges that originate from the given node
     removeAllEdgesFromNode(originalId) {
         if (this.originalIdToSourceEdges.has(originalId)) {
