@@ -41,8 +41,18 @@ export class ClassvizManager {
 
         });
 
-        this.eventBus.subscribe('changeMultiMethodByIdsToClassviz', (ids) => {
-
+        this.eventBus.subscribe('changeMultiMethodByIdToClassviz', (
+            { nodeIds, selected }) => {
+            if (selected) {
+                nodeIds.forEach((nodeId) => {
+                    this.insertSingleMethodById(nodeId);
+                });
+            } else {
+                // remove single node
+                nodeIds.forEach((nodeId) => {
+                    this.removeSingleMethodById(nodeId);
+                });
+            }
         });
 
         this.eventBus.subscribe('changeCurrentFocusedNode', ({nodeId}) => {

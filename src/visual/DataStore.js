@@ -116,7 +116,7 @@ class DataStore {
     Object.entries(this.threadsData).forEach(([threadName, threadData]) => {
       // 为每个线程创建节点ID数组
       this.threadToNodesMap.set(threadName, []);
-      
+
       // 初始化该线程的所有数据
       this.initThreadData(threadName, threadData);
     });
@@ -128,10 +128,10 @@ class DataStore {
 
     // 存储节点数据
     this.nodes.set(node.id, { data: node });
-    
+
     // 存储节点ID到线程的映射
     this.originalIdToThreadMap.set(node.id, threadName);
-    
+
     // 存储线程到节点ID的映射
     this.threadToNodesMap.get(threadName).push(node.id);
 
@@ -194,12 +194,12 @@ class DataStore {
     const node = this.nodes.get(nodeId);
     return node ? node.data : null;
   }
-  
+
   // 根据线程名称和节点ID获取节点数据
   getNodeDataByThreadAndId(threadName, nodeId) {
     const threadNodes = this.allThreadsNodes.get(threadName);
     if (!threadNodes) return null;
-    
+
     const node = threadNodes.get(nodeId);
     return node ? node.data : null;
   }
@@ -475,13 +475,13 @@ class DataStore {
         });
       }
 
-      // if(!batch){
-      // triger single insertion event
-      this.eventBus.publish('changeSingleMethodByIdToClassviz', {
-        nodeId,
-        selected
-      });
-      // }
+      if (!batch) {
+        // triger single insertion event
+        this.eventBus.publish('changeSingleMethodByIdToClassviz', {
+          nodeId,
+          selected
+        });
+      }
 
       return true;
     }
@@ -515,6 +515,10 @@ class DataStore {
       }
     });
     // publish insert mutli node in manage
+    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+      nodeIds: changed,
+      selected: true
+    });
     return changed;
   }
 
@@ -529,6 +533,10 @@ class DataStore {
       }
     });
     // publish insert mutli node in manage
+    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+      nodeIds: changed,
+      selected: false
+    });
     return changed;
   }
 
@@ -557,6 +565,10 @@ class DataStore {
 
     processChildren(nodeId);
     // publish insert mutli node in manage
+    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+      nodeIds: changed,
+      selected: true
+    });
     return changed;
   }
 
@@ -580,6 +592,10 @@ class DataStore {
 
     processChildren(nodeId);
     // publish insert mutli node in manage
+    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+      nodeIds: changed,
+      selected: false
+    });
     return changed;
   }
 
@@ -594,6 +610,10 @@ class DataStore {
       }
     });
     // publish insert mutli node in manage
+    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+      nodeIds: changed,
+      selected: true
+    });
     return changed;
   }
 
@@ -608,7 +628,10 @@ class DataStore {
       }
     });
     // publish insert mutli node in manage
-
+    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+      nodeIds: changed,
+      selected: false
+    });
     return changed;
   }
 
@@ -622,6 +645,10 @@ class DataStore {
       }
     });
     // publish insert mutli node in manage
+    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+      nodeIds: changed,
+      selected: true
+    });
 
     return changed;
   }
@@ -637,6 +664,10 @@ class DataStore {
     });
 
     // publish insert mutli node in manage
+    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+      nodeIds: changed,
+      selected: false
+    });
     return changed;
   }
 
@@ -663,6 +694,10 @@ class DataStore {
       });
     }
     // publish insert mutli node in manage
+    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+      nodeIds: changed,
+      selected
+    });
 
     return changed;
   }
