@@ -33,6 +33,9 @@ class DataStore {
     this.packageInfo = new Map(); // Mapping from package name to {totalCount:0, color:""}
     this.packageIDs = new Map(); // Mapping from package name to all node ID arrays
     this.packageSelectedIDs = new Map(); // Mapping from package name to selected node ID arrays
+    
+    // Thread-specific package mappings
+    this.threadToPackageMap = new Map(); // Mapping from thread name to Set of package names in that thread
 
     // Current node id
     this.current = null;
@@ -112,6 +115,11 @@ class DataStore {
 
   // 初始化所有线程的所有数据
   initAllThreadsData() {
+    // Initialize thread-to-package mappings
+    Object.keys(this.threadsData).forEach(threadName => {
+      this.threadToPackageMap.set(threadName, new Set());
+    });
+
     // 遍历所有线程
     Object.entries(this.threadsData).forEach(([threadName, threadData]) => {
       // 为每个线程创建节点ID数组
@@ -144,6 +152,9 @@ class DataStore {
 
     // 处理包名映射
     if (node.packageName) {
+      // Add package name to thread's package set
+      this.threadToPackageMap.get(threadName).add(node.packageName);
+      
       // 初始化包信息
       if (!this.packageInfo.has(node.packageName)) {
         this.packageInfo.set(node.packageName, {
@@ -430,7 +441,7 @@ class DataStore {
   }
 
   //===============================================
-  // Node select/deselect operations - Unchanged
+  // Node select/deselect operations - MODIFIED
   //===============================================
 
   // Select node
@@ -475,23 +486,19 @@ class DataStore {
         });
       }
 
-      if (!batch) {
+      // if (!batch) {
         // triger single insertion event
         this.eventBus.publish('changeSingleMethodByIdToClassviz', {
           nodeId,
           selected
         });
-      }
+      // }
 
       return true;
     }
 
     return false;
   }
-
-  // Other methods remain unchanged...
-  // The rest of your class methods can be left as they are since they
-  // operate on the global data structures which now contain data from all threads
 
   // Deselect node
   deselect(nodeId, batch = false) {
@@ -515,7 +522,7 @@ class DataStore {
       }
     });
     // publish insert mutli node in manage
-    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+    this.eventBus.publish('changeMultiMethodByIdsToClassviz', {
       nodeIds: changed,
       selected: true
     });
@@ -533,7 +540,7 @@ class DataStore {
       }
     });
     // publish insert mutli node in manage
-    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+    this.eventBus.publish('changeMultiMethodByIdsToClassviz', {
       nodeIds: changed,
       selected: false
     });
@@ -565,7 +572,7 @@ class DataStore {
 
     processChildren(nodeId);
     // publish insert mutli node in manage
-    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+    this.eventBus.publish('changeMultiMethodByIdsToClassviz', {
       nodeIds: changed,
       selected: true
     });
@@ -592,7 +599,7 @@ class DataStore {
 
     processChildren(nodeId);
     // publish insert mutli node in manage
-    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+    this.eventBus.publish('changeMultiMethodByIdsToClassviz', {
       nodeIds: changed,
       selected: false
     });
@@ -610,7 +617,7 @@ class DataStore {
       }
     });
     // publish insert mutli node in manage
-    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+    this.eventBus.publish('changeMultiMethodByIdsToClassviz', {
       nodeIds: changed,
       selected: true
     });
@@ -628,24 +635,26 @@ class DataStore {
       }
     });
     // publish insert mutli node in manage
-    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+    this.eventBus.publish('changeMultiMethodByIdsToClassviz', {
       nodeIds: changed,
       selected: false
     });
     return changed;
   }
 
-  // Select all nodes
+  // Select all nodes in the current thread
   selectAll() {
     const changed = [];
+    const currentThreadNodes = this.getAllNodeIdsForThread(this.currentThreadName);
 
-    this.nodes.forEach((_, nodeId) => {
+    currentThreadNodes.forEach(nodeId => {
       if (this.select(nodeId, true, true)) {
         changed.push(nodeId);
       }
     });
+
     // publish insert mutli node in manage
-    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+    this.eventBus.publish('changeMultiMethodByIdsToClassviz', {
       nodeIds: changed,
       selected: true
     });
@@ -653,18 +662,19 @@ class DataStore {
     return changed;
   }
 
-  // Deselect all nodes
+  // Deselect all nodes in the current thread
   deselectAll() {
     const changed = [];
+    const currentThreadNodes = this.getAllNodeIdsForThread(this.currentThreadName);
 
-    this.nodes.forEach((_, nodeId) => {
+    currentThreadNodes.forEach(nodeId => {
       if (this.deselect(nodeId, true)) {
         changed.push(nodeId);
       }
     });
 
     // publish insert mutli node in manage
-    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+    this.eventBus.publish('changeMultiMethodByIdsToClassviz', {
       nodeIds: changed,
       selected: false
     });
@@ -677,24 +687,33 @@ class DataStore {
   }
 
   //===============================================
-  // Package related operations - Unchanged
+  // Package related operations - MODIFIED for current-thread specific operations
   //===============================================
 
-  // Select nodes by package name - optimized version
+  // Select nodes by package name for the current thread only
   selectByPackage(packageName, selected = true) {
     const changed = [];
-
-    if (this.packageIDs.has(packageName)) {
-      const ids = this.packageIDs.get(packageName);
-
-      ids.forEach(nodeId => {
+    const currentThreadName = this.currentThreadName;
+    
+    if (!currentThreadName || !this.packageIDs.has(packageName)) {
+      return changed;
+    }
+    
+    // Get all IDs for this package
+    const allPackageIds = this.packageIDs.get(packageName);
+    
+    // Only process nodes that belong to the current thread
+    allPackageIds.forEach(nodeId => {
+      // Check if this node belongs to the current thread
+      if (this.getThreadForNodeId(nodeId) === currentThreadName) {
         if (selected ? this.select(nodeId, true, true) : this.deselect(nodeId, true)) {
           changed.push(nodeId);
         }
-      });
-    }
-    // publish insert mutli node in manage
-    this.eventBus.publish('changeMultiMethodByIdToClassviz', {
+      }
+    });
+    
+    // publish insert multi node in manage
+    this.eventBus.publish('changeMultiMethodByIdsToClassviz', {
       nodeIds: changed,
       selected
     });
@@ -702,43 +721,87 @@ class DataStore {
     return changed;
   }
 
-  // Calculate package selection state (true: all selected, false: none selected, null: partially selected) - optimized version
+  // Calculate package selection state (true: all selected, false: none selected, null: partially selected)
+  // Only considers nodes in the current thread
   getPackageSelectionState(packageName) {
-    if (!this.packageInfo.has(packageName)) return false;
-
-    const totalCount = this.packageInfo.get(packageName).totalCount;
-    const selectedCount = this.packageSelectedIDs.get(packageName).length;
-
-    if (totalCount === 0) return false;
-    if (selectedCount === 0) return false;
-    if (selectedCount === totalCount) return true;
+    const currentThreadName = this.currentThreadName;
+    
+    if (!currentThreadName || !this.packageInfo.has(packageName)) {
+      return false;
+    }
+    
+    // Count total nodes and selected nodes for this package in the current thread
+    let totalCountInThread = 0;
+    let selectedCountInThread = 0;
+    
+    // Get all IDs for this package
+    const allPackageIds = this.packageIDs.get(packageName);
+    
+    // Count only nodes that belong to the current thread
+    allPackageIds.forEach(nodeId => {
+      if (this.getThreadForNodeId(nodeId) === currentThreadName) {
+        totalCountInThread++;
+        if (this.isSelected(nodeId)) {
+          selectedCountInThread++;
+        }
+      }
+    });
+    
+    if (totalCountInThread === 0) return false;
+    if (selectedCountInThread === 0) return false;
+    if (selectedCountInThread === totalCountInThread) return true;
     return null; // Partially selected
   }
 
-  // Get all package names - optimized version
+  // Get all package names for the current thread
   getAllPackages() {
-    return Array.from(this.packageInfo.keys());
+    const currentThreadName = this.currentThreadName;
+    if (!currentThreadName) return [];
+    
+    // Return the set of packages for the current thread
+    const threadPackages = this.threadToPackageMap.get(currentThreadName);
+    return threadPackages ? Array.from(threadPackages) : [];
   }
 
-  // Get package color - new method
+  // Get package color
   getPackageColor(packageName) {
     return this.packageInfo.has(packageName)
       ? this.packageInfo.get(packageName).color
       : '';
   }
 
-  // Get all node IDs in package - new method
+  // Get all node IDs in package for the current thread only
   getPackageNodeIds(packageName) {
-    return this.packageIDs.has(packageName)
-      ? [...this.packageIDs.get(packageName)]
-      : [];
+    const currentThreadName = this.currentThreadName;
+    
+    if (!currentThreadName || !this.packageIDs.has(packageName)) {
+      return [];
+    }
+    
+    // Get all IDs for this package
+    const allPackageIds = this.packageIDs.get(packageName);
+    
+    // Filter to only include nodes from the current thread
+    return allPackageIds.filter(nodeId => 
+      this.getThreadForNodeId(nodeId) === currentThreadName
+    );
   }
 
-  // Get selected node IDs in package - new method
+  // Get selected node IDs in package for the current thread only
   getPackageSelectedIds(packageName) {
-    return this.packageSelectedIDs.has(packageName)
-      ? [...this.packageSelectedIDs.get(packageName)]
-      : [];
+    const currentThreadName = this.currentThreadName;
+    
+    if (!currentThreadName || !this.packageSelectedIDs.has(packageName)) {
+      return [];
+    }
+    
+    // Get all selected IDs for this package
+    const allSelectedIds = this.packageSelectedIDs.get(packageName);
+    
+    // Filter to only include nodes from the current thread
+    return allSelectedIds.filter(nodeId => 
+      this.getThreadForNodeId(nodeId) === currentThreadName
+    );
   }
 
   //===============================================
