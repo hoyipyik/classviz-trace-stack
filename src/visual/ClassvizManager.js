@@ -11,7 +11,7 @@ export class ClassvizManager {
         this.idRangeByThreadMap = idRangeByThreadMap; // Map of thread names to ID ranges;
         this.threadToMethodNodesInOrder = new Map(); // threadname -> method node list {originalId, label(cy node id)}  in order of orignaiId
         this.currentIndexByThread = new Map(); // threadname -> current index in the method node list
-       
+
         // init this.threadToMethodNodesInOrder with the data
         idRangeByThreadMap.forEach((_, threadName) => {
             this.threadToMethodNodesInOrder.set(threadName, []);
@@ -55,7 +55,7 @@ export class ClassvizManager {
             }
         });
 
-        this.eventBus.subscribe('changeCurrentFocusedNode', ({nodeId}) => {
+        this.eventBus.subscribe('changeCurrentFocusedNode', ({ nodeId }) => {
             const currentThreadName = this.data.currentThreadName;
             if (!currentThreadName) return;
             // find index in this.threadToMethodNodesInOrder for the current nodeId
@@ -78,10 +78,10 @@ export class ClassvizManager {
         }
 
     }
-    
+
     changeAllMethodNodesColor(color) {
         this.insertedNodes.forEach((node, _) => {
-            if(node) {
+            if (node) {
                 node.style({
                     'background-color': color,
                     'border-color': '#999',
@@ -90,7 +90,7 @@ export class ClassvizManager {
         });
     }
 
-    changeColorOfNodeById(id, color){
+    changeColorOfNodeById(id, color) {
         const nodeLabel = this.data.getNodeDataById(id).label;
         const node = this.cy.$id(nodeLabel);
         if (node) {
@@ -442,8 +442,8 @@ export class ClassvizManager {
                     }
                 }
             });
-        }  
-        
+        }
+
 
         // Process edges where this node is the target
         if (this.originalIdToTargetEdges.has(id)) {
@@ -627,6 +627,8 @@ export class ClassvizManager {
             }
             // If no selected parent found, just handle the current node's connections
             this.traverseDownAndCreateEdges(id, nodeLabel);
+
+        } else {
 
         }
     }
