@@ -363,53 +363,136 @@ export class ClassvizManager {
     }
 
     // Updated removeSingleMethodById function to maintain threadToMethodNodesInOrder
+
     removeSingleMethodById(id) {
-        // Get the node label which is used as the cy node id
+        // 获取节点标签
         const nodeLabel = this.getMethodLabelById(id);
         if (!nodeLabel) {
             console.error(`Could not get label for node with id ${id}`);
             return;
         }
 
-        // Remove from threadToMethodNodesInOrder map based on current thread
-        const currentThreadName = this.data.currentThreadName;
-        if (currentThreadName && this.threadToMethodNodesInOrder.has(currentThreadName)) {
-            const threadNodes = this.threadToMethodNodesInOrder.get(currentThreadName);
-            const nodeIndex = threadNodes.findIndex(node => node.originalId === id);
+        // 从线程节点列表中移除
+        this.removeFromThreadMethodNodes(id, nodeLabel);
 
-            if (nodeIndex !== -1) {
-                // Remove the node from the thread's ordered list
-                threadNodes.splice(nodeIndex, 1);
-
-                // // If the thread's list is now empty, we can remove the thread entry
-                // if (threadNodes.length === 0) {
-                //     this.threadToMethodNodesInOrder.delete(currentThreadName);
-                // }
-            }
-        }
-
-        // Check if the node exists
-        const nodeExists = this.insertedNodes.has(nodeLabel);
-        if (!nodeExists) {
+        // 检查节点是否存在
+        if (!this.insertedNodes.has(nodeLabel)) {
             console.warn(`Method node ${nodeLabel} not found, nothing to remove`);
             return;
         }
 
-        // Check if this id is associated with the method label
+        // 检查ID是否与方法标签关联
         if (!this.methodLabelToOriginalIds.has(nodeLabel) ||
             !this.methodLabelToOriginalIds.get(nodeLabel).has(id)) {
             console.warn(`ID ${id} not associated with method ${nodeLabel}`);
             return;
         }
 
-        // Get the actual node
         const methodNode = this.insertedNodes.get(nodeLabel);
         if (!methodNode) return;
 
-        // Check if this is a library method
+        // 处理节点的边和连接关系
+        this.handleNodeEdges(id, nodeLabel);
+
+        // 更新映射并决定是否删除节点
+        this.updateMappingsAndRemoveNode(id, nodeLabel, methodNode);
+    }
+
+    // 从线程方法节点列表中移除节点
+    removeFromThreadMethodNodes(id, nodeLabel) {
+        const currentThreadName = this.data.currentThreadName;
+        if (currentThreadName && this.threadToMethodNodesInOrder.has(currentThreadName)) {
+            const threadNodes = this.threadToMethodNodesInOrder.get(currentThreadName);
+            const nodeIndex = threadNodes.findIndex(node => node.originalId === id);
+
+            if (nodeIndex !== -1) {
+                // 从线程的有序列表中移除节点
+                threadNodes.splice(nodeIndex, 1);
+            }
+        }
+    }
+
+    // 处理节点的边和连接关系
+    handleNodeEdges(id, nodeLabel) {
+        // 收集父节点和子节点
+        const targetChildrenOriginalIds = [];
+        let parentOriginalId = null;
+
+        // 处理以此节点为源的边
+        if (this.originalIdToSourceEdges.has(id)) {
+            this.originalIdToSourceEdges.get(id).forEach(edgeId => {
+                const edge = this.insertedEdges.get(edgeId);
+                if (edge) {
+                    const targetOriginalId = edge.data('targetOriginalId');
+                    targetChildrenOriginalIds.push(targetOriginalId);
+
+                    // 移除边
+                    this.cy.remove(edge);
+                    this.insertedEdges.delete(edgeId);
+
+                    // 更新跟踪映射
+                    if (this.originalIdToTargetEdges.has(targetOriginalId)) {
+                        this.originalIdToTargetEdges.get(targetOriginalId).delete(edgeId);
+                    }
+                }
+            });
+        }
+
+        // 处理以此节点为目标的边
+        if (this.originalIdToTargetEdges.has(id)) {
+            const parentEdges = Array.from(this.originalIdToTargetEdges.get(id));
+
+            // 确保只有一个父节点
+            if (parentEdges.length > 1) {
+                console.warn(`Method ${nodeLabel} has multiple parents, expected only one in tree structure`);
+            }
+
+            // 处理父边（在树结构中应该只有一个）
+            if (parentEdges.length > 0) {
+                const edgeId = parentEdges[0];
+                const edge = this.insertedEdges.get(edgeId);
+                if (edge) {
+                    parentOriginalId = edge.data('sourceOriginalId');
+
+                    // 移除边
+                    this.cy.remove(edge);
+                    this.insertedEdges.delete(edgeId);
+
+                    // 更新跟踪映射
+                    if (this.originalIdToSourceEdges.has(parentOriginalId)) {
+                        this.originalIdToSourceEdges.get(parentOriginalId).delete(edgeId);
+                    }
+                }
+            }
+        }
+
+        // 在父节点和子节点之间创建边
+        this.reconnectParentToChildren(parentOriginalId, targetChildrenOriginalIds);
+    }
+
+    // 重新连接父节点和子节点
+    reconnectParentToChildren(parentOriginalId, targetChildrenOriginalIds) {
+        if (parentOriginalId && targetChildrenOriginalIds.length > 0) {
+            const parentNodeLabel = this.getMethodLabelById(parentOriginalId);
+
+            if (parentNodeLabel && this.insertedNodes.has(parentNodeLabel)) {
+                // 从父节点到每个子节点创建直接边
+                targetChildrenOriginalIds.forEach(childId => {
+                    const childNodeLabel = this.getMethodLabelById(childId);
+                    if (childNodeLabel && this.insertedNodes.has(childNodeLabel)) {
+                        this.createEdge(parentOriginalId, parentNodeLabel, childId, childNodeLabel);
+                    }
+                });
+            }
+        }
+    }
+
+    // 更新映射并决定是否删除节点
+    updateMappingsAndRemoveNode(id, nodeLabel, methodNode) {
+        // 检查这是否是库方法
         const isLibraryMethod = this.ALLOWED_LIB_METHODS.includes(nodeLabel) || !methodNode.parent().length;
 
-        // Get the class node if this is not a library method
+        // 如果这不是库方法，获取类节点
         let classId = null;
         if (!isLibraryMethod) {
             const classNode = this.findClassNodeByNodeLabel(nodeLabel);
@@ -420,103 +503,35 @@ export class ClassvizManager {
             classId = classNode.id();
         }
 
-        // Collect parents and children
-        const targetChildrenOriginalIds = [];
-        let parentOriginalId = null;
-
-        // Process edges where this node is the source
-        if (this.originalIdToSourceEdges.has(id)) {
-            this.originalIdToSourceEdges.get(id).forEach(edgeId => {
-                const edge = this.insertedEdges.get(edgeId);
-                if (edge) {
-                    const targetOriginalId = edge.data('targetOriginalId');
-                    targetChildrenOriginalIds.push(targetOriginalId);
-
-                    // Remove the edge
-                    this.cy.remove(edge);
-                    this.insertedEdges.delete(edgeId);
-
-                    // Update tracking maps
-                    if (this.originalIdToTargetEdges.has(targetOriginalId)) {
-                        this.originalIdToTargetEdges.get(targetOriginalId).delete(edgeId);
-                    }
-                }
-            });
-        }
-
-
-        // Process edges where this node is the target
-        if (this.originalIdToTargetEdges.has(id)) {
-            const parentEdges = Array.from(this.originalIdToTargetEdges.get(id));
-
-            // Assert that there's only one parent
-            if (parentEdges.length > 1) {
-                console.warn(`Method ${nodeLabel} has multiple parents, expected only one in tree structure`);
-            }
-
-            // Process the parent edge (should be only one in a tree)
-            if (parentEdges.length > 0) {
-                const edgeId = parentEdges[0];
-                const edge = this.insertedEdges.get(edgeId);
-                if (edge) {
-                    parentOriginalId = edge.data('sourceOriginalId');
-
-                    // Remove the edge
-                    this.cy.remove(edge);
-                    this.insertedEdges.delete(edgeId);
-
-                    // Update tracking maps
-                    if (this.originalIdToSourceEdges.has(parentOriginalId)) {
-                        this.originalIdToSourceEdges.get(parentOriginalId).delete(edgeId);
-                    }
-                }
-            }
-        }
-
-        // Create edges between parent and children
-        if (parentOriginalId && targetChildrenOriginalIds.length > 0) {
-            const parentNodeLabel = this.getMethodLabelById(parentOriginalId);
-
-            if (parentNodeLabel && this.insertedNodes.has(parentNodeLabel)) {
-                // Create direct edges from parent to each child
-                targetChildrenOriginalIds.forEach(childId => {
-                    const childNodeLabel = this.getMethodLabelById(childId);
-                    if (childNodeLabel && this.insertedNodes.has(childNodeLabel)) {
-                        this.createEdge(parentOriginalId, parentNodeLabel, childId, childNodeLabel);
-                    }
-                });
-            }
-        }
-
-        // Update the methodLabelToOriginalIds map
+        // 更新methodLabelToOriginalIds映射
         this.methodLabelToOriginalIds.get(nodeLabel).delete(id);
 
-        // Only remove the node if no more original IDs are associated with it
+        // 仅当没有更多原始ID与它关联时才删除节点
         const shouldRemoveNode = this.methodLabelToOriginalIds.get(nodeLabel).size === 0;
 
         if (shouldRemoveNode) {
-            // Remove the node itself from cytoscape
+            // 从cytoscape中删除节点本身
             this.cy.remove(methodNode);
 
-            // Update our tracking data structures
+            // 更新我们的跟踪数据结构
             this.insertedNodes.delete(nodeLabel);
             this.methodLabelToOriginalIds.delete(nodeLabel);
 
-            // Update the class-to-methods mapping if this is not a library method
+            // 如果这不是库方法，更新类到方法的映射
             if (!isLibraryMethod && classId && this.classToMethodsMap.has(classId)) {
                 this.classToMethodsMap.get(classId).delete(nodeLabel);
 
-                // If this was the last method in the class, restore original dimensions
+                // 如果这是类中的最后一个方法，恢复原始尺寸
                 if (this.classToMethodsMap.get(classId).size === 0) {
                     this.restoreClassOriginalDimensions(classId);
                 } else {
-                    // Otherwise, adjust class size based on remaining methods
+                    // 否则，根据剩余方法调整类大小
                     this.adjustClassSize(classId);
                 }
             }
         }
 
-        // Clean up tracking maps regardless of whether we removed the node
+        // 清理跟踪映射，无论我们是否删除了节点
         this.originalIdToSourceEdges.delete(id);
         this.originalIdToTargetEdges.delete(id);
     }
