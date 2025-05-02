@@ -35,6 +35,7 @@ class Renderer {
       this.eventBus.subscribe('changeCurrentFocusedNode', (data) => {
         if (data && data.nodeId) {
           const label = this.data.getNodeDataById(data.nodeId).label;
+          this.ensureNodeVisible(data.nodeId);
           this.updateCurrentMethodDisplay(label);
           this.updateCurrentNodeFocusUI(data.nodeId);
           this.scrollToNode(data.nodeId);
