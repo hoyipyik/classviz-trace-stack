@@ -19,7 +19,7 @@ import { StepByStepPlayController } from './StepByStepPlayController.js';
 class TraceStackApp {
   constructor(rawThreadData, idRangeByThreadMap) {
     this.rawData = rawThreadData || null; // Raw data from external source
-    this.idRangeByThreadMap = idRangeByThreadMap || null; // ID range map for threads
+    this.idRangeByThreadMap = idRangeByThreadMap || null; // ID range map for threads  
   //   this.sharedStates = {
   //     traceMode: false
   // }
