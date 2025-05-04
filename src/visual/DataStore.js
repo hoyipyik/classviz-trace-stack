@@ -199,6 +199,327 @@ class DataStore {
       });
     }
   }
+  /**
+    * 压缩递归树节点
+    * @param {string} nodeId - 递归入口点节点ID
+    * @param {boolean} compress - true表示压缩，false表示恢复
+    * @returns {boolean} - 操作是否成功
+    */
+  compressRecursiveTree(nodeId, compress = true) {
+    // 获取节点数据
+    const nodeInfo = this.nodes.get(nodeId);
+    if (!nodeInfo || !nodeInfo.data) return false;
+
+    const nodeData = nodeInfo.data;
+
+    // 如果节点不是递归入口点，则返回
+    if (!nodeData.status || !nodeData.status.recursiveEntryPoint) {
+      return false;
+    }
+
+    // 获取当前节点的子节点
+    const children = nodeData.children || [];
+
+    // 获取递归节点的标签（方法名）
+    const recursiveLabel = nodeData.label;
+
+    // 如果是压缩操作
+    if (compress) {
+      // 已经压缩过，无需再次操作
+      if (nodeData._originalChildren) {
+        return false;
+      }
+
+      // 深拷贝原始子节点结构以便还原
+      nodeData._originalChildren = JSON.parse(JSON.stringify(children));
+
+      // 用于存储合并后的直接子节点
+      // 键是子树的调用路径签名，值是子树节点
+      const mergedDirectChildren = new Map();
+
+      // 用于存储出口节点（没有递归调用的叶节点）
+      const exitNodes = [];
+
+      // 存储需要取消选择的节点ID列表
+      const nodesToDeselect = new Set();
+
+      // 收集所有非递归调用的直接子节点和出口节点，同时记录所有访问过的节点
+      const collectNodes = (nodes, isDirectChild = true) => {
+        for (const child of nodes) {
+          // 记录当前节点ID，用于后续取消选择
+          nodesToDeselect.add(child.id);
+
+          // 检查节点是否是递归出口节点
+          const isExitNode = (node) => {
+            // 必须是递归标签
+            if (node.label !== recursiveLabel) {
+              return false;
+            }
+
+            // 如果没有子节点，则是出口节点
+            if (!node.children || node.children.length === 0) {
+              return true;
+            }
+
+            // 检查子节点中是否有递归调用
+            for (const childNode of node.children || []) {
+              if (childNode.label === recursiveLabel) {
+                return false; // 有递归调用，不是出口节点
+              }
+            }
+
+            return true; // 是递归标签，且子节点中不包含递归调用，是出口节点
+          };
+
+          if (isExitNode(child)) {
+            // 是出口节点，整个保留下来
+            // console.log("找到出口节点:", child.label);
+            const exitNode = JSON.parse(JSON.stringify(child));
+            exitNode.isExit = true;
+            // 设置正确的parentId
+            exitNode.parentId = nodeId;
+            exitNodes.push(exitNode);
+          } else if (child.label === recursiveLabel) {
+            // 这是递归调用但不是出口节点，继续向下找
+            collectNodes(child.children || [], false);
+          } else {
+            // 非递归标签节点，生成路径签名并合并
+            const pathSignature = generatePathSignature(child);
+
+            if (mergedDirectChildren.has(pathSignature)) {
+              // 已存在相同路径签名的节点，合并
+              const existingNode = mergedDirectChildren.get(pathSignature);
+              const currentNode = JSON.parse(JSON.stringify(child));
+
+              // 设置正确的parentId
+              currentNode.parentId = nodeId;
+
+              // 使用ID较小的节点作为保留节点
+              let targetNode, sourceNode;
+              if (parseInt(existingNode.id) < parseInt(currentNode.id)) {
+                targetNode = existingNode;
+                sourceNode = currentNode;
+              } else {
+                targetNode = currentNode;
+                sourceNode = existingNode;
+                // 更新Map中的节点
+                mergedDirectChildren.set(pathSignature, targetNode);
+              }
+
+              // 合并频率
+              targetNode.freq = (targetNode.freq || 1) + (sourceNode.freq || 1);
+            } else {
+              // 第一次遇到这个路径签名
+              const clonedChild = JSON.parse(JSON.stringify(child));
+              // 设置正确的parentId
+              clonedChild.parentId = nodeId;
+              clonedChild.freq = clonedChild.freq || 1;
+              mergedDirectChildren.set(pathSignature, clonedChild);
+            }
+          }
+
+          // 递归处理子节点，收集更多需要取消选择的节点
+          if (child.children && child.children.length > 0) {
+            // 递归遍历所有子节点，记录节点ID
+            collectChildrenIds(child.children, nodesToDeselect);
+          }
+        }
+      };
+
+      // 辅助函数：递归收集所有子节点ID
+      const collectChildrenIds = (nodes, idSet) => {
+        for (const node of nodes) {
+          idSet.add(node.id);
+          if (node.children && node.children.length > 0) {
+            collectChildrenIds(node.children, idSet);
+          }
+        }
+      };
+
+      // 生成节点的路径签名
+      const generatePathSignature = (node) => {
+        // 基本签名是节点的标签
+        let signature = node.label;
+
+        // 如果有子节点，递归生成子节点的签名
+        if (node.children && node.children.length > 0) {
+          // 收集所有子节点的签名
+          const childSignatures = [];
+          for (const child of node.children) {
+            // 跳过递归调用
+            if (child.label === recursiveLabel) {
+              continue;
+            }
+            childSignatures.push(generatePathSignature(child));
+          }
+
+          // 对子节点签名排序，确保相同结构的子树生成相同的签名
+          childSignatures.sort();
+
+          // 将子节点签名加入到当前节点的签名中
+          if (childSignatures.length > 0) {
+            signature += "[" + childSignatures.join(",") + "]";
+          }
+        }
+
+        return signature;
+      };
+
+      // 从当前节点的子节点开始收集
+      collectNodes(children);
+
+      // 转换合并后的直接子节点为数组
+      const mergedChildrenArray = Array.from(mergedDirectChildren.values());
+
+      // 合并直接子节点和出口节点
+      const newChildren = [...mergedChildrenArray, ...exitNodes];
+
+      // 更新节点的子节点为压缩后的结果
+      nodeData.children = newChildren.sort((a, b) => parseInt(a.id) - parseInt(b.id));;
+
+      // 更新节点的压缩状态
+      nodeData.compressed = true;
+
+      // console.log("finish compression")
+      // this.printNodeData(nodeId);
+
+      // 重建所有数据关系
+      this.rebuildDataStructures();
+
+      // console.log("finish decompression")
+
+      // this.printNodeData(nodeId);
+
+
+      // 触发更新事件
+      if (this.eventBus) {
+        this.eventBus.publish('nodeStructureChanged', {
+          nodeId,
+          compressed: true
+        });
+      }
+
+      return true;
+    } else {
+      // 恢复操作
+
+      // 如果没有保存的原始结构，无法恢复
+      if (!nodeData._originalChildren) {
+        return false;
+      }
+
+      // 恢复原始子节点结构
+      nodeData.children = JSON.parse(JSON.stringify(nodeData._originalChildren));
+
+      // 清除保存的原始结构
+      delete nodeData._originalChildren;
+
+      // 更新节点的压缩状态
+      nodeData.compressed = false;
+
+      // 重建所有数据关系
+      this.rebuildDataStructures();
+
+      // console.log("finish decompression")
+
+      // this.printNodeData(nodeId);
+
+      // 触发更新事件
+      if (this.eventBus) {
+        this.eventBus.publish('nodeStructureChanged', {
+          nodeId,
+          compressed: false
+        });
+      }
+
+      return true;
+    }
+  }
+//   /**
+//  * 简单显示节点数据
+//  * @param {string} nodeId - 要显示的节点ID
+//  */
+//   printNodeData(nodeId) {
+//     const nodeInfo = this.nodes.get(nodeId);
+//     if (!nodeInfo || !nodeInfo.data) {
+//       console.log(`节点 ${nodeId} 不存在`);
+//       return;
+//     }
+
+//     const nodeData = nodeInfo.data;
+//     console.log('节点数据:', {
+//       id: nodeId,
+//       label: nodeData.label,
+//       compressed: nodeData.compressed,
+//       children: nodeData.children ? nodeData.children.length : 0,
+//       childrenData: nodeData.children
+//     });
+
+//     // 打印子节点ID列表
+//     if (this.children.has(nodeId)) {
+//       console.log('全局映射中的子节点IDs:', this.children.get(nodeId));
+//     }
+//   }
+
+  /**
+ * Rebuilds data structures for the current thread only
+ * Safely preserves DOM element references 
+ */
+  rebuildDataStructures() {
+    // Step 1: Save all DOM element references with their node IDs
+    const savedElements = new Map();
+    this.nodes.forEach((node, nodeId) => {
+      if (node.element) {
+        savedElements.set(nodeId, node.element);
+      }
+    });
+
+    // Step 2: Create new empty Maps and Sets (no reference issues)
+    const newNodes = new Map();
+    const newState = new Map();
+    const newParents = new Map();
+    const newChildren = new Map();
+    const newSelected = new Set();
+    const newOriginalIdToThreadMap = new Map();
+    const newThreadToNodesMap = new Map();
+    const newPackageInfo = new Map();
+    const newPackageIDs = new Map();
+    const newPackageSelectedIDs = new Map();
+    const newThreadToPackageMap = new Map();
+
+    // Step 3: Replace the current maps with the new empty ones
+    this.nodes = newNodes;
+    this.state = newState;
+    this.parents = newParents;
+    this.children = newChildren;
+    this.selected = newSelected;
+    this.originalIdToThreadMap = newOriginalIdToThreadMap;
+    this.threadToNodesMap = newThreadToNodesMap;
+    this.packageInfo = newPackageInfo;
+    this.packageIDs = newPackageIDs;
+    this.packageSelectedIDs = newPackageSelectedIDs;
+    this.threadToPackageMap = newThreadToPackageMap;
+
+    // Step 4: Rebuild all thread mappings and data
+    this.initAllThreadsNodes();
+    this.initAllThreadsData();
+
+    // Step 5: Restore the current thread
+    if (this.currentThreadName) {
+      this.switchThread(this.currentThreadName);
+    }
+
+    // Step 6: Restore DOM element references
+    savedElements.forEach((element, nodeId) => {
+      const node = this.nodes.get(nodeId);
+      if (node) {
+        // Simply assign the saved element to the new node object
+        node.element = element;
+      }
+    });
+
+    console.log("Data structures rebuilt with element references safely preserved");
+  }
 
   getNodeDataById(nodeId) {
     // 直接从全局nodes表中获取
@@ -387,6 +708,7 @@ class DataStore {
 
     // Sync back to original tree data
     nodeInfo.data.collapsed = !state.expanded;
+    console.log(state.expanded, "expand state has updated hihihih")
 
     return true;
   }
@@ -694,14 +1016,14 @@ class DataStore {
   selectByPackage(packageName, selected = true) {
     const changed = [];
     const currentThreadName = this.currentThreadName;
-    
+
     if (!currentThreadName || !this.packageIDs.has(packageName)) {
       return changed;
     }
-    
+
     // Get all IDs for this package
     const allPackageIds = this.packageIDs.get(packageName);
-    
+
     // Only process nodes that belong to the current thread
     allPackageIds.forEach(nodeId => {
       // Check if this node belongs to the current thread
@@ -711,7 +1033,7 @@ class DataStore {
         }
       }
     });
-    
+
     // publish insert multi node in manage
     this.eventBus.publish('changeMultiMethodByIdsToClassviz', {
       nodeIds: changed,
@@ -725,18 +1047,18 @@ class DataStore {
   // Only considers nodes in the current thread
   getPackageSelectionState(packageName) {
     const currentThreadName = this.currentThreadName;
-    
+
     if (!currentThreadName || !this.packageInfo.has(packageName)) {
       return false;
     }
-    
+
     // Count total nodes and selected nodes for this package in the current thread
     let totalCountInThread = 0;
     let selectedCountInThread = 0;
-    
+
     // Get all IDs for this package
     const allPackageIds = this.packageIDs.get(packageName);
-    
+
     // Count only nodes that belong to the current thread
     allPackageIds.forEach(nodeId => {
       if (this.getThreadForNodeId(nodeId) === currentThreadName) {
@@ -746,7 +1068,7 @@ class DataStore {
         }
       }
     });
-    
+
     if (totalCountInThread === 0) return false;
     if (selectedCountInThread === 0) return false;
     if (selectedCountInThread === totalCountInThread) return true;
@@ -757,7 +1079,7 @@ class DataStore {
   getAllPackages() {
     const currentThreadName = this.currentThreadName;
     if (!currentThreadName) return [];
-    
+
     // Return the set of packages for the current thread
     const threadPackages = this.threadToPackageMap.get(currentThreadName);
     return threadPackages ? Array.from(threadPackages) : [];
@@ -773,16 +1095,16 @@ class DataStore {
   // Get all node IDs in package for the current thread only
   getPackageNodeIds(packageName) {
     const currentThreadName = this.currentThreadName;
-    
+
     if (!currentThreadName || !this.packageIDs.has(packageName)) {
       return [];
     }
-    
+
     // Get all IDs for this package
     const allPackageIds = this.packageIDs.get(packageName);
-    
+
     // Filter to only include nodes from the current thread
-    return allPackageIds.filter(nodeId => 
+    return allPackageIds.filter(nodeId =>
       this.getThreadForNodeId(nodeId) === currentThreadName
     );
   }
@@ -790,16 +1112,16 @@ class DataStore {
   // Get selected node IDs in package for the current thread only
   getPackageSelectedIds(packageName) {
     const currentThreadName = this.currentThreadName;
-    
+
     if (!currentThreadName || !this.packageSelectedIDs.has(packageName)) {
       return [];
     }
-    
+
     // Get all selected IDs for this package
     const allSelectedIds = this.packageSelectedIDs.get(packageName);
-    
+
     // Filter to only include nodes from the current thread
-    return allSelectedIds.filter(nodeId => 
+    return allSelectedIds.filter(nodeId =>
       this.getThreadForNodeId(nodeId) === currentThreadName
     );
   }
