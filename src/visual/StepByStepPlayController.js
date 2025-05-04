@@ -345,26 +345,30 @@ export class StepByStepPlayController {
                 
                 // 使用全局节点映射获取节点数据，不受当前活跃线程影响
                 const nodeData = this.data.getNodeDataByThreadAndId(threadName, nodeId);
-                
+                // Update
                 if (nodeData) {
                     // Set color based on index relative to newIndex
                     if (index < newIndex) {
                         // For nodes before current position, set slightly dark gray
                         this.classvizManager.changeColorOfNodeById(nodeId, '#999999'); // Slightly darker gray
                     } else if (index > newIndex) {
+                        if(threadNodes[newIndex] && threadNodes[newIndex].label === node.label)
+                            return;
                         // For nodes after current position, set light gray
                         this.classvizManager.changeColorOfNodeById(nodeId, '#DDDDDD'); // Light gray
                     } else {
                         // For the current node, use original color
                         this.classvizManager.changeColorOfNodeById(nodeId, nodeData.originalColor || nodeData.color);
                     }
+                }else{
+                    console.log("[Error no data]")
                 }
             });
         }
     
         if(newIndex >= threadNodes.length){
             console.error("Invalid index for thread nodes: ", newIndex);
-            this.classvizManager.currentIndexByThread.set(threadName, threadNodes.length - 1);
+            this.classvizManager.currentIndexByThread.set(threadName, threadNodes.length === 0 ? 0 :  threadNodes.length - 1);
             return;
         }
         // Set current node with bounds check
