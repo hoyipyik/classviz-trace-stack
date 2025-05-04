@@ -407,14 +407,29 @@ export class StepByStepPlayController {
             }
         } else {
             // When turned on, immediately apply the step-by-step coloring to the current thread
-            for (const [threadName, currentIndex] of this.classvizManager.currentIndexByThread.entries()) {
+            // First, get all thread entries
+            const threadEntries = Array.from(this.classvizManager.currentIndexByThread.entries());
+            
+            // Get the current thread name
+            const currentThreadName = this.data.currentThreadName;
+            
+            // Reorder the thread entries so the current thread is processed last
+            let reorderedThreadEntries = threadEntries.filter(([threadName]) => threadName !== currentThreadName);
+            
+            // Find the current thread entry and add it to the end if it exists
+            const currentThreadEntry = threadEntries.find(([threadName]) => threadName === currentThreadName);
+            if (currentThreadEntry) {
+                reorderedThreadEntries.push(currentThreadEntry);
+            }
+            
+            // Process each thread, with the current thread at the end
+            for (const [threadName, currentIndex] of reorderedThreadEntries) {
                 if (currentIndex !== undefined) {
                     this.updateIndex(threadName, currentIndex);
                 }
             }
         }
     }
-
     // Public API
     refresh() {
         this.init();
