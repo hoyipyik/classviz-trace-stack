@@ -59,7 +59,7 @@ export class ClassvizManager {
             this.switchTraceMode(traceMode);
         });
 
-        this.eventBus.subscribe('changeCurrentFocusedNode', ({ nodeId }) => {
+        this.eventBus.subscribe('changeCurrentFocusedNodeForStepByStep', ({ nodeId }) => {
             const currentThreadName = this.data.currentThreadName;
             if (!currentThreadName) return;
             // find index in this.threadToMethodNodesInOrder for the current nodeId
@@ -748,10 +748,10 @@ export class ClassvizManager {
 
     createEdgesForNode(id, nodeLabel) {
         // 如果只有一个插入的节点，还不需要创建边
-        if (this.insertedNodes.size <= 1) {
-            console.log("Only one node exists, skipping edge creation");
-            return;
-        }
+        // if (this.insertedNodes.size <= 1) {
+        //     console.log("Only one node exists, skipping edge creation");
+        //     return;
+        // }
 
         // 从原始数据源获取节点数据
         const nodeData = this.data.nodes.get(id).data;
@@ -846,6 +846,7 @@ export class ClassvizManager {
     // Helper method to find the first selected parent node in the call tree
     findFirstSelectedParent(originalId) {
         let currentId = originalId;
+        console.log("Current Id, looking for parent node", currentId)
 
         while (currentId) {
             const currentNode = this.data.nodes.get(currentId);
