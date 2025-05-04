@@ -195,6 +195,46 @@ class MethodDetails {
     // Multiline fields
     this.updateField('methodDetailedBehavior', nodeData.detailedBehavior || '-');
     this.updateField('methodSourceCode', nodeData.sourceCode || '-');
+
+    if (status.recursiveEntryPoint === true) {
+      // 如果是遞迴入口點，則檢查壓縮狀態
+      const compressedContainer = document.getElementById('iscompressed-container');
+      if (compressedContainer) {
+        // 顯示壓縮狀態行
+        compressedContainer.style.display = 'flex';
+        
+        // 更新壓縮狀態的 checkbox
+        const checkboxContainer = document.getElementById('iscompressed');
+        if (checkboxContainer) {
+          // 清空容器
+          checkboxContainer.innerHTML = '';
+          
+          // 創建 checkbox
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = !!nodeData.compressed; // 確保值為布林值
+          checkbox.className = 'status-checkbox';
+          
+          // 添加事件監聽器
+          checkbox.addEventListener('change', (e) => {
+            // this.data.deselect(this.data.current);
+            this.data.deselectAllChildren(this.data.current);
+            this.data.compressRecursiveTree(this.data.current, e.target.checked); 
+            console.log(e.target.checked, "clicked compression");
+          });
+          
+          // 將 checkbox 添加到容器中
+          checkboxContainer.appendChild(checkbox);
+        }
+      }
+    } else {
+      // 如果不是遞迴入口點，隱藏壓縮狀態行
+      const compressedContainer = document.getElementById('iscompressed-container');
+      if (compressedContainer) {
+        compressedContainer.style.display = 'none';
+      }
+    }
+
   }
   
   // Helper method to update a field
@@ -222,6 +262,37 @@ class MethodDetails {
     // Add event listener
     checkbox.addEventListener('change', (e) => {
       this.updateBooleanStatus(elementId, e.target.checked);
+
+    // Special handling for recursiveEntryPoint
+    if (elementId === 'methodRecursiveEntryPoint') {
+      const compressedContainer = document.getElementById('iscompressed-container');
+      if (compressedContainer) {
+        // Show/hide the container based on checkbox state
+        compressedContainer.style.display = e.target.checked ? 'flex' : 'none';
+        
+        // If checked, ensure the compressed checkbox exists
+        if (e.target.checked) {
+          const isCompressedCheckbox = document.getElementById('iscompressed');
+          if (isCompressedCheckbox && isCompressedCheckbox.children.length === 0) {
+            // Create the compressed checkbox if it doesn't exist
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = false; // Default to unchecked
+            checkbox.className = 'status-checkbox';
+            
+            // Add event listener for the compressed checkbox if needed
+            checkbox.addEventListener('change', (e) => {
+              // this.data.deselect(this.data.current);
+              this.data.deselectAllChildren(this.data.current);
+              this.data.compressRecursiveTree(this.data.current, e.target.checked);
+              console.log(e.target.checked, "clicked compression");
+            });
+            
+            isCompressedCheckbox.appendChild(checkbox);
+          }
+        }
+      }
+    }
     });
     
     // Add the checkbox to the container
