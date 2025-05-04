@@ -41,7 +41,20 @@ class Renderer {
           this.scrollToNode(data.nodeId);
         }
       });
-      
+
+      this.eventBus.subscribe('nodeStructureChanged', ({ nodeId, compressed }) => {
+        if (nodeId) {
+          this.renderTree();
+  
+          // 恢复当前节点的焦点
+          if (this.data.current) {
+            this.ensureNodeVisible(this.data.current);
+            this.updateCurrentNodeFocusUI(this.data.current);
+            this.scrollToNode(this.data.current);
+          }
+        }
+      })
+
       this.eventBus.subscribe('nodeDataChanged', (data) => {
         this.nodeDataChangedEventHandler(data);
       });
@@ -91,10 +104,12 @@ class Renderer {
         // Then add classes as needed
         if (data.field === 'recursiveEntryPoint' && data.value) {
           nodeElement.classList.add('recursive-entry-node');
+          return
         }
 
         if (data.field === 'fanOut' && data.value) {
           nodeElement.classList.add('fan-out-node');
+          return
         }
 
         if (data.field === 'implementationEntryPoint' && data.value) {
@@ -182,12 +197,12 @@ class Renderer {
         this.data.setCurrent(nodeId);
         this.updateCurrentMethodDisplay(nodeData.label);
         if (this.eventBus) {
-          this.eventBus.publish('changeCurrentFocusedNode', {
+          this.eventBus.publish('changeCurrentFocusedNodeForStepByStep', {
             nodeId: nodeId
           });
           this.eventBus.publish('changeClassvizFocus', {
             nodeId: nodeId
-        });
+          });
         }
 
       }
@@ -204,8 +219,13 @@ class Renderer {
       toggleBtn.textContent = nodeState.expanded ? '▼' : '▶';
 
       // Add click event
+      // Inside the toggleBtn click event listener in the createNodeElement method
       toggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); 
+        e.stopPropagation();
+
+        // Store the current expansion state before changing it
+        const wasExpanded = nodeState.expanded;
+        console.log(nodeState, "node state info")
 
         // Set current node
         this.data.setCurrent(nodeId);
@@ -216,26 +236,28 @@ class Renderer {
         // Update current method display in bottom bar
         this.updateCurrentMethodDisplay(nodeData.label);
 
-        if (this.eventBus) {
-          this.eventBus.publish('changeCurrentFocusedNode', {
-            nodeId: nodeId
-          });
-          this.eventBus.publish('changeClassvizFocus', {
-            nodeId: nodeId
-        });
-        }
-
-        // Toggle node expansion
-        const wasExpanded = nodeState.expanded;
+        // Toggle node expansion (moved here from below)
         this.data.toggleExpand(nodeId);
 
-        // Update node expansion state
+        // Update node expansion state right away (moved from below)
         this.toggleNodeExpansion(li, nodeId);
 
         // If click and auto selection is enabled, select children
         if (!wasExpanded && this.data.settings.autoExpand) {
-          const changedIds = this.data.selectChildren(nodeId);
-          this.batchUpdateNodes(changedIds);
+          setTimeout(() => {
+            const changedIds = this.data.selectChildren(nodeId);
+            this.batchUpdateNodes(changedIds);
+            console.log("auto expand and create finished")
+          }, 100);
+        }else{
+          console.log("auto expand and create not triggered")
+        }
+
+        if (this.eventBus) {
+            this.eventBus.publish('changeCurrentFocusedNodeForStepByStep', {
+              nodeId: nodeId
+            });
+       
         }
       });
     } else {
@@ -278,7 +300,7 @@ class Renderer {
         this.updateCurrentMethodDisplay(nodeData.label);
         
         if (this.eventBus) {
-          this.eventBus.publish('changeCurrentFocusedNode', {
+          this.eventBus.publish('changeCurrentFocusedNodeForStepByStep', {
             nodeId: nodeId
           });
           this.eventBus.publish('changeClassvizFocus', {
@@ -451,13 +473,24 @@ class Renderer {
         el.classList.remove('focused');
       }
     });
-
-    // Set new focus
-    const nodeElement = this.data.getNodeElement(nodeId);
+  
+    // // Find the node element in the DOM (in case the reference is stale)
+    let nodeElement = this.data.getNodeElement(nodeId);
+    
+    // If the stored reference is stale, try to find the element in the DOM directly
+    if (!nodeElement || !document.contains(nodeElement)) {
+      nodeElement = document.querySelector(`.call-item[data-node-id="${nodeId}"]`);
+      
+      // If found, update the reference in the data store
+      if (nodeElement) {
+        this.data.setNodeElement(nodeId, nodeElement);
+      }
+    }
+    
     if (nodeElement) {
       nodeElement.classList.add('focused');
     }
-
+  
     // Update current node checkbox
     const currentNodeCheckbox = document.getElementById('currentNodeCheckbox');
     if (currentNodeCheckbox && nodeId) {
@@ -495,12 +528,12 @@ class Renderer {
     if (nodeElement) {
       // Get the visualization container
       const container = document.querySelector('.visualization-container');
-      
+
       if (container) {
         // Calculate the scroll position within the container
         const nodeRect = nodeElement.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect();
-        
+
         // Scroll the container, not the whole page
         container.scrollTo({
           top: container.scrollTop + (nodeRect.top - containerRect.top) - (container.clientHeight / 2) + (nodeRect.height / 2),
@@ -513,13 +546,51 @@ class Renderer {
   updateNodeExpansion(nodeId) {
     const nodeState = this.data.getNodeState(nodeId);
     const nodeElement = document.querySelector(`li[data-node-id="${nodeId}"]`);
-    
+
     if (!nodeElement) return;
-    
+
     // Use the existing toggleNodeExpansion method with the found element
     this.toggleNodeExpansion(nodeElement, nodeId);
   }
-  
+
+//   /**
+//  * 移除节点的所有子节点
+//  * @param {string} nodeId - 要移除子节点的节点ID
+//  * @returns {boolean} - 操作是否成功
+//  */
+//   removeChildNodes(nodeId) {
+//     // 获取节点元素
+//     const nodeElement = document.querySelector(`li[data-node-id="${nodeId}"]`);
+//     if (!nodeElement) return false;
+
+//     // 保存当前滚动位置
+//     const container = document.querySelector('.visualization-container');
+//     const scrollTop = container ? container.scrollTop : 0;
+
+//     // 获取子节点列表
+//     const childList = nodeElement.querySelector('ul');
+//     if (childList) {
+//       // 移除子节点列表
+//       childList.remove();
+
+//       // 更新展开/折叠按钮状态
+//       const nodeItemElement = nodeElement.querySelector('.call-item');
+//       const toggleBtn = nodeItemElement?.querySelector('.toggle-btn');
+//       if (toggleBtn) {
+//         toggleBtn.textContent = '▶';
+//       }
+//     }
+
+//     // 恢复滚动位置
+//     if (container) {
+//       container.scrollTop = scrollTop;
+//     }
+
+//     console.log("[DEBUG]Child nodes removed successfully.");
+
+//     return true;
+//   }
+
   // Ensure node is visible (expand all parent nodes)
   ensureNodeVisible(nodeId) {
     // Get all parent nodes
