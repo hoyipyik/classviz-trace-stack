@@ -12,19 +12,65 @@ export const isMethodNameEntryPoint = (methodName) => {
       return false;
     }
     
-    const entryPointPrefixes = ['start', 'init', 'execute', 'run', 'process', 'perform'];
-    return entryPointPrefixes.some(prefix => methodName.startsWith(prefix));
+    const entryPointPrefixes = ['start', 'init', 'execute', 'run', 'process', 'perform', 'create'];
+    return entryPointPrefixes.some(prefix => methodName.includes(prefix));
   };
   
-  /**
-   * Determines if a node has fanout based on number of children
-   * @param {Array} childNodes - Array of child nodes
-   * @param {number} fanoutThreshold - Threshold for considering a node to have fanout
-   * @return {boolean} Whether the node has fanout
-   */
-  export const hasFanout = (childNodes, fanoutThreshold = 4) => {
-    return childNodes.length >= fanoutThreshold;
-  };
+/**
+ * Determines if a node has fanout based on number of children and cross-package calls
+ * @param {Array} childNodes - Array of child nodes
+ * @param {string} className - Class name of the current node
+ * @param {string} methodName - Method name of the current node
+ * @param {Object} config - Optional configuration parameters
+ * @return {boolean} Whether the node has fanout
+ */
+export const hasFanout = (childNodes, className, methodName, config = {}) => {
+  // Default configuration parameters
+  const {
+    fanoutThreshold = 4,          // Minimum child nodes for standard fanout
+    crossPackageCntThreshold = 3, // Minimum cross-package calls for standard fanout
+    largeNodeThreshold = 6,       // Number of children that automatically qualifies as fanout
+    coordinationChildThreshold = 3, // Minimum children for coordination-named methods
+    coordinationCrossPackageThreshold = 1, // Minimum cross-package calls for coordination methods
+    coordinationPhrases = [
+      'main', 'init', 'start', 'launch', 'execute', 'run',
+      'process', 'handle', 'dispatch', 'coordinate', 'orchestrate',
+      'manage', 'control', 'perform', 'bootstrap', 'setup',
+      'initialize', 'activate', 'begin', 'trigger', 'invoke'
+    ]
+  } = config;
+    
+  // Check if method name contains coordination-related terms
+  const hasCoordinationName = coordinationPhrases.some(phrase => 
+    methodName.toLowerCase().includes(phrase.toLowerCase())
+  );
+    
+  // Calculate cross-package calls
+  let crossPackageCnt = 0;
+  let uniquePackages = new Set();
+  const currentPackage = className.split('.').slice(0, -1).join('.');
+    
+  childNodes.forEach(child => {
+    const childClass = child.getAttribute('class') || '';
+    const childPackage = childClass.split('.').slice(0, -1).join('.');
+      
+    if (childPackage !== currentPackage) {
+      crossPackageCnt++;
+      uniquePackages.add(childPackage);
+    }
+  });
+
+  // Rule 1: Very large number of children automatically qualifies as fanout
+  if (childNodes.length >= largeNodeThreshold) return true;
+    
+  // Rule 2: Methods with coordination-related names have lower thresholds
+  if (hasCoordinationName && childNodes.length >= coordinationChildThreshold) {
+    return crossPackageCnt >= coordinationCrossPackageThreshold;
+  }
+    
+  // Rule 3: Standard case - sufficient children and cross-package calls
+  return childNodes.length >= fanoutThreshold && crossPackageCnt >= crossPackageCntThreshold;
+};
   
   /**
    * Determines if a node is an implementation entry point
@@ -82,8 +128,7 @@ export const isMethodNameEntryPoint = (methodName) => {
    * @return {boolean} Whether the node is a chain start point
    */
   export const isChainStartPoint = (node) => {
-    // This is a placeholder for future implementation
-    // Currently always returns false as per original code
+    // useless feature now
     return false;
   };
   
@@ -107,7 +152,7 @@ export const isMethodNameEntryPoint = (methodName) => {
     parentIsFanout,
     nodeId
   ) => {
-    const fanOut = hasFanout(childNodes);
+    const fanOut = hasFanout(childNodes, className, methodName);
     const implementationEntryPoint = isImplementationEntryPoint(isRoot, childNodes, methodName, parentIsFanout);
     const chainStartPoint = isChainStartPoint({ className, methodName });
     
