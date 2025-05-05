@@ -25,10 +25,20 @@ class Search {
 
     // event bus
     this.eventBus = eventBus;
-    
+
     // Flag to track if event listeners have been initialized
     this.eventListenersInitialized = false;
+
+    this.eventBus.subscribe('nodeStructureChanged', () => {
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput && searchInput.value && searchInput.value.trim() !== '') {
+        this.find(searchInput.value)
+      }
+    });
   }
+
+  // Set up search functionality))
+
 
   // Set up search functionality
   setupSearch() {
@@ -36,7 +46,7 @@ class Search {
     if (this.eventListenersInitialized) {
       return;
     }
-    
+
     const searchInput = document.getElementById('searchInput');
     const searchNextBtn = document.getElementById('searchNext');
     const searchPrevBtn = document.getElementById('searchPrev');
@@ -50,31 +60,31 @@ class Search {
     // Store event handlers so they can be properly removed later if needed
     this.handlers = {
       onInput: () => this.find(searchInput.value),
-      
+
       onClear: () => {
         if (!searchInput.value || searchInput.value.trim() === '') {
           this.clearSearch();
         }
       },
-      
+
       onNext: () => this.navigateNext(),
-      
+
       onPrev: () => this.navigatePrev(),
-      
+
       onHighlightAll: () => {
         this.highlightAll = highlightAllCheckbox.checked;
-        
+
         if (this.searchResults.length > 0) {
           this.clearAllHighlights();
-          
+
           if (this.highlightAll) {
             this.highlightAllResults();
           }
-          
+
           this.navigateToCurrentResult(this.highlightAll);
         }
       },
-      
+
       onKeydown: (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -112,7 +122,7 @@ class Search {
 
     // Keyboard shortcuts
     searchInput.addEventListener('keydown', this.handlers.onKeydown);
-    
+
     // Mark as initialized
     this.eventListenersInitialized = true;
   }
@@ -124,31 +134,31 @@ class Search {
     if (!this.eventListenersInitialized || !this.handlers) {
       return;
     }
-    
+
     const searchInput = document.getElementById('searchInput');
     const searchNextBtn = document.getElementById('searchNext');
     const searchPrevBtn = document.getElementById('searchPrev');
     const highlightAllCheckbox = document.getElementById('highlightAll');
-    
+
     if (searchInput) {
       searchInput.removeEventListener('input', this.handlers.onInput);
       searchInput.removeEventListener('change', this.handlers.onClear);
       searchInput.removeEventListener('blur', this.handlers.onClear);
       searchInput.removeEventListener('keydown', this.handlers.onKeydown);
     }
-    
+
     if (searchNextBtn) {
       searchNextBtn.removeEventListener('click', this.handlers.onNext);
     }
-    
+
     if (searchPrevBtn) {
       searchPrevBtn.removeEventListener('click', this.handlers.onPrev);
     }
-    
+
     if (highlightAllCheckbox) {
       highlightAllCheckbox.removeEventListener('change', this.handlers.onHighlightAll);
     }
-    
+
     this.eventListenersInitialized = false;
   }
 
@@ -196,7 +206,7 @@ class Search {
       this.viewSwitcher.switchViewMode('callTree');
       this.viewSwitcher.switchTabActive('callTree');
     }
-    
+
     // Clear existing search results
     this.clearSearch();
 
@@ -210,20 +220,20 @@ class Search {
     this.searchResults = this.searchNodes(query.toLowerCase());
     this.currentResultIndex = -1;
     this.updateCounters();
-    
+
     // Apply highlighting and navigate to first result
     if (this.highlightAll) {
       this.highlightAllResults();
     }
-    
+
     if (this.searchResults.length > 0) {
       this.navigateNext();
     }
-    
+
     // Update UI
     this.updateResultsDisplay();
     this.publishSearchEvent();
-    
+
     return this.searchResults;
   }
 
@@ -232,7 +242,7 @@ class Search {
    */
   updateCounters() {
     this.totalResultsCount = this.searchResults.length;
-    
+
     const currentThread = this.data.getCurrentThreadName();
     this.currentThreadResultsCount = this.searchResults.filter(
       result => result.threadName === currentThread
@@ -302,7 +312,7 @@ class Search {
    */
   navigatePrev() {
     if (this.searchResults.length === 0) return;
-    
+
     // Move to previous result
     this.currentResultIndex = (this.currentResultIndex - 1 + this.searchResults.length) % this.searchResults.length;
     // Navigate to current result
@@ -320,42 +330,42 @@ class Search {
     const nodeId = result.id;
     const resultThreadName = result.threadName;
     const currentThreadName = this.data.getCurrentThreadName();
-    
+
     // Check if we need to switch threads
     let threadSwitched = false;
     if (resultThreadName !== currentThreadName) {
       // Switch to thread containing the result
       this.data.switchThread(resultThreadName);
       this.view.renderTree();
-      
+
       // Update counters after thread switch
       this.updateCounters();
-      
+
       // 先处理高亮，然后再处理当前节点的特殊高亮
       // 这样可以确保高亮不会被意外清除
       if (this.highlightAll) {
         this.highlightAllResults();
       }
-      
+
       threadSwitched = true;
     }
 
     // Ensure node is visible
     this.view.ensureNodeVisible(nodeId);
-    
+
     // 处理高亮，保持参数一致性
     // 当 highlightAll 为 true 时，确保传递 true 作为 preserveOtherHighlights
     const shouldPreserveHighlights = this.highlightAll || preserveOtherHighlights;
     this.applyHighlighting(nodeId, shouldPreserveHighlights, threadSwitched);
-    
+
     // Set as current node and update UI
     this.data.setCurrent(nodeId);
     this.view.updateCurrentNodeFocusUI(nodeId);
     this.view.updateCurrentMethodDisplay(result.data.label);
-    
+
     // Update results display
     this.updateResultsDisplay();
-    
+
     // Scroll to node (with delay after thread switch)
     if (threadSwitched) {
       setTimeout(() => this.view.scrollToNode(nodeId), 100);
@@ -363,7 +373,7 @@ class Search {
       this.view.scrollToNode(nodeId);
     }
   }
-  
+
   /**
    * Apply highlighting to the current node
    */
@@ -387,7 +397,7 @@ class Search {
     const nodeElement = this.data.getNodeElement(nodeId);
     if (nodeElement) {
       nodeElement.classList.add('search-highlight');
-      
+
       // 如果启用了 highlightAll，确保当前节点也有 search-highlight-all 类
       // 这样可以保证在保留高亮模式下，当前节点显示正确
       if (this.highlightAll && !nodeElement.classList.contains('search-highlight-all')) {
@@ -401,15 +411,15 @@ class Search {
    */
   resetToFirstResultInCurrentThread() {
     if (this.searchResults.length === 0) return;
-    
+
     // Update counters for current thread
     this.updateCounters();
-    
+
     const currentThreadName = this.data.getCurrentThreadName();
     const firstResultIndex = this.searchResults.findIndex(
       result => result.threadName === currentThreadName
     );
-    
+
     if (firstResultIndex >= 0) {
       // Set to previous index so navigateNext selects the first result
       this.currentResultIndex = firstResultIndex - 1;
@@ -477,21 +487,21 @@ class Search {
     // Build results display text
     const currentThread = threadName || this.data.getCurrentThreadName();
     let resultText = '';
-    
+
     if (this.currentResultIndex >= 0) {
       const currentResult = this.searchResults[this.currentResultIndex];
       const isInCurrentThread = currentResult.threadName === currentThread;
-      
+
       if (isInCurrentThread) {
         // Find position in current thread
         const currentThreadResults = this.searchResults.filter(
           r => r.threadName === currentThread
         );
-        
+
         const threadIndex = currentThreadResults.findIndex(
           r => r.id === currentResult.id
         );
-        
+
         if (threadIndex >= 0) {
           resultText = `${threadIndex + 1}/${this.currentThreadResultsCount} in current thread | `;
         }
@@ -499,14 +509,14 @@ class Search {
         // Show thread name for results in other threads
         resultText = `In thread: ${currentResult.threadName} | `;
       }
-      
+
       // Add global position
       resultText += `${this.currentResultIndex + 1}/${this.totalResultsCount} total results`;
     } else if (this.searchResults.length > 0) {
       // No current result selected but we have results
       resultText = `0/${this.currentThreadResultsCount} in current thread | 0/${this.totalResultsCount} total results`;
     }
-    
+
     resultsElement.textContent = resultText;
   }
 }

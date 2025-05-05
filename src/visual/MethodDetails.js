@@ -20,23 +20,23 @@ class MethodDetails {
     this.setupViewButton();
     
     // Listen for node selection events
-    if (this.eventBus) {
-      this.eventBus.subscribe('changeCurrentFocusedNode', (data) => {
-        if (data && data.nodeId) {
-          // Enable the view details button
-          const viewBtn = document.getElementById('viewMethodDetailsBtn');
-          if (viewBtn) {
-            viewBtn.disabled = false;
-          }
-        } else {
-          // If no node is selected, disable the button
-          const viewBtn = document.getElementById('viewMethodDetailsBtn');
-          if (viewBtn) {
-            viewBtn.disabled = true;
-          }
-        }
-      });
-    }
+    // if (this.eventBus) {
+    //   this.eventBus.subscribe('changeCurrentFocusedNode', (data) => {
+    //     if (data && data.nodeId) {
+    //       // Enable the view details button
+    //       const viewBtn = document.getElementById('viewMethodDetailsBtn');
+    //       if (viewBtn) {
+    //         viewBtn.disabled = false;
+    //       }
+    //     } else {
+    //       // If no node is selected, disable the button
+    //       const viewBtn = document.getElementById('viewMethodDetailsBtn');
+    //       if (viewBtn) {
+    //         viewBtn.disabled = true;
+    //       }
+    //     }
+    //   });
+    // }
   }
   
   // Set up modal and tabs
