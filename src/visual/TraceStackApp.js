@@ -12,6 +12,7 @@ import { ResizeManager } from './ResizeManager.js';
 import { SidebarController } from './SidebarController.js';
 import { ClassvizManager } from './ClassvizManager.js'; // Import ClassvizManager
 import { StepByStepPlayController } from './StepByStepPlayController.js';
+import { Explainer } from './Explainer.js';
 
 /**
  * Call Tree Visualization Application Main Entry
@@ -34,7 +35,8 @@ class TraceStackApp {
     this.methodDetails = null; // MethodDetails instance
     this.flameGraph = null; // FlameGraphRenderer instance
     this.viewSwitcher = null; // ViewSwitcher instance]
-    this.sidebar = null; // SidebarController instance (new)
+    this.sidebar = null; // SidebarController instance
+    this.explainer = null; // Explainer instance
     this.resizeManager = new ResizeManager(); // Draggable resize manager
 
     // Create event bus
@@ -95,6 +97,9 @@ class TraceStackApp {
     this.search = new Search(this.data, this.view, this.eventBus, this.viewSwitcher);
     this.filter = new Filter(this.data, this.view, this.eventBus, this.search);
     this.methodDetails = new MethodDetails(this.data, this.eventBus);
+
+    this.explainer = new Explainer(this.data, this.eventBus);
+    window.explainer = this.explainer;
 
     // Subscribe to view mode changes to update sidebar UI (new)
     this.eventBus.subscribe('viewModeChanged', (data) => {
