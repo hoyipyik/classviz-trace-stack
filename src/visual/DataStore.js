@@ -928,6 +928,44 @@ class DataStore {
     return changed;
   }
 
+  // Select direct parent node
+selectParent(nodeId) {
+  // Check if node exists
+  if (!this.nodes.has(nodeId)) return false;
+  
+  // Check if node has a parent
+  if (!this.parents.has(nodeId)) return false;
+  
+  const parentId = this.parents.get(nodeId);
+  const changed = [];
+  
+  // Select the parent node
+  if (this.select(parentId, true, false)) {
+    changed.push(parentId);
+  }
+  
+  return changed;
+}
+
+// Deselect direct parent node
+deselectParent(nodeId) {
+  // Check if node exists
+  if (!this.nodes.has(nodeId)) return false;
+  
+  // Check if node has a parent
+  if (!this.parents.has(nodeId)) return false;
+  
+  const parentId = this.parents.get(nodeId);
+  const changed = [];
+  
+  // Deselect the parent node
+  if (this.deselect(parentId, false)) {
+    changed.push(parentId);
+  }
+  
+  return changed;
+}
+
   // Select ancestor nodes
   selectAncestors(nodeId) {
     const ancestors = this.getAncestorIds(nodeId);

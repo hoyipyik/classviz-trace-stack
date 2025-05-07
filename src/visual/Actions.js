@@ -62,6 +62,25 @@ class Actions {
           this.eventBus.publish('refreshFlame', {});
         }
       });
+
+      this.setupButton('selectParent', () => {
+        const currentNodeId = this.data.current;
+        if (currentNodeId) {
+          const changedIds = this.data.selectParent(currentNodeId);
+          this.view.batchUpdateNodes(changedIds);
+          this.eventBus.publish('refreshFlame', {});
+        }
+      });
+
+
+      this.setupButton('clearParent', () => {
+        const currentNodeId = this.data.current;
+        if (currentNodeId) {
+          const changedIds = this.data.clearParent(currentNodeId);
+          this.view.batchUpdateNodes(changedIds);
+          this.eventBus.publish('refreshFlame', {});
+        }
+      })
       
       // select all ancestors of the current node
       this.setupButton('selectAbove', () => {
