@@ -78,7 +78,10 @@ class Explainer {
         const region = this.regions.get(regionId);
         if (region && !region.explained) {
             try {
-                const explanationResult = await this.aiService.explainRegion(region.data); // External AI function
+                // Clean the data by removing status properties before sending to AI
+                const cleanData = this.removeStatusFromData(region.data);
+                
+                const explanationResult = await this.aiService.explainRegion(cleanData); // External AI function
 
                 region.briefSummary = explanationResult.briefSummary || "";
                 region.detailedBehaviour = explanationResult.detailedBehaviour || "";
@@ -104,7 +107,10 @@ class Explainer {
         for (const [treeId, treeData] of this.selectedTrees.entries()) {
             if (treeData.KNT) {
                 try {
-                    const explanationResult = await this.aiService.explainPureKNT(treeData.KNT); // External AI function
+                    // Clean the data by removing status properties before sending to AI
+                    const cleanKNT = this.removeStatusFromData(treeData.KNT);
+                    
+                    const explanationResult = await this.aiService.explainPureKNT(cleanKNT); // External AI function
                     treeData.explanation.highlevelSummary = explanationResult;
                 } catch (error) {
                     console.error(`Error during aiExplainPureKNT for KNT of tree ${treeId}:`, error);
@@ -156,7 +162,10 @@ class Explainer {
                 const augmentedKNT = JSON.parse(JSON.stringify(selectedTreeData.KNT)); // Deep copy
                 this.augmentKNTWithRegionSummaries(augmentedKNT); // Add region summaries to KNT nodes
 
-                selectedTreeData.explanation.moreDetailedSummary = await this.aiService.explainKNTWithData(augmentedKNT); // External AI function
+                // Clean the data by removing status properties before sending to AI
+                const cleanedAugmentedKNT = this.removeStatusFromData(augmentedKNT);
+
+                selectedTreeData.explanation.moreDetailedSummary = await this.aiService.explainKNTWithData(cleanedAugmentedKNT); // External AI function
                 console.log(`  Successfully generated detailed explanation for trace ${traceId}.`);
             } catch (error) {
                 console.error(`  Error during aiExplainKNTWithData for trace ${traceId}:`, error);
@@ -192,12 +201,49 @@ class Explainer {
         return selectedRoots;
     }
 
+    // Create a clean node with only essential properties
+    createEssentialNode(originalNode, preserveStatus = true) {
+        // Basic properties all nodes should have
+        const newNode = {
+            id: originalNode.id,
+            label: originalNode.label,
+            description: originalNode.description,
+            children: []
+        };
+        
+        // Preserve status during processing (default is true)
+        if (preserveStatus && originalNode.status) {
+            newNode.status = { ...originalNode.status };
+        }
+        
+        // Preserve recursive compression properties if they exist
+        if (originalNode.freq !== undefined) {
+            newNode.freq = originalNode.freq;
+        }
+        
+        if (originalNode.isExit === true) {
+            newNode.isExit = true;
+        }
+        
+        if (originalNode.compressed === true) {
+            newNode.compressed = true;
+        }
+        
+        return newNode;
+    }
+
     buildSelectedSubtree(rootNode) {
         if (!rootNode || rootNode.selected !== true) return null;
         
         const buildRecursive = (originalNode) => {
-            const newNode = { ...originalNode };
-            newNode.children = [];
+            // Create node with essential properties (preserve status)
+            const newNode = this.createEssentialNode(originalNode);
+            
+            // Preserve selected flag for tree building
+            if (originalNode.selected !== undefined) {
+                newNode.selected = originalNode.selected;
+            }
+            
             if (originalNode.children && originalNode.children.length > 0) {
                 originalNode.children.forEach(child => {
                     if (child.selected === true) {
@@ -236,9 +282,15 @@ class Explainer {
 
     createKNTNode(node) {
         if (!node) return null;
-        const kntNode = { ...node };
-        kntNode.children = [];
-        if (!kntNode.status) kntNode.status = {};
+        
+        // Create KNT node with essential properties (preserve status)
+        const kntNode = this.createEssentialNode(node);
+        
+        // Ensure status exists for processing
+        if (!kntNode.status) {
+            kntNode.status = {};
+        }
+        
         kntNode.isSpecialNode = true;
         return kntNode;
     }
@@ -281,15 +333,18 @@ class Explainer {
 
     extractRegion(rootNodeOfRegion) {
         if (!rootNodeOfRegion) return null;
-        const regionRootCopy = { ...rootNodeOfRegion };
-        regionRootCopy.children = [];
+        
+        // Create region root with essential properties (preserve status)
+        const regionRootCopy = this.createEssentialNode(rootNodeOfRegion);
         
         const copyNodesUntilSpecial = (originalParentNode, regionParentCopy) => {
             if (!originalParentNode.children) return;
             for (const originalChild of originalParentNode.children) {
                 if (!originalChild) continue;
-                const childCopy = { ...originalChild };
-                childCopy.children = [];
+                
+                // Create child copy with essential properties (preserve status)
+                const childCopy = this.createEssentialNode(originalChild);
+                
                 regionParentCopy.children.push(childCopy);
                 if (!this.isSpecialNode(originalChild) && originalChild.children && originalChild.children.length > 0) {
                     copyNodesUntilSpecial(originalChild, childCopy);
@@ -350,16 +405,27 @@ class Explainer {
                 };
 
                 if (isExitNode(child)) {
-                    const exitNode = JSON.parse(JSON.stringify(child));
+                    // Create exit node with essential properties (preserve status)
+                    const exitNode = this.createEssentialNode(child);
                     exitNode.isExit = true;
-                    exitNode.parentId = node.id;
                     exitNodes.push(exitNode);
                 } else if (child.label === recursiveLabel) {
                     collectNodes(child.children || []);
                 } else {
                     const pathSignature = this.generatePathSignature(child, recursiveLabel);
-                    const currentNode = JSON.parse(JSON.stringify(child));
-                    currentNode.parentId = node.id;
+                    
+                    // Create node with essential properties (preserve status)
+                    const currentNode = this.createEssentialNode(child);
+                    
+                    // Process children
+                    if (child.children && child.children.length > 0) {
+                        child.children.forEach(grandchild => {
+                            if (grandchild) {
+                                const simplifiedChild = this.createEssentialNode(grandchild);
+                                currentNode.children.push(simplifiedChild);
+                            }
+                        });
+                    }
 
                     if (mergedDirectChildren.has(pathSignature)) {
                         const existingNode = mergedDirectChildren.get(pathSignature);
@@ -372,7 +438,7 @@ class Explainer {
                         }
                         targetNode.freq = (targetNode.freq || 1) + (sourceNode.freq || 1);
                     } else {
-                        currentNode.freq = currentNode.freq || 1;
+                        currentNode.freq = 1;
                         mergedDirectChildren.set(pathSignature, currentNode);
                     }
                 }
@@ -402,6 +468,59 @@ class Explainer {
     }
 
     // ============================================================
+    // Data Cleaning Methods
+    // ============================================================
+
+    // Remove status properties from data before sending to AI
+    removeStatusFromData(nodeData) {
+        if (!nodeData) return null;
+        
+        const cleanNode = (node) => {
+            const cleanedNode = {
+                id: node.id,
+                label: node.label,
+                description: node.description,
+                children: []
+            };
+            
+            // Keep recursive properties if they exist
+            if (node.freq !== undefined) {
+                cleanedNode.freq = node.freq;
+            }
+            
+            if (node.isExit === true) {
+                cleanedNode.isExit = true;
+            }
+            
+            if (node.compressed === true) {
+                cleanedNode.compressed = true;
+            }
+            
+            // Keep briefSummary if exists (for KNT augmentation)
+            if (node.briefSummary) {
+                cleanedNode.briefSummary = node.briefSummary;
+            }
+            
+            if (node.isSpecialNode === true) {
+                cleanedNode.isSpecialNode = true;
+            }
+            
+            // Process children
+            if (node.children && node.children.length > 0) {
+                node.children.forEach(child => {
+                    if (child) {
+                        cleanedNode.children.push(cleanNode(child));
+                    }
+                });
+            }
+            
+            return cleanedNode;
+        };
+        
+        return cleanNode(nodeData);
+    }
+
+    // ============================================================
     // KNT Augmentation Methods
     // ============================================================
 
@@ -424,4 +543,4 @@ export { Explainer };
 // --- Assumed External AI Helper Functions (placeholders) ---
 // async function explainPureKNT(KNT) { /* ... */ return `Quick summary for ${KNT.id}`; }
 // async function explainRegion(regionData) { /* ... */ return { briefSummary: `Brief for ${regionData.id}`, detailedBehaviour: `Detail for ${regionData.id}`, flowRepresentation: `Flow for ${regionData.id}` }; }
-// async function explainKNTWithData(augmentedKNT) { /* ... */ return `Detailed trace summary for ${augmentedKNT.id}`; }
+// async function explainKNTWithData(augmentedKNT) { /* ... */ return `Detailed trace summary for ${augmentedKNT.id}`; };
