@@ -1,162 +1,308 @@
 class Explainer {
-    constructor(dataStore, eventBus) {
+    constructor(dataStore, eventBus, aiService) {
         this.data = dataStore;
         this.eventBus = eventBus;
+        this.aiService = aiService;
 
-        this.selectedTrees = new Map(); // entry method original Id -> { tree: tree data, AST: ast contains special nodes only }
-        this.regions = new Map(); // entry special method original Id -> { data: subtree of a region, highlevelSummary: "", detailedBehaviour: "", flowRepresentation: "", briefSummary: "" }
+        this.selectedTrees = new Map(); // entry method original Id -> { tree: tree data, KNT: KNT, explanation: { highlevelSummary: "", moreDetailedSummary: ""} }
+        this.traceToRegion = new Map(); // entry original id of a trace -> [region entry original id]
+        this.regions = new Map(); // entry special method original Id -> { data: subtree, explained: false, detailedBehaviour: "", flowRepresentation: "", briefSummary: "" }
     }
+
+    // ============================================================
+    // Main Public API Methods
+    // ============================================================
 
     buildSelectedTrees() {
         // Clear existing data
         this.selectedTrees.clear();
         this.regions.clear();
+        this.traceToRegion.clear();
 
-        // Get thread data from the dataStore
         const threadsData = this.data.threadsData;
 
-        // Iterate through all threads
         Object.entries(threadsData).forEach(([threadName, threadData]) => {
-            // Find all selected nodes in this thread that have no selected ancestors
             const selectedRoots = this.findSelectedRoots(threadData);
-            
-            console.log(`Found ${selectedRoots.length} root trace trees in thread ${threadName}`);
 
-            // For each selected root, build a subtree
             selectedRoots.forEach(rootNode => {
-                // Create a clean copy of the subtree with only selected nodes
                 const tree = this.buildSelectedSubtree(rootNode);
-                
-                // Skip empty trees (should not happen, but just in case)
                 if (!tree) return;
-                
-                // Build AST with only special nodes
-                const ast = this.buildAST(tree);
 
-                // Store the tree and AST
+                this.compressRecursiveCalls(tree);
+                const knt = this.buildKNT(tree);
+
                 this.selectedTrees.set(rootNode.id, {
                     tree: tree,
-                    AST: ast
+                    KNT: knt,
+                    explanation: {
+                        highlevelSummary: "",
+                        moreDetailedSummary: ""
+                    }
                 });
 
-                // Identify and store regions
-                this.identifyRegions(tree);
+                // Identify regions and populate traceToRegion mapping
+                const currentTraceRegionIds = [];
+                this.identifyRegions(tree, rootNode.id, currentTraceRegionIds);
+                this.traceToRegion.set(rootNode.id, currentTraceRegionIds);
             });
         });
 
-        console.log(`Built ${this.selectedTrees.size} selected trees and ${this.regions.size} regions`);
-        
-        // Trigger an event to notify that trees have been built
+        console.log(`Built ${this.selectedTrees.size} selected trees, ${this.regions.size} regions, and ${this.traceToRegion.size} trace-to-region mappings.`);
+
         if (this.eventBus) {
             this.eventBus.publish('selectedTreesBuilt', {
                 treeCount: this.selectedTrees.size,
-                regionCount: this.regions.size
+                regionCount: this.regions.size,
+                traceToRegionCount: this.traceToRegion.size
             });
         }
 
         return {
             trees: this.selectedTrees,
-            regions: this.regions
+            regions: this.regions,
+            traceToRegion: this.traceToRegion
         };
     }
 
-    // Find all selected root nodes in a thread
+    async explainSelectedTraces(config = { quickMode: false }) {
+        this.buildSelectedTrees(); // Ensures all necessary data structures are populated
+
+        if (config.quickMode) {
+            return await this.performQuickExplanation();
+        } else {
+            return await this.performDetailedExplanation();
+        }
+    }
+
+    async explainCurrentRegion(regionId) {
+        const region = this.regions.get(regionId);
+        if (region && !region.explained) {
+            try {
+                const explanationResult = await this.aiService.explainRegion(region.data); // External AI function
+
+                region.briefSummary = explanationResult.briefSummary || "";
+                region.detailedBehaviour = explanationResult.detailedBehaviour || "";
+                region.flowRepresentation = explanationResult.flowRepresentation || "";
+                region.explained = true;
+            } catch (error) {
+                console.error(`    Error explaining Region ID: ${regionId}:`, error);
+                region.briefSummary = `Error explaining region: ${error.message}`;
+            }
+        } else if (region && region.explained) {
+            console.log(`    Region ID: ${regionId} has already been explained. Skipping.`);
+        } else {
+            console.warn(`    Region ID: ${regionId} not found for explanation.`);
+        }
+    }
+
+    // ============================================================
+    // Explanation Processing Methods
+    // ============================================================
+    
+    async performQuickExplanation() {
+        console.log("Starting quick mode explanation...");
+        for (const [treeId, treeData] of this.selectedTrees.entries()) {
+            if (treeData.KNT) {
+                try {
+                    const explanationResult = await this.aiService.explainPureKNT(treeData.KNT); // External AI function
+                    treeData.explanation.highlevelSummary = explanationResult;
+                } catch (error) {
+                    console.error(`Error during aiExplainPureKNT for KNT of tree ${treeId}:`, error);
+                    treeData.explanation.highlevelSummary = `Error: Quick explanation failed - ${error.message}`;
+                }
+            } else {
+                console.warn(`No KNT found for tree ${treeId}. Skipping quick explanation.`);
+                treeData.explanation.highlevelSummary = "No KNT available for quick explanation.";
+            }
+        }
+        console.log("Quick mode explanation finished.");
+        
+        return {
+            trees: this.selectedTrees,
+            regions: this.regions,
+            explanationStatus: "Quick explanation complete"
+        };
+    }
+    
+    async performDetailedExplanation() {
+        console.log("Starting detailed mode explanation (processing trace by trace)...");
+        for (const [traceId, regionIds] of this.traceToRegion.entries()) {
+            console.log(`\nProcessing Trace ID: ${traceId}`);
+            
+            // Step 1: Explain all regions belonging to the current trace
+            console.log(`  Explaining regions for trace ${traceId}...`);
+            for (const regionId of regionIds) {
+                await this.explainCurrentRegion(regionId);
+            }
+            console.log(`  Finished explaining regions for trace ${traceId}.`);
+            
+            // Step 2: Explain the trace itself using its KNT and accumulated region summaries
+            await this.generateConsolidatedExplanation(traceId);
+        }
+        console.log("\nDetailed mode explanation finished for all traces.");
+        
+        return {
+            trees: this.selectedTrees,
+            regions: this.regions,
+            explanationStatus: "Detailed explanation complete"
+        };
+    }
+    
+    async generateConsolidatedExplanation(traceId) {
+        const selectedTreeData = this.selectedTrees.get(traceId);
+        if (selectedTreeData && selectedTreeData.KNT) {
+            console.log(`  Generating consolidated explanation for trace ${traceId}...`);
+            try {
+                const augmentedKNT = JSON.parse(JSON.stringify(selectedTreeData.KNT)); // Deep copy
+                this.augmentKNTWithRegionSummaries(augmentedKNT); // Add region summaries to KNT nodes
+
+                selectedTreeData.explanation.moreDetailedSummary = await this.aiService.explainKNTWithData(augmentedKNT); // External AI function
+                console.log(`  Successfully generated detailed explanation for trace ${traceId}.`);
+            } catch (error) {
+                console.error(`  Error during aiExplainKNTWithData for trace ${traceId}:`, error);
+                selectedTreeData.explanation.moreDetailedSummary = `Error: Detailed trace explanation failed - ${error.message}`;
+            }
+        } else {
+            if (selectedTreeData) {
+                selectedTreeData.explanation.moreDetailedSummary = "No KNT available for detailed explanation.";
+            }
+            console.warn(`  No KNT found for trace ${traceId}. Skipping consolidated trace explanation.`);
+        }
+    }
+
+    // ============================================================
+    // Tree Building and Processing Methods
+    // ============================================================
+
     findSelectedRoots(threadData) {
         const selectedRoots = [];
-        const selectedNodeIds = new Set();
+        const rootOfThread = threadData;
+        if (!rootOfThread) return selectedRoots;
         
-        // First pass: collect all selected node IDs
-        const collectSelectedIds = (node) => {
+        const findRootsRecursive = (node, isAncestorSelected) => {
             if (!node) return;
-            
-            if (node.selected === true) {
-                selectedNodeIds.add(node.id);
-            }
-            
-            // Recursively check children
+            const isNodeSelected = node.selected === true;
+            if (isNodeSelected && !isAncestorSelected) selectedRoots.push(node);
             if (node.children && node.children.length > 0) {
-                node.children.forEach(child => {
-                    collectSelectedIds(child);
-                });
+                node.children.forEach(child => findRootsRecursive(child, isAncestorSelected || isNodeSelected));
             }
         };
         
-        // Start first pass from the thread's root node
-        collectSelectedIds(threadData);
-        
-        // Second pass: identify true roots (selected nodes with no selected ancestors)
-        const findRoots = (node, ancestorSelected = false) => {
-            if (!node) return;
-            
-            const isSelected = node.selected === true;
-            
-            // If this node is selected and no ancestor is selected, it's a root
-            if (isSelected && !ancestorSelected) {
-                selectedRoots.push(node);
-            }
-            
-            // Update ancestorSelected flag for children
-            const newAncestorSelected = ancestorSelected || isSelected;
-            
-            // Recursively check children
-            if (node.children && node.children.length > 0) {
-                node.children.forEach(child => {
-                    findRoots(child, newAncestorSelected);
-                });
-            }
-        };
-        
-        // Start second pass from the thread's root node
-        findRoots(threadData, false);
-        
+        findRootsRecursive(rootOfThread, false);
         return selectedRoots;
     }
 
-    // Build a subtree containing only selected descendants
     buildSelectedSubtree(rootNode) {
-        if (!rootNode) return null;
+        if (!rootNode || rootNode.selected !== true) return null;
         
-        // Create a deep copy of the root node, excluding children
-        const newRoot = { ...rootNode };
-        delete newRoot.children;
-        newRoot.children = [];
-        
-        // Helper function to recursively build the subtree
-        const buildSubtree = (node) => {
-            // Create a new node object with all properties except children
-            const newNode = { ...node };
-            delete newNode.children;
+        const buildRecursive = (originalNode) => {
+            const newNode = { ...originalNode };
             newNode.children = [];
-            
-            // Process each child
-            if (node.children && node.children.length > 0) {
-                for (const child of node.children) {
-                    // Only include selected children
+            if (originalNode.children && originalNode.children.length > 0) {
+                originalNode.children.forEach(child => {
                     if (child.selected === true) {
-                        // Recursively build the child's subtree
-                        const childSubtree = buildSubtree(child);
-                        if (childSubtree) {
-                            newNode.children.push(childSubtree);
-                        }
+                        const newChild = buildRecursive(child);
+                        if (newChild) newNode.children.push(newChild);
                     }
-                }
+                });
             }
-            
             return newNode;
         };
         
-        // Build the new subtree
-        return buildSubtree(rootNode);
+        return buildRecursive(rootNode);
     }
 
-    // Check if a node is a special node
-    isSpecialNode(node, isTreeRoot = false) {
-        // Tree root nodes are always considered special
-        if (isTreeRoot) {
-            return true;
-        }
+    buildKNT(tree) {
+        if (!tree) return null;
+        const kntRoot = this.createKNTNode(tree);
         
-        // Check standard special node criteria
+        const findSpecialChildrenRecursive = (originalNode, kntParentNode) => {
+            if (!originalNode.children) return;
+            for (const child of originalNode.children) {
+                if (!child) continue;
+                if (this.isSpecialNode(child)) {
+                    const specialKNTNode = this.createKNTNode(child);
+                    kntParentNode.children.push(specialKNTNode);
+                    findSpecialChildrenRecursive(child, specialKNTNode);
+                } else {
+                    findSpecialChildrenRecursive(child, kntParentNode);
+                }
+            }
+        };
+        
+        findSpecialChildrenRecursive(tree, kntRoot);
+        return kntRoot;
+    }
+
+    createKNTNode(node) {
+        if (!node) return null;
+        const kntNode = { ...node };
+        kntNode.children = [];
+        if (!kntNode.status) kntNode.status = {};
+        kntNode.isSpecialNode = true;
+        return kntNode;
+    }
+
+    // ============================================================
+    // Region Identification and Processing Methods
+    // ============================================================
+
+    identifyRegions(tree, traceId, regionIdCollector) {
+        if (!tree) return;
+
+        const processNodeForRegion = (node, isNodeSpecialRoot, currentTraceId, collector) => {
+            if (!node) return;
+            const isSpecial = this.isSpecialNode(node, isNodeSpecialRoot);
+
+            if (isSpecial) {
+                if (node.children && node.children.length > 0) {
+                    const regionData = this.extractRegion(node);
+                    if (regionData) {
+                        this.regions.set(node.id, {
+                            data: regionData,
+                            explained: false,
+                            detailedBehaviour: "",
+                            flowRepresentation: "",
+                            briefSummary: ""
+                        });
+                        collector.push(node.id);
+                    }
+                }
+            }
+            if (node.children && node.children.length > 0) {
+                node.children.forEach(child => {
+                    processNodeForRegion(child, false, currentTraceId, collector);
+                });
+            }
+        };
+        
+        processNodeForRegion(tree, true, traceId, regionIdCollector);
+    }
+
+    extractRegion(rootNodeOfRegion) {
+        if (!rootNodeOfRegion) return null;
+        const regionRootCopy = { ...rootNodeOfRegion };
+        regionRootCopy.children = [];
+        
+        const copyNodesUntilSpecial = (originalParentNode, regionParentCopy) => {
+            if (!originalParentNode.children) return;
+            for (const originalChild of originalParentNode.children) {
+                if (!originalChild) continue;
+                const childCopy = { ...originalChild };
+                childCopy.children = [];
+                regionParentCopy.children.push(childCopy);
+                if (!this.isSpecialNode(originalChild) && originalChild.children && originalChild.children.length > 0) {
+                    copyNodesUntilSpecial(originalChild, childCopy);
+                }
+            }
+        };
+        
+        copyNodesUntilSpecial(rootNodeOfRegion, regionRootCopy);
+        return regionRootCopy;
+    }
+
+    isSpecialNode(node, isTreeRoot = false) {
+        if (isTreeRoot) return true;
         return node.status && (
             node.status.fanOut === true ||
             node.status.implementationEntryPoint === true ||
@@ -164,159 +310,118 @@ class Explainer {
         );
     }
 
-    // Build AST with only special nodes
-    buildAST(tree) {
-        if (!tree) return null;
-        
-        // Create a complete AST node for the root (copying all properties)
-        const astRoot = this.createASTNode(tree);
-        
-        // Helper function to recursively build the AST
-        const findSpecialNodesInSubtree = (node, astParent) => {
-            if (!node || !node.children) return;
-            
-            // Check each child
-            for (const child of node.children) {
-                if (!child) continue;
-                
-                if (this.isSpecialNode(child)) {
-                    // This is a special node, add it to the AST
-                    const specialNode = this.createASTNode(child);
-                    astParent.children.push(specialNode);
-                    
-                    // Continue with this special node's children
-                    findSpecialNodesInSubtree(child, specialNode);
-                } else {
-                    // This is not a special node, skip it but check its children
-                    findSpecialNodesInSubtree(child, astParent);
-                }
-            }
-        };
-        
-        // Start building AST from the root
-        findSpecialNodesInSubtree(tree, astRoot);
-        
-        return astRoot;
-    }
-    
-    // Helper function to create a complete AST node with all properties
-    createASTNode(node) {
-        if (!node) return null;
-        
-        // Create a deep copy of the node without its children
-        const astNode = { ...node };
-        
-        // Initialize the children array
-        astNode.children = [];
-        
-        // Make sure the node has required properties
-        if (!astNode.status) astNode.status = {};
-        
-        // Additional metadata that might be useful for explaining
-        astNode.isSpecialNode = true;
-        
-        return astNode;
-    }
+    // ============================================================
+    // Recursive Call Processing Methods
+    // ============================================================
 
-    // Identify regions in the tree
-    identifyRegions(tree) {
+    compressRecursiveCalls(tree) {
         if (!tree) return;
         
-        // Helper function to recursively find all regions in the tree
-        const findRegions = (node, isRoot = false) => {
+        const findAndCompressRecursive = (node) => {
             if (!node) return;
-            
-            // Check if this node is a special node (or the root)
-            const isSpecial = isRoot || this.isSpecialNode(node);
-            
-            if (isSpecial) {
-                // If the node has children, create a region
-                if (node.children && node.children.length > 0) {
-                    // Extract the region subtree
-                    const regionData = this.extractRegion(node);
-                    
-                    // Store the region with empty analysis fields
-                    this.regions.set(node.id, {
-                        data: regionData,
-                        highlevelSummary: "",
-                        detailedBehaviour: "",
-                        flowRepresentation: "",
-                        briefSummary: ""
-                    });
-                }
+            if (node.status && node.status.recursiveEntryPoint === true) {
+                this.compressRecursiveNode(node);
             }
-            
-            // Process children recursively
             if (node.children && node.children.length > 0) {
-                node.children.forEach(child => {
-                    findRegions(child);
-                });
+                node.children.forEach(child => findAndCompressRecursive(child));
             }
         };
         
-        // Start finding regions from the root
-        findRegions(tree, true);
-        
-        console.log(`Identified ${this.regions.size} regions in the tree`);
+        findAndCompressRecursive(tree);
     }
 
-    // Extract a region subtree (stops at leaves or other special nodes)
-    extractRegion(rootNode) {
-        if (!rootNode) return null;
-        
-        // Create a deep copy of the root node without children
-        const regionRoot = { ...rootNode };
-        delete regionRoot.children;
-        regionRoot.children = [];
-        
-        // Helper function to recursively extract the region
-        const extractSubRegion = (node, regionParent) => {
-            if (!node || !node.children) return;
-            
-            // Process each child of the node
-            for (const child of node.children) {
-                // Skip null children (should not happen, but just in case)
+    compressRecursiveNode(node) {
+        if (!node || !node.status || !node.status.recursiveEntryPoint) return false;
+        const children = node.children || [];
+        const recursiveLabel = node.label;
+        const mergedDirectChildren = new Map();
+        const exitNodes = [];
+
+        const collectNodes = (nodesToScan) => {
+            for (const child of nodesToScan) {
                 if (!child) continue;
-                
-                // Check if this child is a special node (region boundary)
-                // Skip the check for the root node (we're already processing its children)
-                const isSpecialBoundary = node !== rootNode && this.isSpecialNode(child);
-                
-                // Create a deep copy of the child without its children
-                const childCopy = { ...child };
-                delete childCopy.children;
-                childCopy.children = [];
-                
-                // Add the copied child to the parent in our region tree
-                regionParent.children.push(childCopy);
-                
-                // If this child is a special node (and not the root), it forms a boundary
-                // Don't include its children in this region
-                if (!isSpecialBoundary && child.children && child.children.length > 0) {
-                    // Recursively process this child's children
-                    extractSubRegion(child, childCopy);
+                const isExitNode = (n) => {
+                    if (n.label !== recursiveLabel) return false;
+                    if (!n.children || n.children.length === 0) return true;
+                    for (const childNode of n.children || []) {
+                        if (childNode.label === recursiveLabel) return false;
+                    }
+                    return true;
+                };
+
+                if (isExitNode(child)) {
+                    const exitNode = JSON.parse(JSON.stringify(child));
+                    exitNode.isExit = true;
+                    exitNode.parentId = node.id;
+                    exitNodes.push(exitNode);
+                } else if (child.label === recursiveLabel) {
+                    collectNodes(child.children || []);
+                } else {
+                    const pathSignature = this.generatePathSignature(child, recursiveLabel);
+                    const currentNode = JSON.parse(JSON.stringify(child));
+                    currentNode.parentId = node.id;
+
+                    if (mergedDirectChildren.has(pathSignature)) {
+                        const existingNode = mergedDirectChildren.get(pathSignature);
+                        let targetNode, sourceNode;
+                        if (parseInt(existingNode.id) < parseInt(currentNode.id)) {
+                            targetNode = existingNode; sourceNode = currentNode;
+                        } else {
+                            targetNode = currentNode; sourceNode = existingNode;
+                            mergedDirectChildren.set(pathSignature, targetNode);
+                        }
+                        targetNode.freq = (targetNode.freq || 1) + (sourceNode.freq || 1);
+                    } else {
+                        currentNode.freq = currentNode.freq || 1;
+                        mergedDirectChildren.set(pathSignature, currentNode);
+                    }
                 }
-                // If it's a special boundary, we include the node but stop processing its children
             }
         };
         
-        // Start extracting from the root node
-        extractSubRegion(rootNode, regionRoot);
-        
-        return regionRoot;
+        collectNodes(children);
+        const mergedChildrenArray = Array.from(mergedDirectChildren.values());
+        const newChildren = [...mergedChildrenArray, ...exitNodes];
+        node.children = newChildren.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+        node.compressed = true;
+        return true;
     }
 
-    // explainSelectedTraces() {
-    //     // Implementation for explaining selected traces
-    // }
+    generatePathSignature(node, recursiveLabel) {
+        let signature = node.label;
+        if (node.children && node.children.length > 0) {
+            const childSignatures = [];
+            for (const child of node.children) {
+                if (child.label === recursiveLabel) continue;
+                childSignatures.push(this.generatePathSignature(child, recursiveLabel));
+            }
+            childSignatures.sort();
+            if (childSignatures.length > 0) signature += "[" + childSignatures.join(",") + "]";
+        }
+        return signature;
+    }
 
-    // explainCurrentRegion(id) {
-    //     // Implementation for explaining a specific region
-    // }
+    // ============================================================
+    // KNT Augmentation Methods
+    // ============================================================
 
-    // _compressRecurisiveCall() {
-    //     // Implementation for compressing recursive calls
-    // }
+    augmentKNTWithRegionSummaries(kntNode) {
+        if (!kntNode) return;
+
+        const regionInfo = this.regions.get(kntNode.id); // KNT node ID might correspond to a region ID
+        if (regionInfo && regionInfo.explained && regionInfo.briefSummary) {
+            kntNode.briefSummary = regionInfo.briefSummary;
+        }
+
+        if (kntNode.children && kntNode.children.length > 0) {
+            kntNode.children.forEach(child => this.augmentKNTWithRegionSummaries(child));
+        }
+    }
 }
 
 export { Explainer };
+
+// --- Assumed External AI Helper Functions (placeholders) ---
+// async function explainPureKNT(KNT) { /* ... */ return `Quick summary for ${KNT.id}`; }
+// async function explainRegion(regionData) { /* ... */ return { briefSummary: `Brief for ${regionData.id}`, detailedBehaviour: `Detail for ${regionData.id}`, flowRepresentation: `Flow for ${regionData.id}` }; }
+// async function explainKNTWithData(augmentedKNT) { /* ... */ return `Detailed trace summary for ${augmentedKNT.id}`; }
