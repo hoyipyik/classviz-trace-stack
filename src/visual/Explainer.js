@@ -64,13 +64,17 @@ class Explainer {
         };
     }
 
-    async explainSelectedTraces(config = { quickMode: false }) {
+    // Main caller api
+    async explainSelectedTraces(config = { quickMode: false, parallel: true }) {
         this.buildSelectedTrees(); // Ensures all necessary data structures are populated
 
         if (config.quickMode) {
-            return await this.performQuickExplanation();
+            return await this.performQuickExplanation({ parallel: config.parallel });
         } else {
-            return await this.performDetailedExplanation();
+            return await this.performDetailedExplanation({
+                parallelTraces: config.parallel,
+                parallelRegions: config.parallel
+            });
         }
     }
 
@@ -80,7 +84,7 @@ class Explainer {
             try {
                 // Clean the data by removing status properties before sending to AI
                 const cleanData = this.removeStatusFromData(region.data);
-                
+
                 const explanationResult = await this.aiService.explainRegion(cleanData); // External AI function
 
                 region.briefSummary = explanationResult.briefSummary || "";
@@ -101,70 +105,128 @@ class Explainer {
     // ============================================================
     // Explanation Processing Methods
     // ============================================================
-    
-    async performQuickExplanation() {
-        console.log("Starting quick mode explanation...");
-        for (const [treeId, treeData] of this.selectedTrees.entries()) {
-            if (treeData.KNT) {
-                try {
-                    // Clean the data by removing status properties before sending to AI
-                    const cleanKNT = this.removeStatusFromData(treeData.KNT);
-                    
-                    const explanationResult = await this.aiService.explainPureKNT(cleanKNT); // External AI function
-                    treeData.explanation.highlevelSummary = explanationResult;
-                } catch (error) {
-                    console.error(`Error during aiExplainPureKNT for KNT of tree ${treeId}:`, error);
-                    treeData.explanation.highlevelSummary = `Error: Quick explanation failed - ${error.message}`;
+
+    async performQuickExplanation(config = { parallel: false }) {
+        console.log(`Starting quick mode explanation in ${config.parallel ? 'PARALLEL' : 'SEQUENTIAL'} mode...`);
+
+        if (config.parallel) {
+            // 並行處理所有樹
+            const explanationPromises = Array.from(this.selectedTrees.entries()).map(async ([treeId, treeData]) => {
+                if (treeData.KNT) {
+                    try {
+                        // Clean the data by removing status properties before sending to AI
+                        const cleanKNT = this.removeStatusFromData(treeData.KNT);
+
+                        const explanationResult = await this.aiService.explainPureKNT(cleanKNT); // External AI function
+                        treeData.explanation.highlevelSummary = explanationResult;
+                        console.log(`Completed quick explanation for tree ${treeId}.`);
+                    } catch (error) {
+                        console.error(`Error during aiExplainPureKNT for KNT of tree ${treeId}:`, error);
+                        treeData.explanation.highlevelSummary = `Error: Quick explanation failed - ${error.message}`;
+                    }
+                } else {
+                    console.warn(`No KNT found for tree ${treeId}. Skipping quick explanation.`);
+                    treeData.explanation.highlevelSummary = "No KNT available for quick explanation.";
                 }
-            } else {
-                console.warn(`No KNT found for tree ${treeId}. Skipping quick explanation.`);
-                treeData.explanation.highlevelSummary = "No KNT available for quick explanation.";
+            });
+
+            // 等待所有並行任務完成
+            await Promise.all(explanationPromises);
+        } else {
+            // 原有的順序處理方式
+            for (const [treeId, treeData] of this.selectedTrees.entries()) {
+                if (treeData.KNT) {
+                    try {
+                        // Clean the data by removing status properties before sending to AI
+                        const cleanKNT = this.removeStatusFromData(treeData.KNT);
+
+                        const explanationResult = await this.aiService.explainPureKNT(cleanKNT); // External AI function
+                        treeData.explanation.highlevelSummary = explanationResult;
+                    } catch (error) {
+                        console.error(`Error during aiExplainPureKNT for KNT of tree ${treeId}:`, error);
+                        treeData.explanation.highlevelSummary = `Error: Quick explanation failed - ${error.message}`;
+                    }
+                } else {
+                    console.warn(`No KNT found for tree ${treeId}. Skipping quick explanation.`);
+                    treeData.explanation.highlevelSummary = "No KNT available for quick explanation.";
+                }
             }
         }
+
         console.log("Quick mode explanation finished.");
-        
+
         return {
             trees: this.selectedTrees,
             regions: this.regions,
             explanationStatus: "Quick explanation complete"
         };
     }
-    
-    async performDetailedExplanation() {
-        console.log("Starting detailed mode explanation (processing trace by trace)...");
-        for (const [traceId, regionIds] of this.traceToRegion.entries()) {
-            console.log(`\nProcessing Trace ID: ${traceId}`);
-            
-            // Step 1: Explain all regions belonging to the current trace
-            console.log(`  Explaining regions for trace ${traceId}...`);
-            for (const regionId of regionIds) {
-                await this.explainCurrentRegion(regionId);
+
+    async performDetailedExplanation(config = {
+        parallelTraces: false,
+        parallelRegions: false
+    }) {
+        console.log("Starting detailed mode explanation...");
+
+        if (config.parallelTraces) {
+            // Process all traces in parallel
+            const tracePromises = Array.from(this.traceToRegion.entries()).map(async ([traceId, regionIds]) => {
+                console.log(`\nStarting to process Trace ID: ${traceId}`);
+
+                // Process regions based on configuration
+                if (config.parallelRegions) {
+                    // Process regions in parallel
+                    await Promise.all(regionIds.map(regionId => this.explainCurrentRegion(regionId)));
+                } else {
+                    // Process regions sequentially
+                    for (const regionId of regionIds) {
+                        await this.explainCurrentRegion(regionId);
+                    }
+                }
+
+                await this.generateConsolidatedExplanation(traceId);
+            });
+
+            await Promise.all(tracePromises);
+        } else {
+            // Process traces sequentially
+            for (const [traceId, regionIds] of this.traceToRegion.entries()) {
+                console.log(`\nProcessing Trace ID: ${traceId}`);
+
+                // Process regions based on configuration
+                if (config.parallelRegions) {
+                    // Process regions in parallel
+                    await Promise.all(regionIds.map(regionId => this.explainCurrentRegion(regionId)));
+                } else {
+                    // Process regions sequentially
+                    for (const regionId of regionIds) {
+                        await this.explainCurrentRegion(regionId);
+                    }
+                }
+
+                await this.generateConsolidatedExplanation(traceId);
             }
-            console.log(`  Finished explaining regions for trace ${traceId}.`);
-            
-            // Step 2: Explain the trace itself using its KNT and accumulated region summaries
-            await this.generateConsolidatedExplanation(traceId);
         }
+
         console.log("\nDetailed mode explanation finished for all traces.");
-        
+
         return {
             trees: this.selectedTrees,
             regions: this.regions,
             explanationStatus: "Detailed explanation complete"
         };
     }
-    
+
     async generateConsolidatedExplanation(traceId) {
         const selectedTreeData = this.selectedTrees.get(traceId);
         if (selectedTreeData && selectedTreeData.KNT) {
             console.log(`  Generating consolidated explanation for trace ${traceId}...`);
             try {
                 const augmentedKNT = JSON.parse(JSON.stringify(selectedTreeData.KNT)); // Deep copy
-                this.augmentKNTWithRegionSummaries(augmentedKNT); // Add region summaries to KNT nodes
+                const cleanedAugmentedKNT = this.removeStatusFromData(augmentedKNT);
+                this.augmentKNTWithRegionSummaries(cleanedAugmentedKNT); // Add region summaries to KNT nodes
 
                 // Clean the data by removing status properties before sending to AI
-                const cleanedAugmentedKNT = this.removeStatusFromData(augmentedKNT);
-
                 selectedTreeData.explanation.moreDetailedSummary = await this.aiService.explainKNTWithData(cleanedAugmentedKNT); // External AI function
                 console.log(`  Successfully generated detailed explanation for trace ${traceId}.`);
             } catch (error) {
@@ -187,7 +249,7 @@ class Explainer {
         const selectedRoots = [];
         const rootOfThread = threadData;
         if (!rootOfThread) return selectedRoots;
-        
+
         const findRootsRecursive = (node, isAncestorSelected) => {
             if (!node) return;
             const isNodeSelected = node.selected === true;
@@ -196,7 +258,7 @@ class Explainer {
                 node.children.forEach(child => findRootsRecursive(child, isAncestorSelected || isNodeSelected));
             }
         };
-        
+
         findRootsRecursive(rootOfThread, false);
         return selectedRoots;
     }
@@ -210,40 +272,40 @@ class Explainer {
             description: originalNode.description,
             children: []
         };
-        
+
         // Preserve status during processing (default is true)
         if (preserveStatus && originalNode.status) {
             newNode.status = { ...originalNode.status };
         }
-        
+
         // Preserve recursive compression properties if they exist
         if (originalNode.freq !== undefined) {
             newNode.freq = originalNode.freq;
         }
-        
+
         if (originalNode.isExit === true) {
             newNode.isExit = true;
         }
-        
+
         if (originalNode.compressed === true) {
             newNode.compressed = true;
         }
-        
+
         return newNode;
     }
 
     buildSelectedSubtree(rootNode) {
         if (!rootNode || rootNode.selected !== true) return null;
-        
+
         const buildRecursive = (originalNode) => {
             // Create node with essential properties (preserve status)
             const newNode = this.createEssentialNode(originalNode);
-            
+
             // Preserve selected flag for tree building
             if (originalNode.selected !== undefined) {
                 newNode.selected = originalNode.selected;
             }
-            
+
             if (originalNode.children && originalNode.children.length > 0) {
                 originalNode.children.forEach(child => {
                     if (child.selected === true) {
@@ -254,14 +316,14 @@ class Explainer {
             }
             return newNode;
         };
-        
+
         return buildRecursive(rootNode);
     }
 
     buildKNT(tree) {
         if (!tree) return null;
         const kntRoot = this.createKNTNode(tree);
-        
+
         const findSpecialChildrenRecursive = (originalNode, kntParentNode) => {
             if (!originalNode.children) return;
             for (const child of originalNode.children) {
@@ -275,22 +337,22 @@ class Explainer {
                 }
             }
         };
-        
+
         findSpecialChildrenRecursive(tree, kntRoot);
         return kntRoot;
     }
 
     createKNTNode(node) {
         if (!node) return null;
-        
+
         // Create KNT node with essential properties (preserve status)
         const kntNode = this.createEssentialNode(node);
-        
+
         // Ensure status exists for processing
         if (!kntNode.status) {
             kntNode.status = {};
         }
-        
+
         kntNode.isSpecialNode = true;
         return kntNode;
     }
@@ -327,31 +389,31 @@ class Explainer {
                 });
             }
         };
-        
+
         processNodeForRegion(tree, true, traceId, regionIdCollector);
     }
 
     extractRegion(rootNodeOfRegion) {
         if (!rootNodeOfRegion) return null;
-        
+
         // Create region root with essential properties (preserve status)
         const regionRootCopy = this.createEssentialNode(rootNodeOfRegion);
-        
+
         const copyNodesUntilSpecial = (originalParentNode, regionParentCopy) => {
             if (!originalParentNode.children) return;
             for (const originalChild of originalParentNode.children) {
                 if (!originalChild) continue;
-                
+
                 // Create child copy with essential properties (preserve status)
                 const childCopy = this.createEssentialNode(originalChild);
-                
+
                 regionParentCopy.children.push(childCopy);
                 if (!this.isSpecialNode(originalChild) && originalChild.children && originalChild.children.length > 0) {
                     copyNodesUntilSpecial(originalChild, childCopy);
                 }
             }
         };
-        
+
         copyNodesUntilSpecial(rootNodeOfRegion, regionRootCopy);
         return regionRootCopy;
     }
@@ -371,7 +433,7 @@ class Explainer {
 
     compressRecursiveCalls(tree) {
         if (!tree) return;
-        
+
         const findAndCompressRecursive = (node) => {
             if (!node) return;
             if (node.status && node.status.recursiveEntryPoint === true) {
@@ -381,7 +443,7 @@ class Explainer {
                 node.children.forEach(child => findAndCompressRecursive(child));
             }
         };
-        
+
         findAndCompressRecursive(tree);
     }
 
@@ -413,10 +475,10 @@ class Explainer {
                     collectNodes(child.children || []);
                 } else {
                     const pathSignature = this.generatePathSignature(child, recursiveLabel);
-                    
+
                     // Create node with essential properties (preserve status)
                     const currentNode = this.createEssentialNode(child);
-                    
+
                     // Process children
                     if (child.children && child.children.length > 0) {
                         child.children.forEach(grandchild => {
@@ -444,7 +506,7 @@ class Explainer {
                 }
             }
         };
-        
+
         collectNodes(children);
         const mergedChildrenArray = Array.from(mergedDirectChildren.values());
         const newChildren = [...mergedChildrenArray, ...exitNodes];
@@ -474,7 +536,7 @@ class Explainer {
     // Remove status properties from data before sending to AI
     removeStatusFromData(nodeData) {
         if (!nodeData) return null;
-        
+
         const cleanNode = (node) => {
             const cleanedNode = {
                 id: node.id,
@@ -482,29 +544,29 @@ class Explainer {
                 description: node.description,
                 children: []
             };
-            
+
             // Keep recursive properties if they exist
             if (node.freq !== undefined) {
                 cleanedNode.freq = node.freq;
             }
-            
+
             if (node.isExit === true) {
                 cleanedNode.isExit = true;
             }
-            
+
             if (node.compressed === true) {
                 cleanedNode.compressed = true;
             }
-            
+
             // Keep briefSummary if exists (for KNT augmentation)
             if (node.briefSummary) {
                 cleanedNode.briefSummary = node.briefSummary;
             }
-            
+
             if (node.isSpecialNode === true) {
                 cleanedNode.isSpecialNode = true;
             }
-            
+
             // Process children
             if (node.children && node.children.length > 0) {
                 node.children.forEach(child => {
@@ -513,10 +575,10 @@ class Explainer {
                     }
                 });
             }
-            
+
             return cleanedNode;
         };
-        
+
         return cleanNode(nodeData);
     }
 
@@ -529,7 +591,7 @@ class Explainer {
 
         const regionInfo = this.regions.get(kntNode.id); // KNT node ID might correspond to a region ID
         if (regionInfo && regionInfo.explained && regionInfo.briefSummary) {
-            kntNode.briefSummary = regionInfo.briefSummary;
+            kntNode.description = regionInfo.briefSummary;
         }
 
         if (kntNode.children && kntNode.children.length > 0) {
