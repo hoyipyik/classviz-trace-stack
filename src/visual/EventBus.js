@@ -22,7 +22,11 @@ export const eventNames = {
   // trace mode 
   switchTraceMode: 'switchTraceMode',
   // recursive compression
-  nodeStructureChanged: 'nodeStructureChanged'
+  nodeStructureChanged: 'nodeStructureChanged',
+
+  // explanation
+  explanationCompleted: 'explanationCompleted'
+
 
 }
 
