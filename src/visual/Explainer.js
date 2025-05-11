@@ -470,6 +470,23 @@ class Explainer {
                     // Create exit node with essential properties (preserve status)
                     const exitNode = this.createEssentialNode(child);
                     exitNode.isExit = true;
+
+                    // Preserve children of exit nodes
+                    if (child.children && child.children.length > 0) {
+                        child.children.forEach(exitChild => {
+                            if (exitChild) {
+                                // Create copy of each child with essential properties
+                                const childCopy = this.createEssentialNode(exitChild);
+                                exitNode.children.push(childCopy);
+
+                                // If the exit child has its own children, preserve those as well
+                                if (exitChild.children && exitChild.children.length > 0) {
+                                    this.copyChildrenRecursive(exitChild, childCopy);
+                                }
+                            }
+                        });
+                    }
+
                     exitNodes.push(exitNode);
                 } else if (child.label === recursiveLabel) {
                     collectNodes(child.children || []);
@@ -513,6 +530,22 @@ class Explainer {
         node.children = newChildren.sort((a, b) => parseInt(a.id) - parseInt(b.id));
         node.compressed = true;
         return true;
+    }
+
+    // Helper method to recursively copy children (needed for exit nodes with nested structures)
+    copyChildrenRecursive(sourceNode, targetNode) {
+        if (!sourceNode.children || sourceNode.children.length === 0) return;
+
+        sourceNode.children.forEach(child => {
+            if (child) {
+                const childCopy = this.createEssentialNode(child);
+                targetNode.children.push(childCopy);
+
+                if (child.children && child.children.length > 0) {
+                    this.copyChildrenRecursive(child, childCopy);
+                }
+            }
+        });
     }
 
     generatePathSignature(node, recursiveLabel) {
