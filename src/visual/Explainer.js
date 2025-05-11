@@ -1,5 +1,8 @@
 class Explainer {
     constructor(dataStore, eventBus, aiService) {
+        this.quickMode = true;
+        this.parallel = true;
+
         this.data = dataStore;
         this.eventBus = eventBus;
         this.aiService = aiService;
@@ -7,6 +10,224 @@ class Explainer {
         this.selectedTrees = new Map(); // entry method original Id -> { tree: tree data, KNT: KNT, explanation: { quickSummary: "", summaryAfterThinking: ""} }
         this.traceToRegion = new Map(); // entry original id of a trace -> [region entry original id]
         this.regions = new Map(); // entry special method original Id -> { data: subtree, explained: false, detailedBehaviour: "", flowRepresentation: "", briefSummary: "" }
+    }
+
+    // ============================================================
+    // Local Storage Methods
+    // ============================================================
+
+    /**
+     * Save the current explanation data to local storage
+     * @returns {Object} Object containing the save timestamp and success status
+     */
+    saveToLocalStorage() {
+        try {
+            const timestamp = Date.now();
+            const key = `explanation_data_${timestamp}`;
+
+            // Convert Maps to objects for storage
+            const dataToSave = {
+                selectedTrees: this.mapToObject(this.selectedTrees),
+                traceToRegion: this.mapToObject(this.traceToRegion),
+                regions: this.mapToObject(this.regions),
+                timestamp: timestamp,
+                savedAt: new Date().toISOString()
+            };
+
+            localStorage.setItem(key, JSON.stringify(dataToSave));
+
+            console.log(`Successfully saved explanation data to local storage with key: ${key}`);
+
+            if (this.eventBus) {
+                this.eventBus.publish('explanationSaved', {
+                    timestamp: timestamp,
+                    key: key,
+                    success: true
+                });
+            }
+
+            return {
+                timestamp: timestamp,
+                key: key,
+                success: true
+            };
+        } catch (error) {
+            console.error("Error saving to local storage:", error);
+
+            if (this.eventBus) {
+                this.eventBus.publish('explanationSaved', {
+                    success: false,
+                    error: error.message
+                });
+            }
+
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Load explanation data from local storage by timestamp
+     * @param {number} timestamp - The timestamp to load data from
+     * @returns {Object} Object containing success status and loaded data if successful
+     */
+    loadFromLocalStorage(timestamp) {
+        try {
+            const key = `explanation_data_${timestamp}`;
+            const savedData = localStorage.getItem(key);
+
+            if (!savedData) {
+                throw new Error(`No saved data found for timestamp: ${timestamp}`);
+            }
+
+            const parsedData = JSON.parse(savedData);
+
+            // Convert objects back to Maps
+            this.selectedTrees = this.objectToMap(parsedData.selectedTrees);
+            this.traceToRegion = this.objectToMap(parsedData.traceToRegion);
+            this.regions = this.objectToMap(parsedData.regions);
+
+            console.log(`Successfully loaded explanation data from local storage with key: ${key}`);
+
+            if (this.eventBus) {
+                this.eventBus.publish('explanationLoaded', {
+                    timestamp: timestamp,
+                    key: key,
+                    success: true
+                });
+            }
+
+            return {
+                success: true,
+                data: parsedData
+            };
+        } catch (error) {
+            console.error("Error loading from local storage:", error);
+
+            if (this.eventBus) {
+                this.eventBus.publish('explanationLoaded', {
+                    success: false,
+                    error: error.message
+                });
+            }
+
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Get a list of all saved explanation data in local storage
+     * @returns {Array} Array of saved explanation data metadata
+     */
+    getSavedExplanations() {
+        try {
+            const savedExplanations = [];
+
+            // Iterate through localStorage items
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+
+                if (key.startsWith('explanation_data_')) {
+                    try {
+                        const savedData = JSON.parse(localStorage.getItem(key));
+                        savedExplanations.push({
+                            key: key,
+                            timestamp: savedData.timestamp,
+                            savedAt: savedData.savedAt,
+                            treeCount: Object.keys(savedData.selectedTrees).length,
+                            regionCount: Object.keys(savedData.regions).length
+                        });
+                    } catch (parseError) {
+                        console.warn(`Could not parse data for key ${key}:`, parseError);
+                    }
+                }
+            }
+
+            // Sort by timestamp (newest first)
+            savedExplanations.sort((a, b) => b.timestamp - a.timestamp);
+
+            return savedExplanations;
+        } catch (error) {
+            console.error("Error getting saved explanations:", error);
+            return [];
+        }
+    }
+
+    /**
+     * Delete a saved explanation from local storage
+     * @param {number} timestamp - The timestamp of the explanation to delete
+     * @returns {Object} Object containing success status
+     */
+    deleteSavedExplanation(timestamp) {
+        try {
+            const key = `explanation_data_${timestamp}`;
+
+            if (!localStorage.getItem(key)) {
+                throw new Error(`No saved data found for timestamp: ${timestamp}`);
+            }
+
+            localStorage.removeItem(key);
+            console.log(`Successfully deleted explanation data with key: ${key}`);
+
+            if (this.eventBus) {
+                this.eventBus.publish('explanationDeleted', {
+                    timestamp: timestamp,
+                    key: key,
+                    success: true
+                });
+            }
+
+            return {
+                success: true
+            };
+        } catch (error) {
+            console.error("Error deleting saved explanation:", error);
+
+            if (this.eventBus) {
+                this.eventBus.publish('explanationDeleted', {
+                    success: false,
+                    error: error.message
+                });
+            }
+
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Helper method to convert a Map to a plain object for storage
+     * @param {Map} map - The Map to convert
+     * @returns {Object} Object representation of the Map
+     */
+    mapToObject(map) {
+        const obj = {};
+        for (const [key, value] of map.entries()) {
+            obj[key] = value;
+        }
+        return obj;
+    }
+
+    /**
+     * Helper method to convert a plain object back to a Map
+     * @param {Object} obj - The object to convert
+     * @returns {Map} Map representation of the object
+     */
+    objectToMap(obj) {
+        const map = new Map();
+        for (const key in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                map.set(key, obj[key]);
+            }
+        }
+        return map;
     }
 
     // ============================================================
@@ -67,15 +288,30 @@ class Explainer {
     // Main caller api
     async explainSelectedTraces(config = { quickMode: true, parallel: true }) {
         this.buildSelectedTrees(); // Ensures all necessary data structures are populated
+        let backData = null;
 
         if (config.quickMode) {
-            return await this.performQuickExplanation({ parallel: config.parallel });
+            backData = await this.performQuickExplanation({ parallel: config.parallel });
         } else {
-            return await this.performDetailedExplanation({
+            backData = await this.performDetailedExplanation({
                 parallelTraces: config.parallel,
                 parallelRegions: config.parallel
             });
+
+            // Start both explanations concurrently
+            // const [quickResult, detailedResult] = await Promise.all([
+            //     this.performQuickExplanation({ parallel: config.parallel }),
+            //     this.performDetailedExplanation({
+            //         parallelTraces: config.parallel,
+            //         parallelRegions: config.parallel
+            //     })
+            // ]);
+            // backData = detailedResult;
         }
+
+        this.saveToLocalStorage();
+        this.eventBus.publish('explanationCompleted', { backData });
+        return backData;
     }
 
     async explainCurrentRegion(regionId) {
@@ -209,6 +445,9 @@ class Explainer {
         }
 
         console.log("\nDetailed mode explanation finished for all traces.");
+
+        // Auto-save results after generating explanations
+        // this.saveToLocalStorage();
 
         return {
             trees: this.selectedTrees,
