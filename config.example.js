@@ -1,4 +1,5 @@
 
-export const url = 'http://your-api-url.com/api/generate';
-
-export const API_KEY = 'your-api-key';
+export const OLLAMA_URL = 'http://host/api/generate';
+export const OLLAMA_API_KEY = '';
+export const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
+export const DEEPSEEK_API_KEY = '';
