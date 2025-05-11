@@ -4,7 +4,7 @@ class Explainer {
         this.eventBus = eventBus;
         this.aiService = aiService;
 
-        this.selectedTrees = new Map(); // entry method original Id -> { tree: tree data, KNT: KNT, explanation: { highlevelSummary: "", moreDetailedSummary: ""} }
+        this.selectedTrees = new Map(); // entry method original Id -> { tree: tree data, KNT: KNT, explanation: { quickSummary: "", summaryAfterThinking: ""} }
         this.traceToRegion = new Map(); // entry original id of a trace -> [region entry original id]
         this.regions = new Map(); // entry special method original Id -> { data: subtree, explained: false, detailedBehaviour: "", flowRepresentation: "", briefSummary: "" }
     }
@@ -35,8 +35,8 @@ class Explainer {
                     tree: tree,
                     KNT: knt,
                     explanation: {
-                        highlevelSummary: "",
-                        moreDetailedSummary: ""
+                        quickSummary: "",
+                        summaryAfterThinking: ""
                     }
                 });
 
@@ -65,7 +65,7 @@ class Explainer {
     }
 
     // Main caller api
-    async explainSelectedTraces(config = { quickMode: false, parallel: true }) {
+    async explainSelectedTraces(config = { quickMode: true, parallel: true }) {
         this.buildSelectedTrees(); // Ensures all necessary data structures are populated
 
         if (config.quickMode) {
@@ -118,15 +118,15 @@ class Explainer {
                         const cleanKNT = this.removeStatusFromData(treeData.KNT);
 
                         const explanationResult = await this.aiService.explainPureKNT(cleanKNT); // External AI function
-                        treeData.explanation.highlevelSummary = explanationResult;
+                        treeData.explanation.quickSummary = explanationResult;
                         console.log(`Completed quick explanation for tree ${treeId}.`);
                     } catch (error) {
                         console.error(`Error during aiExplainPureKNT for KNT of tree ${treeId}:`, error);
-                        treeData.explanation.highlevelSummary = `Error: Quick explanation failed - ${error.message}`;
+                        treeData.explanation.quickSummary = `Error: Quick explanation failed - ${error.message}`;
                     }
                 } else {
                     console.warn(`No KNT found for tree ${treeId}. Skipping quick explanation.`);
-                    treeData.explanation.highlevelSummary = "No KNT available for quick explanation.";
+                    treeData.explanation.quickSummary = "No KNT available for quick explanation.";
                 }
             });
 
@@ -141,14 +141,14 @@ class Explainer {
                         const cleanKNT = this.removeStatusFromData(treeData.KNT);
 
                         const explanationResult = await this.aiService.explainPureKNT(cleanKNT); // External AI function
-                        treeData.explanation.highlevelSummary = explanationResult;
+                        treeData.explanation.quickSummary = explanationResult;
                     } catch (error) {
                         console.error(`Error during aiExplainPureKNT for KNT of tree ${treeId}:`, error);
-                        treeData.explanation.highlevelSummary = `Error: Quick explanation failed - ${error.message}`;
+                        treeData.explanation.quickSummary = `Error: Quick explanation failed - ${error.message}`;
                     }
                 } else {
                     console.warn(`No KNT found for tree ${treeId}. Skipping quick explanation.`);
-                    treeData.explanation.highlevelSummary = "No KNT available for quick explanation.";
+                    treeData.explanation.quickSummary = "No KNT available for quick explanation.";
                 }
             }
         }
@@ -227,15 +227,15 @@ class Explainer {
                 this.augmentKNTWithRegionSummaries(cleanedAugmentedKNT); // Add region summaries to KNT nodes
 
                 // Clean the data by removing status properties before sending to AI
-                selectedTreeData.explanation.moreDetailedSummary = await this.aiService.explainKNTWithData(cleanedAugmentedKNT); // External AI function
+                selectedTreeData.explanation.summaryAfterThinking = await this.aiService.explainKNTWithData(cleanedAugmentedKNT); // External AI function
                 console.log(`  Successfully generated detailed explanation for trace ${traceId}.`);
             } catch (error) {
                 console.error(`  Error during aiExplainKNTWithData for trace ${traceId}:`, error);
-                selectedTreeData.explanation.moreDetailedSummary = `Error: Detailed trace explanation failed - ${error.message}`;
+                selectedTreeData.explanation.summaryAfterThinking = `Error: Detailed trace explanation failed - ${error.message}`;
             }
         } else {
             if (selectedTreeData) {
-                selectedTreeData.explanation.moreDetailedSummary = "No KNT available for detailed explanation.";
+                selectedTreeData.explanation.summaryAfterThinking = "No KNT available for detailed explanation.";
             }
             console.warn(`  No KNT found for trace ${traceId}. Skipping consolidated trace explanation.`);
         }
