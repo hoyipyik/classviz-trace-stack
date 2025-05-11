@@ -14,6 +14,7 @@ import { ClassvizManager } from './ClassvizManager.js'; // Import ClassvizManage
 import { StepByStepPlayController } from './StepByStepPlayController.js';
 import { Explainer } from './Explainer.js';
 import { AiService } from './AiService.js';
+import { ExplanationUIController } from './ExplanationUIController.js';
 
 /**
  * Call Tree Visualization Application Main Entry
@@ -103,6 +104,7 @@ class TraceStackApp {
     this.aiService = new AiService();
     this.explainer = new Explainer(this.data, this.eventBus, this.aiService);
     window.explainer = this.explainer;
+    this.explanationUIController = new ExplanationUIController(this.explainer, this.eventBus);
 
     // Subscribe to view mode changes to update sidebar UI (new)
     this.eventBus.subscribe('viewModeChanged', (data) => {
