@@ -17,29 +17,29 @@ function extractMethodCalls(sourceCode) {
   if (!sourceCode || typeof sourceCode !== 'string') {
     return [];
   }
-  
+
   // Remove all comments from the source code
   const codeWithoutComments = sourceCode
     // Remove block comments (/* ... */)
     .replace(/\/\*[\s\S]*?\*\//g, '')
     // Remove line comments (// ...)
     .replace(/\/\/.*/g, '');
-  
+
   // Extract method calls from the clean code
   const methodCallRegex = /([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/g;
-  
+
   const methodCalls = [];
   let match;
-  
+
   while ((match = methodCallRegex.exec(codeWithoutComments)) !== null) {
     const methodName = match[1];
-    
+
     const keywords = ['if', 'for', 'while', 'switch', 'catch', 'function', 'return'];
     if (!keywords.includes(methodName)) {
       methodCalls.push(methodName);
     }
   }
-  
+
   return methodCalls;
 }
 
@@ -55,31 +55,31 @@ function sortChildrenByMethodCalls(children, methodCallOrder) {
   methodCallOrder.forEach((methodName, index) => {
     methodOrderMap[methodName] = index;
   });
-  
+
   // Sort children based on methodName and its position in methodCallOrder
   return children.sort((a, b) => {
     // Get just the method name part (without parameters and parentheses) for comparison
     const aMethod = a.methodName ? a.methodName.replace(/\([^)]*\)/g, '') : '';
     const bMethod = b.methodName ? b.methodName.replace(/\([^)]*\)/g, '') : '';
-    
+
     // Now we need to further extract just the last part of the method name if it has dots
     const aShortMethod = aMethod.substring(aMethod.lastIndexOf('.') + 1);
     const bShortMethod = bMethod.substring(bMethod.lastIndexOf('.') + 1);
-    
-    const aMethodIndex = methodOrderMap[aShortMethod] !== undefined ? 
+
+    const aMethodIndex = methodOrderMap[aShortMethod] !== undefined ?
       methodOrderMap[aShortMethod] : Number.MAX_SAFE_INTEGER;
-    const bMethodIndex = methodOrderMap[bShortMethod] !== undefined ? 
+    const bMethodIndex = methodOrderMap[bShortMethod] !== undefined ?
       methodOrderMap[bShortMethod] : Number.MAX_SAFE_INTEGER;
-    
+
     // If both methods are in the order list, sort by their position
     if (aMethodIndex !== Number.MAX_SAFE_INTEGER && bMethodIndex !== Number.MAX_SAFE_INTEGER) {
       return aMethodIndex - bMethodIndex;
     }
-    
+
     // If only one is in the order list, prioritize it
     if (aMethodIndex !== Number.MAX_SAFE_INTEGER) return -1;
     if (bMethodIndex !== Number.MAX_SAFE_INTEGER) return 1;
-    
+
     // If neither is in the order list, sort alphabetically
     return aShortMethod.localeCompare(bShortMethod);
   });
@@ -117,24 +117,24 @@ function extractPackageName(className) {
 function reassignAllNodeIds(root, nodeMap, nodes, edges) {
   const oldToNewIdMap = {};
   let nextId = 0;
-  
+
   // Recursive function to traverse the tree and reassign IDs
   function traverseAndReassign(node, parentId = null) {
     const oldId = node.id;
     const newId = nextId.toString();
     nextId++;
-    
+
     // Store the mapping from old ID to new ID
     oldToNewIdMap[oldId] = newId;
-    
+
     // Update the node's ID
     node.id = newId;
-    
+
     // Update parent ID if applicable
     if (parentId !== null) {
       node.parentId = parentId;
     }
-    
+
     // Recursively process children
     if (node.children && node.children.length > 0) {
       node.children.forEach(child => {
@@ -142,10 +142,10 @@ function reassignAllNodeIds(root, nodeMap, nodes, edges) {
       });
     }
   }
-  
+
   // Start traversal from the root
   traverseAndReassign(root);
-  
+
   // Create a new nodeMap with updated IDs
   const newNodeMap = {};
   Object.keys(nodeMap).forEach(oldId => {
@@ -154,14 +154,14 @@ function reassignAllNodeIds(root, nodeMap, nodes, edges) {
       newNodeMap[oldToNewIdMap[oldId]] = node;
     }
   });
-  
+
   // Update all references in nodes array
   nodes.forEach(nodeObj => {
     if (oldToNewIdMap[nodeObj.data.id]) {
       nodeObj.data.id = oldToNewIdMap[nodeObj.data.id];
     }
   });
-  
+
   // Update all references in edges array
   edges.forEach(edgeObj => {
     if (oldToNewIdMap[edgeObj.data.source]) {
@@ -171,13 +171,13 @@ function reassignAllNodeIds(root, nodeMap, nodes, edges) {
       edgeObj.data.target = oldToNewIdMap[edgeObj.data.target];
     }
   });
-  
+
   // Replace the nodeMap
   Object.keys(nodeMap).forEach(key => {
     delete nodeMap[key];
   });
   Object.assign(nodeMap, newNodeMap);
-  
+
   return root;
 }
 
@@ -307,24 +307,33 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     // Calculate node position
     const position = calculateNodePosition(xmlNode, shouldIncludeNode, depth, leftBound, childNodes);
 
-    // Calculate node status
-    const { status, visitedPaths: updatedVisitedPaths } = computeNodeStatus(
-      isRoot,
-      childNodes,
-      attributes.className,
-      attributes.methodName,
-      visitedPaths,
-      parentIsFanout,
-      nodeId
-    );
-
     // Calculate tree metrics
     const treeMetrics = calculateTreeMetrics(xmlNode, shouldIncludeNode);
 
     // Fetch and process node data
     const processedData = fetchNodeData(attributes.className, attributes.methodName, isRoot);
     const sourceCode = processedData.sourceCode || null;
-    
+    const visibility = processedData.visibility || null;
+    const treeStats = {
+      directChildrenCount: treeMetrics.directChildrenCount,
+      totalDescendants: treeMetrics.totalDescendants,
+      subtreeDepth: treeMetrics.subtreeDepth,
+      level: depth
+    }
+
+    // Calculate node status
+    const { status, visitedPaths: updatedVisitedPaths } = computeNodeStatus(
+      isRoot,
+      visibility,
+      sourceCode,
+      childNodes,
+      attributes.className,
+      attributes.methodName,
+      visitedPaths,
+      parentIsFanout,
+      nodeId,
+      treeStats
+    );
     // Create node data with all information
     const nodeData = {
       id: nodeId,
@@ -343,12 +352,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       collapsed: true,
       selected: false,
       // Tree statistics
-      treeStats: {
-        directChildrenCount: treeMetrics.directChildrenCount,
-        totalDescendants: treeMetrics.totalDescendants,
-        subtreeDepth: treeMetrics.subtreeDepth,
-        level: depth
-      },
+      treeStats: treeStats,
       // Node status
       status,
       // Initialize children array
@@ -391,7 +395,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       // if (sourceCode) {
       //   const methodCallOrder = extractMethodCalls(sourceCode);
       //   nodeData.methodCallOrder = methodCallOrder;
-        
+
       //   // Sort children based on methodCallOrder if methods were found
       //   if (methodCallOrder.length > 0) {
       //     nodeData.children = sortChildrenByMethodCalls(nodeData.children, methodCallOrder);
@@ -433,7 +437,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       packageColorMap: new Map()
     };
   }
-  
+
   // Reassign all node IDs to ensure consistent ordering
   // reassignAllNodeIds(rootData, nodeMap, nodes, edges);
 
