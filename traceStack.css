@@ -57,8 +57,10 @@ body {
   
   /* Sidebar Sections */
   .sidebar-section {
+    position: relative;
     border-bottom: 1px solid #e0e0e0;
     padding: 10px;
+    
   }
   
   .section-header {
@@ -813,3 +815,80 @@ body {
     background-color: #e9ecef;
   }
   
+
+  /* 专门针对details元素的高度修复 */
+
+/* 基本样式覆盖 */
+details.sidebar-section {
+  height: auto !important; /* 强制auto高度 */
+  max-height: none !important; /* 移除最大高度限制 */
+  min-height: 0 !important; /* 确保没有最小高度限制 */
+  display: block !important; /* 使用块级显示 */
+  overflow: visible !important; /* 禁用溢出隐藏 */
+}
+
+/* 确保details在打开状态下也不会限制高度 */
+details.sidebar-section[open] {
+  height: auto !important;
+  max-height: none !important;
+}
+
+/* 控制details内部内容的样式 */
+details.sidebar-section > * {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* 特别处理summary元素 */
+summary.section-header {
+  display: flex !important; /* 确保使用flex布局 */
+  height: auto !important;
+}
+
+/* 专门处理内容区域 */
+.section-content {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  display: block !important;
+}
+
+/* 确保LLM解释UI容器没有高度限制 */
+#llmExplanation {
+  height: auto !important; 
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  display: block !important;
+  position: static !important; /* 避免创建新的包含块 */
+}
+
+/* 处理webkit浏览器的特殊行为 */
+@supports (-webkit-appearance:none) {
+  details.sidebar-section {
+    -webkit-box-sizing: content-box !important;
+    box-sizing: content-box !important;
+  }
+}
+
+/* 完全替代details的默认开关行为 */
+.custom-details {
+  border-top: 1px solid #cacaca;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 10px;
+}
+
+.custom-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  margin-bottom: 5px;
+}
+
+.custom-details-content {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
