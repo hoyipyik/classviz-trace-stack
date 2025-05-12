@@ -4,7 +4,7 @@
  */
 import { $ } from "../shorthands.js";
 import { TraceStackApp } from "../visual/TraceStackApp.js";
-import { FlameGraphService } from "./services/flameGraphMain.js";
+// import { FlameGraphService } from "./services/flameGraphMain.js";
 // Export the flame graph plugin loader
 export const loadFlameGraphPlugin = (cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap) => {
     // const service = new FlameGraphService(cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap);
