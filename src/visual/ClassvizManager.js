@@ -3,6 +3,7 @@ import { ALLOWED_LIB_METHODS } from "../trace/utils/process/callTreeParser.js";
 export class ClassvizManager {
     constructor(data, cy, eventBus, idRangeByThreadMap) {
         this.stepByStepMode = false;
+        this.useNumberedEdges = false;
         this.ALLOWED_LIB_METHODS = ALLOWED_LIB_METHODS;
         this.data = data;
         this.cy = cy;
@@ -30,6 +31,14 @@ export class ClassvizManager {
         this.originalIdToSourceEdges = new Map(); // originalId -> Set(edge id) edges where this original node is the source
         this.originalIdToTargetEdges = new Map(); // originalId -> Set(edge id) edges where this original node is the target
 
+        const numberedEdgeControlInput = document.getElementById('numberedEdges');
+        if (numberedEdgeControlInput) {
+            numberedEdgeControlInput.checked = this.useNumberedEdges;
+            numberedEdgeControlInput.addEventListener('change', (event) => {
+                this.toggleEdgeNumbering(event.target.checked);
+            });
+        }
+
         this.eventBus.subscribe('changeSingleMethodByIdToClassviz', (
             { nodeId, selected }) => {
             if (selected) {
@@ -37,6 +46,9 @@ export class ClassvizManager {
             } else {
                 // remove single node
                 this.removeSingleMethodById(nodeId);
+            }
+            if (this.useNumberedEdges) {
+                this.switchTraceMode(this.data.traceMode, true);
             }
 
         });
@@ -52,6 +64,9 @@ export class ClassvizManager {
                 nodeIds.forEach((nodeId) => {
                     this.removeSingleMethodById(nodeId);
                 });
+            }
+            if (this.useNumberedEdges) {
+                this.switchTraceMode(this.data.traceMode, true);
             }
         });
 
@@ -401,14 +416,323 @@ export class ClassvizManager {
         // 更新映射并决定是否删除节点
         this.updateMappingsAndRemoveNode(id, nodeLabel, methodNode);
     }
+
     /**
- * 切换图表的边创建模式并重新创建所有边
- * @param {boolean} traceMode - 是否启用时序模式的边创建
+ * 为时序模式创建带有序号和颜色的顺序边
+ * Creates sequential edges with numbering and color spectrum for trace mode
  */
-    switchTraceMode(traceMode) {
+    createNumberedSequentialEdges() {
+        // 遍历每个线程
+        this.threadToMethodNodesInOrder.forEach((methodNodes, threadName) => {
+            // 获取已插入的节点（已选中的节点）
+            const selectedNodes = methodNodes.filter(node =>
+                this.insertedNodes.has(node.label) &&
+                this.data.nodes.get(node.originalId)?.data?.selected
+            );
+
+            // 如果线程中少于2个已选中的节点，则无需创建边
+            if (selectedNodes.length < 2) {
+                return;
+            }
+
+            // 清除所有现有边，为重建边做准备
+            // 我们只需清除与这个线程中节点相关的边
+            selectedNodes.forEach(node => {
+                this.removeAllEdgesFromNode(node.originalId);
+            });
+
+            // 生成颜色谱
+            const colorSpectrum = this.generateColorSpectrum(selectedNodes.length - 1);
+
+            // 按照节点在列表中的顺序创建边（链表式连接）
+            for (let i = 0; i < selectedNodes.length - 1; i++) {
+                const currentNode = selectedNodes[i];
+                const nextNode = selectedNodes[i + 1];
+
+                // 创建从当前节点到下一个节点的带编号和颜色的边
+                this.createNumberedEdge(
+                    currentNode.originalId,
+                    currentNode.label,
+                    nextNode.originalId,
+                    nextNode.label,
+                    i + 1, // 序号从1开始
+                    colorSpectrum[i] // 从颜色谱中获取颜色
+                );
+            }
+        });
+    }
+
+    /**
+     * 为调用树模式创建带有序号和颜色的边，参考现有的rebuildCallTreeEdges实现
+     * Creates numbered edges with colors for call tree mode, following the existing rebuildCallTreeEdges implementation
+     */
+    rebuildNumberedCallTreeEdges() {
+        // 清除所有现有边
+        this.clearAllEdges();
+
+        // 计算最大深度，为每个深度分配颜色
+        const maxDepth = this.calculateMaxDepth();
+        const depthColors = this.generateDepthColors(maxDepth);
+
+        // 遍历每个线程
+        this.threadToMethodNodesInOrder.forEach((_, threadName) => {
+            // 获取该线程的树数据
+            const treeData = this.data.threadsData[threadName];
+            if (!treeData) return;
+
+            // 获取该树的根节点
+            const rootNode = treeData;
+            if (!rootNode) return;
+
+            // 从根节点开始遍历树，创建所有带编号和颜色的边
+            this.traverseTreeAndCreateNumberedEdges(rootNode, depthColors);
+        });
+
+        console.log(`Recreated numbered call tree edges for all threads`);
+    }
+
+    /**
+     * 计算选中节点的最大深度
+     * @returns {number} 最大深度
+     */
+    calculateMaxDepth() {
+        let maxDepth = 0;
+
+        // 函数递归计算节点深度
+        const calculateNodeDepth = (node, depth = 0, visited = new Set()) => {
+            if (!node || !node.id || visited.has(node.id)) return depth;
+            visited.add(node.id);
+
+            // 获取节点数据
+            const nodeData = this.data.nodes.get(node.id)?.data;
+            if (!nodeData) return depth;
+
+            const nodeLabel = this.getMethodLabelById(node.id);
+            const isNodeSelected = nodeData.selected && nodeLabel && this.insertedNodes.has(nodeLabel);
+
+            // 如果节点被选中，更新最大深度
+            if (isNodeSelected) {
+                maxDepth = Math.max(maxDepth, depth);
+            }
+
+            // 递归处理子节点
+            const children = node.children || [];
+            for (const child of children) {
+                calculateNodeDepth(child, depth + 1, new Set([...visited]));
+            }
+
+            return depth;
+        };
+
+        // 遍历每个线程的根节点
+        this.threadToMethodNodesInOrder.forEach((_, threadName) => {
+            const treeData = this.data.threadsData[threadName];
+            if (treeData) {
+                calculateNodeDepth(treeData, 0);
+            }
+        });
+
+        return maxDepth;
+    }
+
+    /**
+     * 为每个深度生成颜色
+     * @param {number} maxDepth 最大深度
+     * @returns {Object} 深度到颜色的映射
+     */
+    generateDepthColors(maxDepth) {
+        const colors = {};
+
+        // 确保至少有一种颜色
+        if (maxDepth < 0) maxDepth = 0;
+
+        for (let depth = 0; depth <= maxDepth; depth++) {
+            // 在色谱上均匀分布颜色
+            const hue = Math.floor((depth / (maxDepth + 1)) * 360);
+            colors[depth] = `hsl(${hue}, 80%, 50%)`;
+        }
+
+        return colors;
+    }
+
+    /**
+     * 遍历树并创建带编号和颜色的边
+     * @param {Object} node - 当前树节点
+     * @param {Object} depthColors - 深度到颜色的映射
+     * @param {Set} visited - 已访问节点的集合
+     * @param {Number} depth - 当前深度
+     * @param {String|null} lastSelectedParentId - 上一个选中的父节点ID
+     * @param {String|null} lastSelectedParentLabel - 上一个选中的父节点标签
+     */
+    traverseTreeAndCreateNumberedEdges(node, depthColors, visited = new Set(), depth = 0, lastSelectedParentId = null, lastSelectedParentLabel = null) {
+        if (!node || !node.id || visited.has(node.id)) return;
+        visited.add(node.id);
+
+        // 获取当前节点信息
+        const nodeData = this.data.nodes.get(node.id)?.data;
+        if (!nodeData) return; // 节点不存在，跳过处理
+
+        const nodeLabel = this.getMethodLabelById(node.id);
+        const isCurrentNodeSelected = nodeData.selected && nodeLabel && this.insertedNodes.has(nodeLabel);
+
+        // 如果当前节点被选中，更新"最后选中的父节点"为当前节点
+        let currentSelectedParentId = lastSelectedParentId;
+        let currentSelectedParentLabel = lastSelectedParentLabel;
+        let currentDepth = depth;
+
+        if (isCurrentNodeSelected) {
+            // 当前节点被选中，更新为新的父节点
+            currentSelectedParentId = node.id;
+            currentSelectedParentLabel = nodeLabel;
+
+            // 如果有上一个选中的父节点，创建从父节点到当前节点的边
+            if (lastSelectedParentId && lastSelectedParentLabel) {
+                this.createNumberedEdge(
+                    lastSelectedParentId,
+                    lastSelectedParentLabel,
+                    node.id,
+                    nodeLabel,
+                    depth,  // 使用深度作为序号
+                    depthColors[depth - 1] || '#999999' // 使用当前深度的颜色
+                );
+            }
+        }
+
+        // 递归处理所有子节点，无论当前节点是否被选中
+        const children = node.children || [];
+        for (const child of children) {
+            this.traverseTreeAndCreateNumberedEdges(
+                child,
+                depthColors,
+                new Set([...visited]), // 创建一个新的visited集合，防止循环引用问题
+                isCurrentNodeSelected ? depth + 1 : depth, // 只有当当前节点被选中时才增加深度
+                currentSelectedParentId,
+                currentSelectedParentLabel
+            );
+        }
+    }
+    /**
+   * 创建带有序号和颜色的边 (修正版)
+   * @param {String} sourceOriginalId - 源节点原始ID
+   * @param {String} sourceNodeLabel - 源节点标签
+   * @param {String} targetOriginalId - 目标节点原始ID
+   * @param {String} targetNodeLabel - 目标节点标签
+   * @param {Number} sequenceNumber - 序列号
+   * @param {String} color - 边的颜色 (确保传入的是有效的 CSS 颜色字符串)
+   */
+    createNumberedEdge(sourceOriginalId, sourceNodeLabel, targetOriginalId, targetNodeLabel, sequenceNumber, color) {
+        // 生成边的唯一ID
+        const edgeId = `edge_${sourceOriginalId}_${targetOriginalId}_${new Date().getTime()}`;
+
+        // 检查边是否已存在
+        if (this.insertedEdges.has(edgeId)) {
+            console.warn(`Edge with potentially duplicate ID ${edgeId} skipped.`);
+            return;
+        }
+
+        // 创建边数据
+        const edgeData = {
+            group: 'edges',
+            data: {
+                id: edgeId,
+                source: sourceNodeLabel,
+                target: targetNodeLabel,
+                sourceOriginalId: sourceOriginalId,
+                targetOriginalId: targetOriginalId,
+                label: `${sequenceNumber}`,
+                sequenceNumber: sequenceNumber,
+                interaction: "trace_call",
+                color: color // 存储颜色，但不直接用于样式
+            }
+        };
+
+        // 添加边到cytoscape
+        const edge = this.cy.add(edgeData);
+
+        console.log(`Adding edge ${edgeId} with color = ${color}`);
+
+        // 重要：通过style方法覆盖CSS默认样式
+        edge.style({
+            'width': 3,
+            'line-color': color,
+            'target-arrow-color': color,
+            'line-fill': 'solid', // 重要：禁用渐变，使用纯色
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier',
+            'label': `${sequenceNumber}`,
+            'font-size': '14px',
+            'font-weight': 'bold',
+            'text-background-color': '#FFFFFF',
+            'text-background-opacity': 0.7,
+            'text-background-shape': 'roundrectangle',
+            'text-background-padding': '2px',
+            'text-margin-y': -10,
+            'color': '#000000'
+        });
+
+        // 处理自引用边
+        if (sourceNodeLabel === targetNodeLabel) {
+            edge.style({
+                'curve-style': 'unbundled-bezier',
+                'control-point-distances': [50],
+                'control-point-weights': [0.5],
+                'loop-direction': '0deg',
+                'loop-sweep': '90deg'
+            });
+        }
+
+        // 存储边到映射中
+        this.insertedEdges.set(edgeId, edge);
+
+        // 在原始ID映射中跟踪此边
+        if (!this.originalIdToSourceEdges.has(sourceOriginalId)) {
+            this.originalIdToSourceEdges.set(sourceOriginalId, new Set());
+        }
+        this.originalIdToSourceEdges.get(sourceOriginalId).add(edgeId);
+
+        if (!this.originalIdToTargetEdges.has(targetOriginalId)) {
+            this.originalIdToTargetEdges.set(targetOriginalId, new Set());
+        }
+        this.originalIdToTargetEdges.get(targetOriginalId).add(edgeId);
+
+        return edge;
+    }
+
+    /**
+     * 生成颜色谱数组
+     * @param {Number} count - 需要的颜色数量
+     * @returns {Array} - 颜色数组
+     */
+    generateColorSpectrum(count) {
+        const colors = [];
+
+        // 使用HSL颜色空间更容易生成均匀分布的颜色
+        // H: 色相(0-360)，S: 饱和度(0-100)，L: 亮度(0-100)
+        const saturation = 80; // 饱和度固定
+        const lightness = 50;  // 亮度固定
+
+        if (count <= 0) return colors;
+
+        // 生成均匀分布的颜色
+        for (let i = 0; i < count; i++) {
+            // 在整个色谱上均匀分布色相值
+            const hue = Math.floor((i / count) * 360);
+            const color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+            colors.push(color);
+        }
+
+        return colors;
+    }
+
+    /**
+     * 切换图表的边创建模式并重新创建所有边
+     * @param {boolean} traceMode - 是否启用时序模式的边创建
+     * @param {boolean} useNumbering - 是否使用带编号和颜色的边
+     */
+    switchTraceMode(traceMode, useNumbering = this.useNumberedEdges) {
         // 更新模式设置
         this.data.traceMode = traceMode;
-        console.log(`Switched to ${traceMode ? 'trace' : 'call tree'} mode`);
+        console.log(`Switched to ${traceMode ? 'trace' : 'call tree'} mode with ${useNumbering ? 'numbered' : 'standard'} edges`);
 
         // 如果没有足够的节点，则无需处理
         if (this.insertedNodes.size <= 1) {
@@ -419,14 +743,45 @@ export class ClassvizManager {
         // 清除所有现有边
         this.clearAllEdges();
 
-        // 根据当前模式重新创建边
+        // 根据当前模式和编号选项重新创建边
         if (traceMode) {
-            // 时序模式：调用创建顺序边的方法
-            this.createSequentialEdges();
+            // 时序模式
+            if (useNumbering) {
+                // 使用带编号和颜色的时序边
+                this.createNumberedSequentialEdges();
+            } else {
+                // 使用标准时序边
+                this.createSequentialEdges();
+            }
         } else {
-            // 调用树模式：为每个选中的节点创建边
-            this.rebuildCallTreeEdges();
+            // 调用树模式
+            if (useNumbering) {
+                // 使用带编号和颜色的调用树边
+                this.rebuildNumberedCallTreeEdges();
+            } else {
+                // 使用标准调用树边
+                this.rebuildCallTreeEdges();
+            }
         }
+    }
+
+    /**
+     * 切换边的编号和颜色模式
+     * @param {boolean} useNumbering - 是否启用编号模式，如果为undefined则切换当前模式
+     * @returns {boolean} - 切换后的模式状态
+     */
+    toggleEdgeNumbering(useNumbering) {
+        // 如果未指定，则切换当前状态
+        if (useNumbering === undefined) {
+            this.useNumberedEdges = !this.useNumberedEdges;
+        } else {
+            this.useNumberedEdges = useNumbering;
+        }
+
+        // 使用当前traceMode和新的编号设置重新创建边
+        this.switchTraceMode(this.data.traceMode, this.useNumberedEdges);
+
+        return this.useNumberedEdges;
     }
 
     /**
