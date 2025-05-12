@@ -1,30 +1,49 @@
 import { DEEPSEEK_API_KEY, DEEPSEEK_URL, OLLAMA_API_KEY, OLLAMA_URL } from "../../config.js";
 
 class AiService {
-    constructor() {
+    constructor(eventBus) {
+        this.apiKey = DEEPSEEK_API_KEY;
+        this.apiUrl = DEEPSEEK_URL;
+        this.model = 'deepseek-chat'; // 'gemma3'
 
+        this.eventBus = eventBus;
+
+        this.eventBus.subscribe('changeLLMServiceProvider', ({model, url, key}) => {
+            this.apiUrl = url;
+            this.apiKey = key;
+            this.model = model;
+        })
     }
+    
     /**
      * Sends a prompt to the LLM Services
      * @param {string} prompt - The prompt to send
      * @param {string} model - The model to use (defaults to the one specified in constructor)
+     * @param {AbortSignal} signal - AbortSignal for request cancellation
      * @returns {Promise<string>} - The response from the API
      */
-    async sendPromptToLLMApi(prompt, model = 'deepseek') {
+    async sendPromptToLLMApi(prompt, model = this.model, signal) {
         console.log('Sending prompt...', prompt);
         if (model === 'gemma3') {
-            return await this.sendPromptToOllama(prompt, model);
-        } else if (model === "deepseek") {
-            return await this.sendPromptToDeepseekAPI(prompt, "deepseek-chat");
+            return await this.sendPromptToOllama(prompt, model, signal);
+        } else if (model === "deepseek-chat") {
+            return await this.sendPromptToDeepseekAPI(prompt, "deepseek-chat", signal);
         }
     }
 
-    async sendPromptToDeepseekAPI(prompt, model = 'deepseek-chat') {
+    /**
+     * Send a prompt to DeepSeek API
+     * @param {string} prompt - The prompt to send
+     * @param {string} model - The model to use
+     * @param {AbortSignal} signal - AbortSignal for request cancellation
+     * @returns {Promise<string>} - The response from the API
+     */
+    async sendPromptToDeepseekAPI(prompt, model = 'deepseek-chat', signal) {
         const payload = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                'Authorization': `Bearer ${this.apiKey}`
             },
             body: JSON.stringify({
                 model: model,
@@ -33,34 +52,30 @@ class AiService {
                     { role: "user", content: prompt }
                 ],
                 stream: false
-            })
+            }),
+            signal: signal // Add the AbortSignal for request cancellation
         };
 
-        try {
-            const response = await fetch(DEEPSEEK_URL, payload);
+        const response = await fetch(this.apiUrl, payload);
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log(data);
-            // Return the actual content string from the response
-            return data.choices[0].message.content;
-
-        } catch (error) {
-            console.error('Error calling DeepSeek API:', error);
-            throw error;
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+
+        const data = await response.json();
+        console.log(data);
+        // Return the actual content string from the response
+        return data.choices[0].message.content;
     }
 
     /**
      * Send a prompt to Ollama API
      * @param {string} prompt - The prompt to send
-     * @param {string} model - The model to use (defaults to the one specified in constructor)
+     * @param {string} model - The model to use
+     * @param {AbortSignal} signal - AbortSignal for request cancellation
      * @returns {Promise<string>} - The response from the API
      */
-    async sendPromptToOllama(prompt, model = this.defaultModel) {
+    async sendPromptToOllama(prompt, model = 'gemma3', signal) {
         const payload = {
             model: model,
             prompt: prompt,
@@ -68,30 +83,26 @@ class AiService {
             format: "json" // Request JSON format from the model
         };
 
-        try {
-            const response = await fetch(OLLAMA_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${OLLAMA_API_KEY}`
-                },
-                body: JSON.stringify(payload)
-            });
+        const response = await fetch(this.apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.apiKey}`
+            },
+            body: JSON.stringify(payload),
+            signal: signal // Add the AbortSignal for request cancellation
+        });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            return data.response;
-        } catch (error) {
-            console.error('Error sending prompt to Ollama:', error);
-            throw error;
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
         }
+
+        const data = await response.json();
+        return data.response;
     }
 
     /**
-     * Process raw response from Ollama to extract valid JSON
+     * Process raw response from LLM to extract valid JSON
      * @param {string} response - Raw response from the API
      * @returns {Object} - Parsed JSON or fallback object
      */
@@ -168,9 +179,7 @@ class AiService {
         }
     }
 
-    /**
-     * Get explanation task content template
-     */
+    // Task content templates remain unchanged
     getRegionExplanationTaskContent() {
         return `Task:
     Given the call trace of a Java method execution, id is the the execution order, generate an output in JSON format that includes three parts:
@@ -193,9 +202,6 @@ class AiService {
     Your response must be in valid JSON format with no additional text. Format your response as a JSON object with the three requested fields.`;
     }
 
-    /**
-     * Get task content template for quick KNT explanation
-     */
     getQuickKNTExplanationTaskContent() {
         return `Task:
     Given the important methods from a call trace of a Java method execution, id is the the execution order, generate an output in JSON format that includes three parts:
@@ -218,9 +224,6 @@ class AiService {
     Your response must be in valid JSON format with no additional text. Format your response as a JSON object with the three requested fields.`;
     }
 
-    /**
-     * Get task content template for detailed KNT explanation with region data
-     */
     getDetailedKNTExplanationTaskContent() {
         return `Task:
         Given an Key Node Tree (important node in a call tree) epresentation of a Java method call tree, where each node is an entry point of a region in the larger call tree and includes its own briefSummary, generate an output in JSON format that includes three parts:
@@ -244,38 +247,57 @@ class AiService {
     }
 
     /**
-     * Creates a timeout promise for request cancellation
-     * @param {number} timeoutMs - Timeout in milliseconds
-     * @returns {Promise} - A promise that rejects after the timeout
-     */
-    createTimeoutPromise(timeoutMs = 120000) {
-        return new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Request timed out')), timeoutMs)
-        );
-    }
-
-    /**
      * Explains a region of code using the AI
      * @param {Object} regionData - The region data to explain
+     * @param {AbortSignal} signal - Optional AbortSignal for request cancellation
+     * @param {number} timeoutMs - Timeout in milliseconds (default: 30 seconds)
      * @returns {Promise<Object>} - Object containing briefSummary, detailedBehaviour, and flowRepresentation
      */
-    async explainRegion(regionData) {
+    async explainRegion(regionData, signal, timeoutMs = 30000) {
         const taskContent = this.getRegionExplanationTaskContent();
         const regionDataString = JSON.stringify(regionData, null, 2);
 
         const fullPrompt = `${taskContent}\n\nAnalyze this call trace:\n${regionDataString}\n\nGenerate a valid JSON response with detailedBehaviour, flowRepresentation, and briefSummary fields.`;
 
-        console.log('Sending region explanation prompt to Ollama...');
-
+        console.log('Sending region explanation prompt to LLM Service...');
+        
+        // Create our own AbortController if none provided
+        let localController = null;
+        let localTimeoutId = null;
+        
+        if (!signal) {
+            localController = new AbortController();
+            signal = localController.signal;
+            localTimeoutId = setTimeout(() => localController.abort(), timeoutMs);
+        }
+        
         try {
-            const timeoutPromise = this.createTimeoutPromise();
-            const responsePromise = this.sendPromptToLLMApi(fullPrompt);
-            const response = await Promise.race([responsePromise, timeoutPromise]);
-
-            console.log("Raw response from Ollama for region explanation:", response.substring(0, 100) + "...");
+            const response = await this.sendPromptToLLMApi(fullPrompt, this.model, signal);
+            
+            // Clear the local timeout if we created one
+            if (localTimeoutId) {
+                clearTimeout(localTimeoutId);
+            }
+            
+            console.log("Raw response from LLM for region explanation:", response.substring(0, 100) + "...");
             return this.processRawResponse(response);
         } catch (error) {
+            // Clear the local timeout if we created one
+            if (localTimeoutId) {
+                clearTimeout(localTimeoutId);
+            }
+            
             console.error('Error in region explanation:', error);
+            
+            // Differentiate between timeout and other errors
+            if (error.name === 'AbortError') {
+                return {
+                    detailedBehaviour: `The analysis request was aborted after ${timeoutMs/1000} seconds. The request might be too complex or the service could be experiencing high load.`,
+                    flowRepresentation: "Request → Timeout → Fallback Response",
+                    briefSummary: `Analysis timed out for region data (ID: ${regionData.id || "unknown"})`
+                };
+            }
+            
             return {
                 detailedBehaviour: `Error occurred during analysis: ${error.message}`,
                 flowRepresentation: "Request → Error → Fallback",
@@ -286,30 +308,54 @@ class AiService {
 
     /**
      * Generates a quick summary of an KNT
-     * @param {Object} k n t - The KNT to explain
+     * @param {Object} knt - The KNT to explain
+     * @param {AbortSignal} signal - Optional AbortSignal for request cancellation
+     * @param {number} timeoutMs - Timeout in milliseconds (default: 30 seconds)
      * @returns {Promise<string>} - A quick summary of the KNT
      */
-    async explainPureKNT(knt) {
+    async explainPureKNT(knt, signal, timeoutMs = 30000) {
         const taskContent = this.getQuickKNTExplanationTaskContent();
         const kntString = JSON.stringify(knt, null, 2);
 
         const fullPrompt = `${taskContent}\n\nAnalyze this Abstract Call Tree:\n${kntString}\n\nProvide a concise summary:`;
 
-        console.log('Sending quick KNT explanation prompt to Ollama...');
+        console.log('Sending quick KNT explanation prompt to LLM Service...');
 
+        // Create our own AbortController if none provided
+        let localController = null;
+        let localTimeoutId = null;
+        
+        if (!signal) {
+            localController = new AbortController();
+            signal = localController.signal;
+            localTimeoutId = setTimeout(() => localController.abort(), timeoutMs);
+        }
+        
         try {
-            const timeoutPromise = this.createTimeoutPromise();
-            const responsePromise = this.sendPromptToLLMApi(fullPrompt);
-
-            const response = await Promise.race([responsePromise, timeoutPromise]);
-
-            console.log("Raw response from Ollama for quick KNT explanation:", response.substring(0, 100) + "...");
+            const response = await this.sendPromptToLLMApi(fullPrompt, this.model, signal);
+            
+            // Clear the local timeout if we created one
+            if (localTimeoutId) {
+                clearTimeout(localTimeoutId);
+            }
+            
+            console.log("Raw response from LLM for quick KNT explanation:", response.substring(0, 100) + "...");
 
             // For this function, we don't need JSON parsing - just return the text
             const cleanedResponse = response.replace(/```(?:.*?)?\n([\s\S]*?)\n```/g, '$1').trim();
             return cleanedResponse || `Quick summary for ${knt.id || "unknown KNT"}`;
         } catch (error) {
+            // Clear the local timeout if we created one
+            if (localTimeoutId) {
+                clearTimeout(localTimeoutId);
+            }
+            
             console.error('Error in quick KNT explanation:', error);
+            
+            if (error.name === 'AbortError') {
+                return `Quick summary request timed out after ${timeoutMs/1000} seconds for ${knt.id || "unknown KNT"}`;
+            }
+            
             return `Error generating quick summary for ${knt.id || "unknown KNT"}: ${error.message}`;
         }
     }
@@ -317,31 +363,57 @@ class AiService {
     /**
      * Explains an KNT with augmented region data
      * @param {Object} augmentedKNT - The KNT with region summaries
+     * @param {AbortSignal} signal - Optional AbortSignal for request cancellation
+     * @param {number} timeoutMs - Timeout in milliseconds (default: 60 seconds)
      * @returns {Promise<string>} - A detailed explanation of the KNT
      */
-    async explainKNTWithData(augmentedKNT) {
+    async explainKNTWithData(augmentedKNT, signal, timeoutMs = 60000) {
         const taskContent = this.getDetailedKNTExplanationTaskContent();
         const kntString = JSON.stringify(augmentedKNT, null, 2);
 
         const fullPrompt = `${taskContent}\n\nAnalyze this augmented Abstract Call Tree with region summaries:\n${kntString}\n\nProvide a comprehensive explanation:`;
 
-        console.log('Sending detailed KNT explanation prompt to Ollama...');
+        console.log('Sending detailed KNT explanation prompt to LLM Service...');
 
+        // Create our own AbortController if none provided
+        let localController = null;
+        let localTimeoutId = null;
+        
+        if (!signal) {
+            localController = new AbortController();
+            signal = localController.signal;
+            localTimeoutId = setTimeout(() => localController.abort(), timeoutMs);
+        }
+        
         try {
-            const timeoutPromise = this.createTimeoutPromise();
-            const responsePromise = this.sendPromptToLLMApi(fullPrompt);
-            const response = await Promise.race([responsePromise, timeoutPromise]);
-
-            console.log("Raw response from Ollama for detailed KNT explanation:", response.substring(0, 100) + "...");
+            const response = await this.sendPromptToLLMApi(fullPrompt, this.model, signal);
+            
+            // Clear the local timeout if we created one
+            if (localTimeoutId) {
+                clearTimeout(localTimeoutId);
+            }
+            
+            console.log("Raw response from LLM for detailed KNT explanation:", response.substring(0, 100) + "...");
 
             // Like explainPureKNT, we want the raw text, not JSON
             const cleanedResponse = response.replace(/```(?:.*?)?\n([\s\S]*?)\n```/g, '$1').trim();
             return cleanedResponse || `Detailed trace summary for ${augmentedKNT.id || "unknown KNT"}`;
         } catch (error) {
+            // Clear the local timeout if we created one
+            if (localTimeoutId) {
+                clearTimeout(localTimeoutId);
+            }
+            
             console.error('Error in detailed KNT explanation:', error);
+            
+            if (error.name === 'AbortError') {
+                return `Detailed explanation request timed out after ${timeoutMs/1000} seconds for ${augmentedKNT.id || "unknown KNT"}`;
+            }
+            
             return `Error generating detailed explanation for ${augmentedKNT.id || "unknown KNT"}: ${error.message}`;
         }
     }
 }
+
 // Export the class for more flexible usage
 export { AiService };

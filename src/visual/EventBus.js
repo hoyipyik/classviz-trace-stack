@@ -25,9 +25,8 @@ export const eventNames = {
   nodeStructureChanged: 'nodeStructureChanged',
 
   // explanation
-  explanationCompleted: 'explanationCompleted'
-
-
+  explanationCompleted: 'explanationCompleted',
+  changeLLMServiceProvider: 'changeLLMServiceProvider'
 }
 
 class EventBus {

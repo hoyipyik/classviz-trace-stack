@@ -101,7 +101,7 @@ class TraceStackApp {
     this.filter = new Filter(this.data, this.view, this.eventBus, this.search);
     this.methodDetails = new MethodDetails(this.data, this.eventBus);
 
-    this.aiService = new AiService();
+    this.aiService = new AiService(this.eventBus);
     this.explainer = new Explainer(this.data, this.eventBus, this.aiService);
     window.explainer = this.explainer;
     this.explanationUIController = new ExplanationUIController(this.explainer, this.eventBus);
