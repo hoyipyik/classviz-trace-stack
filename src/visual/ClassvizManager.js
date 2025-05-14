@@ -10,13 +10,17 @@ export class ClassvizManager {
         this.eventBus = eventBus;
 
         this.idRangeByThreadMap = idRangeByThreadMap; // Map of thread names to ID ranges;
+        this.threadToFocusedBorderColour = new Map(); // threadname -> border color string
         this.threadToMethodNodesInOrder = new Map(); // threadname -> method node list {originalId, label(cy node id)}  in order of orignaiId
         this.currentIndexByThread = new Map(); // threadname -> current index in the method node list
+
+        this.initFocusedBorderColors();
 
         // init this.threadToMethodNodesInOrder with the data
         idRangeByThreadMap.forEach((_, threadName) => {
             this.threadToMethodNodesInOrder.set(threadName, []);
             this.currentIndexByThread.set(threadName, 0);
+
         });
 
         this.originalDimensions = {}; // class node id -> original dimensions
@@ -87,6 +91,61 @@ export class ClassvizManager {
         });
     }
 
+    generateFocusedBorderColors(count) {
+        const colors = [];
+
+        // 首先添加明亮的黄色（首选颜色）
+        colors.push('#FFCC00'); // 明亮的黄色
+
+        // 定义一组非常鲜艳、醒目的颜色
+        const vibrantColors = [
+            '#FF3300', // 鲜红色
+            '#FF00FF', // 洋红色
+            '#00CCFF', // 亮蓝色
+            '#33CC33', // 鲜绿色
+            '#FF6600', // 橙色
+            '#9933FF', // 紫色
+            '#00FF99', // 青绿色
+            '#FF3399', // 粉红色
+        ];
+
+        // 如果需要更多颜色，使用HSL生成额外的鲜艳颜色
+        if (count > vibrantColors.length + 1) {
+            // 高饱和度和亮度确保颜色鲜艳
+            const saturation = 100; // 最大饱和度
+            const lightness = 55;   // 亮度适中但足够鲜艳
+
+            // 在色相环上均匀分布的初始点
+            const baseHues = [15, 45, 75, 105, 135, 165, 195, 225, 255, 285, 315, 345];
+
+            for (let i = 0; i < count - vibrantColors.length - 1; i++) {
+                const hue = baseHues[i % baseHues.length];
+                const color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                colors.push(color);
+            }
+        }
+
+        // 添加预定义的鲜艳颜色（在黄色之后）
+        for (let i = 0; i < Math.min(count - 1, vibrantColors.length); i++) {
+            colors.push(vibrantColors[i]);
+        }
+
+        return colors;
+    }
+    
+    // Function to initialize the threadToFocusedBorderColour map
+    initFocusedBorderColors() {
+        // Generate focused border colors based on the number of threads
+        const focusedBorderColors = this.generateFocusedBorderColors(this.idRangeByThreadMap.size);
+
+        // Assign the colors to each thread
+        let colorIndex = 0;
+        this.idRangeByThreadMap.forEach((_, threadName) => {
+            this.threadToFocusedBorderColour.set(threadName, focusedBorderColors[colorIndex]);
+            colorIndex++;
+        });
+    }
+
     getMethodLabelById(id) {
         const nodeData = this.data.nodes.get(id).data;
         if (nodeData) {
@@ -103,20 +162,29 @@ export class ClassvizManager {
             if (node) {
                 node.style({
                     'background-color': color,
-                    'border-color': '#999',
+                    'border-color': 'grey',
                 });
             }
         });
     }
 
-    changeColorOfNodeById(id, color) {
+    changeColorOfNodeById(id, color, bordered = false, borderColor = 'grey') {
         const nodeLabel = this.data.getNodeDataById(id).label;
         const node = this.cy.$id(nodeLabel);
         if (node) {
-            node.style({
-                'background-color': color,
-                'border-color': '#999',
-            });
+            const styleOptions = {
+                'background-color': color
+            };
+
+            if (bordered) {
+                styleOptions['border-color'] = borderColor; // Use the provided border color
+                styleOptions['border-width'] = '5px';
+            } else {
+                styleOptions['border-color'] = 'grey';
+                styleOptions['border-width'] = '2px';
+            }
+
+            node.style(styleOptions);
         }
     }
 
