@@ -139,8 +139,7 @@ class TraceStackApp {
   setupAutoExpand() {
     const checkbox = document.getElementById('autoExpandToSelect');
     if (checkbox) {
-      // Initialize state
-      this.data.settings.autoExpand = checkbox.checked;
+      checkbox.checked = this.data.settings.autoExpand
 
       // Add change listener
       checkbox.addEventListener('change', () => {

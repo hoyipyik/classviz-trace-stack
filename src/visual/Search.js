@@ -52,6 +52,8 @@ class Search {
     const searchPrevBtn = document.getElementById('searchPrev');
     const highlightAllCheckbox = document.getElementById('highlightAll');
 
+    highlightAllCheckbox.checked = this.highlightAll;
+
     if (!searchInput || !searchNextBtn || !searchPrevBtn) {
       console.error("Search elements not found!");
       return;
