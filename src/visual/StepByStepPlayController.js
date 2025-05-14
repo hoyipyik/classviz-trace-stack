@@ -145,18 +145,38 @@ export class StepByStepPlayController {
         threadPlayer.style.backgroundColor = '#f5f5f5';
         threadPlayer.style.borderRadius = '4px';
 
-        // Thread title - using the original fixed width
+        // 获取这个线程的边框颜色
+        const borderColour = this.classvizManager.threadToFocusedBorderColour.get(threadName);
+
+        // Thread title container - make it a flex container
+        const threadTitleContainer = document.createElement('div');
+        threadTitleContainer.style.display = 'flex';
+        threadTitleContainer.style.alignItems = 'center';
+        threadTitleContainer.style.marginBottom = '6px';
+
+        // Create the color dot for thread
+        const colorDot = document.createElement('div');
+        colorDot.style.width = '10px';
+        colorDot.style.height = '10px';
+        colorDot.style.borderRadius = '50%';
+        colorDot.style.backgroundColor = borderColour || '#ccc'; // Use thread color or fallback to gray
+        colorDot.style.marginRight = '8px';
+        colorDot.style.flexShrink = '0'; // Prevent the dot from shrinking
+        threadTitleContainer.appendChild(colorDot);
+
+        // Thread title text
         const threadTitle = document.createElement('div');
         threadTitle.textContent = threadName;
         threadTitle.title = threadName; // Show full name on hover
         threadTitle.style.fontWeight = 'normal';
-        threadTitle.style.marginBottom = '6px';
         threadTitle.style.fontSize = '13px';
-        threadTitle.style.width = '220px'; // Using original fixed width for 260px sidebar
+        threadTitle.style.width = '210px'; // Slightly reduced to accommodate the dot
         threadTitle.style.overflow = 'hidden';
         threadTitle.style.textOverflow = 'ellipsis';
         threadTitle.style.whiteSpace = 'nowrap';
-        threadPlayer.appendChild(threadTitle);
+        threadTitleContainer.appendChild(threadTitle);
+
+        threadPlayer.appendChild(threadTitleContainer);
 
         // Controls row
         const controlsRow = document.createElement('div');
@@ -179,7 +199,7 @@ export class StepByStepPlayController {
         stepBackBtn.style.fontSize = '10px';
         controlsRow.appendChild(stepBackBtn);
 
-        // Method display - using fixed width for 260px sidebar
+        // Method display
         const methodDisplay = document.createElement('div');
         methodDisplay.className = 'method-display';
         methodDisplay.style.flex = '1';
@@ -274,6 +294,8 @@ export class StepByStepPlayController {
             threadName,
             elements: {
                 methodDisplay,
+                colorDot,        // Store reference to the color dot
+                threadTitle,     // Store reference to thread title
                 slider,
                 counterDisplay
             }
@@ -334,15 +356,16 @@ export class StepByStepPlayController {
 
     updateIndex(threadName, newIndex) {
         this.classvizManager.currentIndexByThread.set(threadName, newIndex);
-    
+        const borderColour = this.classvizManager.threadToFocusedBorderColour.get(threadName);
+
         // Get the list of nodes in the thread
         const threadNodes = this.classvizManager.threadToMethodNodesInOrder.get(threadName);
-    
+
         if (this.classvizManager.stepByStepMode) {
             // Iterate through all nodes in the thread
             threadNodes.forEach((node, index) => {
                 const nodeId = node.originalId;
-                
+
                 // 使用全局节点映射获取节点数据，不受当前活跃线程影响
                 const nodeData = this.data.getNodeDataByThreadAndId(threadName, nodeId);
                 // Update
@@ -350,25 +373,25 @@ export class StepByStepPlayController {
                     // Set color based on index relative to newIndex
                     if (index < newIndex) {
                         // For nodes before current position, set slightly dark gray
-                        this.classvizManager.changeColorOfNodeById(nodeId, '#999999'); // Slightly darker gray
+                        this.classvizManager.changeColorOfNodeById(nodeId, '#999999', false); // Slightly darker gray
                     } else if (index > newIndex) {
-                        if(threadNodes[newIndex] && threadNodes[newIndex].label === node.label)
+                        if (threadNodes[newIndex] && threadNodes[newIndex].label === node.label)
                             return;
                         // For nodes after current position, set light gray
-                        this.classvizManager.changeColorOfNodeById(nodeId, '#DDDDDD'); // Light gray
+                        this.classvizManager.changeColorOfNodeById(nodeId, '#DDDDDD', false); // Light gray
                     } else {
                         // For the current node, use original color
-                        this.classvizManager.changeColorOfNodeById(nodeId, nodeData.originalColor || nodeData.color);
+                        this.classvizManager.changeColorOfNodeById(nodeId, nodeData.originalColor || nodeData.color, true, borderColour);
                     }
-                }else{
+                } else {
                     console.log("[Error no data]")
                 }
             });
         }
-    
-        if(newIndex >= threadNodes.length){
+
+        if (newIndex >= threadNodes.length) {
             console.error("Invalid index for thread nodes: ", newIndex);
-            this.classvizManager.currentIndexByThread.set(threadName, threadNodes.length === 0 ? 0 :  threadNodes.length - 1);
+            this.classvizManager.currentIndexByThread.set(threadName, threadNodes.length === 0 ? 0 : threadNodes.length - 1);
             return;
         }
         // Set current node with bounds check
@@ -379,12 +402,12 @@ export class StepByStepPlayController {
         }
         const currentNodeId = threadNodes[newIndex].originalId;
         this.data.current = currentNodeId;
-     
+
         this.eventBus.publish('changeCurrentFocusedNode', { nodeId: currentNodeId });
-        
+
         this.refresh();
     }
-    
+
     onModeToggle(on) {
         this.classvizManager.stepByStepMode = on;
         if (!on) {
@@ -392,15 +415,16 @@ export class StepByStepPlayController {
             for (const [threadName, nodes] of this.classvizManager.threadToMethodNodesInOrder.entries()) {
                 nodes.forEach(node => {
                     const nodeId = node.originalId;
-                    
+
                     // 使用全局节点映射获取节点数据，不受当前活跃线程影响
                     const nodeData = this.data.getNodeDataByThreadAndId(threadName, nodeId);
-                    
+
                     if (nodeData) {
                         // Always restore using the originalColor property
                         this.classvizManager.changeColorOfNodeById(
-                            nodeId, 
-                            nodeData.originalColor || nodeData.color
+                            nodeId,
+                            nodeData.originalColor || nodeData.color,
+                            false
                         );
                     }
                 });
@@ -409,19 +433,19 @@ export class StepByStepPlayController {
             // When turned on, immediately apply the step-by-step coloring to the current thread
             // First, get all thread entries
             const threadEntries = Array.from(this.classvizManager.currentIndexByThread.entries());
-            
+
             // Get the current thread name
             const currentThreadName = this.data.currentThreadName;
-            
+
             // Reorder the thread entries so the current thread is processed last
             let reorderedThreadEntries = threadEntries.filter(([threadName]) => threadName !== currentThreadName);
-            
+
             // Find the current thread entry and add it to the end if it exists
             const currentThreadEntry = threadEntries.find(([threadName]) => threadName === currentThreadName);
             if (currentThreadEntry) {
                 reorderedThreadEntries.push(currentThreadEntry);
             }
-            
+
             // Process each thread, with the current thread at the end
             for (const [threadName, currentIndex] of reorderedThreadEntries) {
                 if (currentIndex !== undefined) {
