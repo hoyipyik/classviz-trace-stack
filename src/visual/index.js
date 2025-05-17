@@ -1,10 +1,25 @@
-// simplified-index.js - Application entry point
-import { TraceStackApp } from './TraceStackApp.js';
-import { traceData } from './data.js';
+/**
+ * Flame Graph Module
+ * A collection of functions for managing the flame graph visualization with a draggable container
+ */
+import { $ } from "../shorthands.js";
+import { TraceStackApp } from "./TraceStackApp.js";
+// import { FlameGraphService } from "./services/flameGraphMain.js";
+// Export the flame graph plugin loader
+export const loadFlameGraphPlugin = (cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap) => {
+    // const service = new FlameGraphService(cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap);
+    const traceStackApp = new TraceStackApp(cascadeTree, idRangeByThreadMap);
+    document.getElementById('mainContent').style.display = 'block'; // Show the main content
+    $("#btn-relayout").click();
+    // updateTraceNodesOnClassviz();
+    // Use 'DOMContentLoaded' for better performance than document.readyState check
+    // if (document.readyState === 'loading') {
+    //     document.addEventListener("DOMContentLoaded", service.initialize);
+    // } else {
+    //     // Document already loaded, run immediately
+    //     service.initialize();
+    // }
 
-// Make traceData globally available for the application
-window.traceData = traceData;
-
-// Initialize the application
-console.log('Starting trace stack application...');
-window.traceStackApp = new TraceStackApp();
+    // Return the service for potential external references
+    return traceStackApp;
+};

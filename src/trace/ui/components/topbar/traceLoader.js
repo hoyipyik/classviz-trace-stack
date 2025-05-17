@@ -1,7 +1,7 @@
 import { callTreeParser } from "../../../utils/process/callTreeParser.js";
 import { xmlFileReader } from "../../../utils/process/xmlFileReader.js";
 
-import { loadFlameGraphPlugin } from "../../../../flame/index.js"
+import { loadFlameGraphPlugin } from "../../../../visual/index.js"
 
 export const traceLoader = () => {
     document.addEventListener('DOMContentLoaded', function () {
