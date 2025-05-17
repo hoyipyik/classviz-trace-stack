@@ -1,4 +1,3 @@
-// Search.js - Search functionality
 /**
  * Search functionality class
  * Responsible for handling search and result navigation
@@ -66,29 +65,29 @@ class Search {
   }
 
   toggleStepByStepMode(enabled) {
-    // 找到模式切换的复选框
+    // Find the mode toggle checkbox
     const toggleInput = document.querySelector('#stepByStepPlay input[type="checkbox"]');
 
-    // 如果找不到元素，返回失败
+    // If the element cannot be found, return failure
     if (!toggleInput) {
       console.error('Step-by-step mode toggle not found in DOM');
       return false;
     }
 
-    // 如果当前状态已经是目标状态，不需要改变
+    // If the current state is already the target state, no change needed
     if (toggleInput.checked === enabled) {
       return true;
     }
 
-    // 更新复选框状态
+    // Update checkbox state
     toggleInput.checked = enabled;
 
-    // 找到滑块元素并更新其视觉效果
+    // Find the slider element and update its visual appearance
     const toggleSlider = toggleInput.nextElementSibling;
     if (toggleSlider) {
       toggleSlider.style.backgroundColor = enabled ? '#337ab7' : '#d1d5db';
 
-      // 找到滑块按钮并更新其位置
+      // Find the slider button and update its position
       const sliderButton = toggleSlider.querySelector('span');
       if (sliderButton) {
         sliderButton.style.left = enabled ? '18px' : '2px';
@@ -101,29 +100,29 @@ class Search {
 
   // Set up thread switcher 
   /**
-* 手动切换线程的函数
-* 该函数会直接从DOM中获取线程选择器并切换到指定线程
-* 
-* @param {string} threadName - 要切换到的线程名称
-* @returns {boolean} - 切换是否成功
-*/
+   * Function to manually switch threads
+   * This function will directly get the thread selector from the DOM and switch to the specified thread
+   * 
+   * @param {string} threadName - The name of the thread to switch to
+   * @returns {boolean} - Whether the switch was successful
+   */
   switchThreadUI(threadName) {
-    // 从DOM中获取线程选择器
+    // Get thread selector from DOM
     const threadSelect = document.getElementById('threadSelect');
 
-    // 如果找不到选择器，返回失败
+    // If selector cannot be found, return failure
     if (!threadSelect) {
       console.error('Thread select element not found in DOM');
       return false;
     }
 
-    // 检查是否已经是当前线程
+    // Check if already on the current thread
     if (threadSelect.value === threadName) {
       console.log(`Already on thread: ${threadName}`);
       return false;
     }
 
-    // 检查线程名是否存在于选项中
+    // Check if thread name exists in options
     let threadExists = false;
     for (let i = 0; i < threadSelect.options.length; i++) {
       if (threadSelect.options[i].value === threadName) {
@@ -137,9 +136,9 @@ class Search {
       return false;
     }
 
-    // 设置选择器的值
+    // Set selector value
     threadSelect.value = threadName;
-    threadSelect.title = threadName; // 更新工具提示
+    threadSelect.title = threadName; // Update tooltip
 
     console.log(`Thread switched to: ${threadName}`);
     return true;
@@ -449,8 +448,8 @@ class Search {
       // Update counters after thread switch
       this.updateCounters();
 
-      // 先处理高亮，然后再处理当前节点的特殊高亮
-      // 这样可以确保高亮不会被意外清除
+      // Handle highlighting first, then handle the special highlighting for the current node
+      // This ensures that highlighting won't be accidentally cleared
       if (this.highlightAll) {
         this.highlightAllResults();
       }
@@ -461,8 +460,8 @@ class Search {
     // Ensure node is visible
     this.view.ensureNodeVisible(nodeId);
 
-    // 处理高亮，保持参数一致性
-    // 当 highlightAll 为 true 时，确保传递 true 作为 preserveOtherHighlights
+    // Handle highlighting, maintain parameter consistency
+    // When highlightAll is true, ensure true is passed as preserveOtherHighlights
     const shouldPreserveHighlights = this.highlightAll || preserveOtherHighlights;
     this.applyHighlighting(nodeId, shouldPreserveHighlights, threadSwitched);
 
@@ -493,28 +492,28 @@ class Search {
    * Apply highlighting to the current node
    */
   applyHighlighting(nodeId, preserveOtherHighlights, threadSwitched) {
-    // 只有当不保留其他高亮且不是线程切换时，才清除所有高亮
+    // Only clear all highlights when not preserving other highlights and not during thread switch
     if (!preserveOtherHighlights && !threadSwitched) {
       this.clearAllHighlights();
     }
 
-    // 仅清除当前节点的高亮状态，而不是所有节点
-    // 移除旧的当前高亮类，以便可以应用到新的当前节点
+    // Only clear the current node's highlight state, not all nodes
+    // Remove the old current highlight class so it can be applied to the new current node
     document.querySelectorAll('.search-highlight').forEach(el => {
       el.classList.remove('search-highlight');
     });
 
-    // 高亮当前结果
+    // Highlight current result
     this.data.highlight(nodeId, true);
     this.view.updateNode(nodeId);
 
-    // 添加高亮类
+    // Add highlight class
     const nodeElement = this.data.getNodeElement(nodeId);
     if (nodeElement) {
       nodeElement.classList.add('search-highlight');
 
-      // 如果启用了 highlightAll，确保当前节点也有 search-highlight-all 类
-      // 这样可以保证在保留高亮模式下，当前节点显示正确
+      // If highlightAll is enabled, ensure the current node also has search-highlight-all class
+      // This ensures that in preserved highlight mode, the current node displays correctly
       if (this.highlightAll && !nodeElement.classList.contains('search-highlight-all')) {
         nodeElement.classList.add('search-highlight-all');
       }

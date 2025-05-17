@@ -1,3 +1,4 @@
+
 import { ALLOWED_LIB_METHODS } from "../trace/utils/process/callTreeParser.js";
 
 export class ClassvizManager {
@@ -94,28 +95,26 @@ export class ClassvizManager {
     generateFocusedBorderColors(count) {
         const colors = [];
 
-        // 首先添加明亮的黄色（首选颜色）
-        colors.push('#FFCC00'); // 明亮的黄色
+        colors.push('#FFCC00'); // add first default bright yellow
 
-        // 定义一组非常鲜艳、醒目的颜色
         const vibrantColors = [
-            '#FF3300', // 鲜红色
-            '#FF00FF', // 洋红色
-            '#00CCFF', // 亮蓝色
-            '#33CC33', // 鲜绿色
-            '#FF6600', // 橙色
-            '#9933FF', // 紫色
-            '#00FF99', // 青绿色
-            '#FF3399', // 粉红色
+            '#FF3300', // bright red
+            '#FF00FF', // magenta
+            '#00CCFF', // bright blue
+            '#33CC33', // bright green
+            '#FF6600', // orange
+            '#9933FF', // purple
+            '#00FF99', // cyan green
+            '#FF3399', // pink
         ];
 
-        // 如果需要更多颜色，使用HSL生成额外的鲜艳颜色
+        // If more colors are needed, generate additional vibrant colors using HSL
         if (count > vibrantColors.length + 1) {
-            // 高饱和度和亮度确保颜色鲜艳
-            const saturation = 100; // 最大饱和度
-            const lightness = 55;   // 亮度适中但足够鲜艳
+            // High saturation and lightness ensure vibrant colors
+            const saturation = 100; // maximum saturation
+            const lightness = 55;   // moderate but sufficiently vibrant lightness
 
-            // 在色相环上均匀分布的初始点
+            // Evenly distributed initial points on the hue wheel
             const baseHues = [15, 45, 75, 105, 135, 165, 195, 225, 255, 285, 315, 345];
 
             for (let i = 0; i < count - vibrantColors.length - 1; i++) {
@@ -125,14 +124,14 @@ export class ClassvizManager {
             }
         }
 
-        // 添加预定义的鲜艳颜色（在黄色之后）
+        // Add predefined vibrant colors (after yellow)
         for (let i = 0; i < Math.min(count - 1, vibrantColors.length); i++) {
             colors.push(vibrantColors[i]);
         }
 
         return colors;
     }
-    
+
     // Function to initialize the threadToFocusedBorderColour map
     initFocusedBorderColors() {
         // Generate focused border colors based on the number of threads
@@ -452,23 +451,23 @@ export class ClassvizManager {
     // Updated removeSingleMethodById function to maintain threadToMethodNodesInOrder
 
     removeSingleMethodById(id) {
-        // 获取节点标签
+        // get node label
         const nodeLabel = this.getMethodLabelById(id);
         if (!nodeLabel) {
             console.error(`Could not get label for node with id ${id}`);
             return;
         }
 
-        // 从线程节点列表中移除
+        // remove node from threadList
         this.removeFromThreadMethodNodes(id, nodeLabel);
 
-        // 检查节点是否存在
+        // check node existence
         if (!this.insertedNodes.has(nodeLabel)) {
             console.warn(`Method node ${nodeLabel} not found, nothing to remove`);
             return;
         }
 
-        // 检查ID是否与方法标签关联
+        // check the connection between id and label
         if (!this.methodLabelToOriginalIds.has(nodeLabel) ||
             !this.methodLabelToOriginalIds.get(nodeLabel).has(id)) {
             console.warn(`ID ${id} not associated with method ${nodeLabel}`);
@@ -478,81 +477,79 @@ export class ClassvizManager {
         const methodNode = this.insertedNodes.get(nodeLabel);
         if (!methodNode) return;
 
-        // 处理节点的边和连接关系
+        // handle edges
         this.handleNodeEdges(id, nodeLabel);
 
-        // 更新映射并决定是否删除节点
         this.updateMappingsAndRemoveNode(id, nodeLabel, methodNode);
     }
 
     /**
- * 为时序模式创建带有序号和颜色的顺序边
- * Creates sequential edges with numbering and color spectrum for trace mode
- */
+     * Create colored edges with calling order number for trace mode 
+     * Creates sequential edges with numbering and color spectrum for trace mode
+    */
     createNumberedSequentialEdges() {
-        // 遍历每个线程
+        // iterate each thread
         this.threadToMethodNodesInOrder.forEach((methodNodes, threadName) => {
-            // 获取已插入的节点（已选中的节点）
+            // get inserted nodes
             const selectedNodes = methodNodes.filter(node =>
                 this.insertedNodes.has(node.label) &&
                 this.data.nodes.get(node.originalId)?.data?.selected
             );
 
-            // 如果线程中少于2个已选中的节点，则无需创建边
+            // No need to create edges if the number of inserted nodes is less than 2
             if (selectedNodes.length < 2) {
                 return;
             }
 
-            // 清除所有现有边，为重建边做准备
-            // 我们只需清除与这个线程中节点相关的边
+            // clear all the edges relevant to this operation
             selectedNodes.forEach(node => {
                 this.removeAllEdgesFromNode(node.originalId);
             });
 
-            // 生成颜色谱
+            // generate color array
             const colorSpectrum = this.generateColorSpectrum(selectedNodes.length - 1);
 
-            // 按照节点在列表中的顺序创建边（链表式连接）
+            // create edges based on node order (linked list style connection)
             for (let i = 0; i < selectedNodes.length - 1; i++) {
                 const currentNode = selectedNodes[i];
                 const nextNode = selectedNodes[i + 1];
 
-                // 创建从当前节点到下一个节点的带编号和颜色的边
+                // create new edges
                 this.createNumberedEdge(
                     currentNode.originalId,
                     currentNode.label,
                     nextNode.originalId,
                     nextNode.label,
-                    i + 1, // 序号从1开始
-                    colorSpectrum[i] // 从颜色谱中获取颜色
+                    i + 1, // from number 1
+                    colorSpectrum[i] // get color from array
                 );
             }
         });
     }
 
     /**
-     * 为调用树模式创建带有序号和颜色的边，参考现有的rebuildCallTreeEdges实现
      * Creates numbered edges with colors for call tree mode, following the existing rebuildCallTreeEdges implementation
      */
     rebuildNumberedCallTreeEdges() {
-        // 清除所有现有边
+
+        // Clear all existing edges
         this.clearAllEdges();
 
-        // 计算最大深度，为每个深度分配颜色
+        // Calculate the maximum depth
         const maxDepth = this.calculateMaxDepth();
         const depthColors = this.generateDepthColors(maxDepth);
 
-        // 遍历每个线程
+        // Iterate each thread
         this.threadToMethodNodesInOrder.forEach((_, threadName) => {
-            // 获取该线程的树数据
+            // Get the tree data for this thread
             const treeData = this.data.threadsData[threadName];
             if (!treeData) return;
 
-            // 获取该树的根节点
+            // Initialize the root node
             const rootNode = treeData;
             if (!rootNode) return;
 
-            // 从根节点开始遍历树，创建所有带编号和颜色的边
+            // Traverse the tree and create numbered edges
             this.traverseTreeAndCreateNumberedEdges(rootNode, depthColors);
         });
 
@@ -560,30 +557,30 @@ export class ClassvizManager {
     }
 
     /**
-     * 计算选中节点的最大深度
-     * @returns {number} 最大深度
+     * Calculate the maximum depth
+     * @returns {number} 
      */
     calculateMaxDepth() {
         let maxDepth = 0;
 
-        // 函数递归计算节点深度
+        // recursively calculate node depth
         const calculateNodeDepth = (node, depth = 0, visited = new Set()) => {
             if (!node || !node.id || visited.has(node.id)) return depth;
             visited.add(node.id);
 
-            // 获取节点数据
+            // get node data
             const nodeData = this.data.nodes.get(node.id)?.data;
             if (!nodeData) return depth;
 
             const nodeLabel = this.getMethodLabelById(node.id);
             const isNodeSelected = nodeData.selected && nodeLabel && this.insertedNodes.has(nodeLabel);
 
-            // 如果节点被选中，更新最大深度
+            // if it is selected update the maxDepth
             if (isNodeSelected) {
                 maxDepth = Math.max(maxDepth, depth);
             }
 
-            // 递归处理子节点
+            // handle the children
             const children = node.children || [];
             for (const child of children) {
                 calculateNodeDepth(child, depth + 1, new Set([...visited]));
@@ -592,7 +589,7 @@ export class ClassvizManager {
             return depth;
         };
 
-        // 遍历每个线程的根节点
+        // iterate nodes in each thread
         this.threadToMethodNodesInOrder.forEach((_, threadName) => {
             const treeData = this.data.threadsData[threadName];
             if (treeData) {
@@ -604,18 +601,18 @@ export class ClassvizManager {
     }
 
     /**
-     * 为每个深度生成颜色
-     * @param {number} maxDepth 最大深度
-     * @returns {Object} 深度到颜色的映射
+     * Generate color for each depth
+     * @param {number} maxDepth maxDepth
+     * @returns {Object} depth to color map
      */
     generateDepthColors(maxDepth) {
         const colors = {};
 
-        // 确保至少有一种颜色
+        // Ensure at least one color
         if (maxDepth < 0) maxDepth = 0;
 
         for (let depth = 0; depth <= maxDepth; depth++) {
-            // 在色谱上均匀分布颜色
+            // Distribute colors evenly across the spectrum
             const hue = Math.floor((depth / (maxDepth + 1)) * 360);
             colors[depth] = `hsl(${hue}, 80%, 50%)`;
         }
@@ -624,81 +621,82 @@ export class ClassvizManager {
     }
 
     /**
-     * 遍历树并创建带编号和颜色的边
-     * @param {Object} node - 当前树节点
-     * @param {Object} depthColors - 深度到颜色的映射
-     * @param {Set} visited - 已访问节点的集合
-     * @param {Number} depth - 当前深度
-     * @param {String|null} lastSelectedParentId - 上一个选中的父节点ID
-     * @param {String|null} lastSelectedParentLabel - 上一个选中的父节点标签
+     * Traverse the tree and create edges with numbering and colors
+     * @param {Object} node - Current tree node
+     * @param {Object} depthColors - Mapping of depth to color
+     * @param {Set} visited - Set of visited nodes
+     * @param {Number} depth - Current depth
+     * @param {String|null} lastSelectedParentId - Last selected parent node ID
+     * @param {String|null} lastSelectedParentLabel - Last selected parent node label
      */
     traverseTreeAndCreateNumberedEdges(node, depthColors, visited = new Set(), depth = 0, lastSelectedParentId = null, lastSelectedParentLabel = null) {
         if (!node || !node.id || visited.has(node.id)) return;
         visited.add(node.id);
 
-        // 获取当前节点信息
+        // Get current node information
         const nodeData = this.data.nodes.get(node.id)?.data;
-        if (!nodeData) return; // 节点不存在，跳过处理
+        if (!nodeData) return; // Skip processing if node doesn't exist
 
         const nodeLabel = this.getMethodLabelById(node.id);
         const isCurrentNodeSelected = nodeData.selected && nodeLabel && this.insertedNodes.has(nodeLabel);
 
-        // 如果当前节点被选中，更新"最后选中的父节点"为当前节点
+        // If current node is selected, update "last selected parent node" to current node
         let currentSelectedParentId = lastSelectedParentId;
         let currentSelectedParentLabel = lastSelectedParentLabel;
         let currentDepth = depth;
 
         if (isCurrentNodeSelected) {
-            // 当前节点被选中，更新为新的父节点
+            // Current node is selected, update as new parent node
             currentSelectedParentId = node.id;
             currentSelectedParentLabel = nodeLabel;
 
-            // 如果有上一个选中的父节点，创建从父节点到当前节点的边
+            // If there's a previous selected parent node, create edge from parent to current node
             if (lastSelectedParentId && lastSelectedParentLabel) {
                 this.createNumberedEdge(
                     lastSelectedParentId,
                     lastSelectedParentLabel,
                     node.id,
                     nodeLabel,
-                    depth,  // 使用深度作为序号
-                    depthColors[depth - 1] || '#999999' // 使用当前深度的颜色
+                    depth,  // Use depth as sequence number
+                    depthColors[depth - 1] || '#999999' // Use current depth's color
                 );
             }
         }
 
-        // 递归处理所有子节点，无论当前节点是否被选中
+        // Recursively process all child nodes, regardless of whether current node is selected
         const children = node.children || [];
         for (const child of children) {
             this.traverseTreeAndCreateNumberedEdges(
                 child,
                 depthColors,
-                new Set([...visited]), // 创建一个新的visited集合，防止循环引用问题
-                isCurrentNodeSelected ? depth + 1 : depth, // 只有当当前节点被选中时才增加深度
+                new Set([...visited]), // Create a new visited set to prevent circular reference issues
+                isCurrentNodeSelected ? depth + 1 : depth, // Only increase depth if current node is selected
                 currentSelectedParentId,
                 currentSelectedParentLabel
             );
         }
     }
+
     /**
-   * 创建带有序号和颜色的边 (修正版)
-   * @param {String} sourceOriginalId - 源节点原始ID
-   * @param {String} sourceNodeLabel - 源节点标签
-   * @param {String} targetOriginalId - 目标节点原始ID
-   * @param {String} targetNodeLabel - 目标节点标签
-   * @param {Number} sequenceNumber - 序列号
-   * @param {String} color - 边的颜色 (确保传入的是有效的 CSS 颜色字符串)
-   */
+     * Create an edge with sequence number and color (corrected version)
+     * @param {String} sourceOriginalId - Source node original ID
+     * @param {String} sourceNodeLabel - Source node label
+     * @param {String} targetOriginalId - Target node original ID
+     * @param {String} targetNodeLabel - Target node label
+     * @param {Number} sequenceNumber - Sequence number
+     * @param {String} color - Edge color (ensure it's a valid CSS color string)
+     */
     createNumberedEdge(sourceOriginalId, sourceNodeLabel, targetOriginalId, targetNodeLabel, sequenceNumber, color) {
-        // 生成边的唯一ID
+        // Generate a unique ID for the edge
         const edgeId = `edge_${sourceOriginalId}_${targetOriginalId}_${new Date().getTime()}`;
 
-        // 检查边是否已存在
+        // Check if edge already exists
         if (this.insertedEdges.has(edgeId)) {
             console.warn(`Edge with potentially duplicate ID ${edgeId} skipped.`);
             return;
         }
 
-        // 创建边数据
+        // Create edge data
         const edgeData = {
             group: 'edges',
             data: {
@@ -710,21 +708,21 @@ export class ClassvizManager {
                 label: `${sequenceNumber}`,
                 sequenceNumber: sequenceNumber,
                 interaction: "trace_call",
-                color: color // 存储颜色，但不直接用于样式
+                color: color // Store color, but don't use directly for styling
             }
         };
 
-        // 添加边到cytoscape
+        // Add edge to cytoscape
         const edge = this.cy.add(edgeData);
 
         console.log(`Adding edge ${edgeId} with color = ${color}`);
 
-        // 重要：通过style方法覆盖CSS默认样式
+        // Important: Override CSS default styles using style method
         edge.style({
             'width': 3,
             'line-color': color,
             'target-arrow-color': color,
-            'line-fill': 'solid', // 重要：禁用渐变，使用纯色
+            'line-fill': 'solid', // Important: disable gradient, use solid color
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
             'label': `${sequenceNumber}`,
@@ -738,7 +736,7 @@ export class ClassvizManager {
             'color': '#000000'
         });
 
-        // 处理自引用边
+        // Handle self-referential edges
         if (sourceNodeLabel === targetNodeLabel) {
             edge.style({
                 'curve-style': 'unbundled-bezier',
@@ -749,10 +747,10 @@ export class ClassvizManager {
             });
         }
 
-        // 存储边到映射中
+        // Store edge in mapping
         this.insertedEdges.set(edgeId, edge);
 
-        // 在原始ID映射中跟踪此边
+        // Track this edge in original ID mappings
         if (!this.originalIdToSourceEdges.has(sourceOriginalId)) {
             this.originalIdToSourceEdges.set(sourceOriginalId, new Set());
         }
@@ -767,23 +765,23 @@ export class ClassvizManager {
     }
 
     /**
-     * 生成颜色谱数组
-     * @param {Number} count - 需要的颜色数量
-     * @returns {Array} - 颜色数组
+     * Generate a color spectrum array
+     * @param {Number} count - Number of colors needed
+     * @returns {Array} - Array of colors
      */
     generateColorSpectrum(count) {
         const colors = [];
 
-        // 使用HSL颜色空间更容易生成均匀分布的颜色
-        // H: 色相(0-360)，S: 饱和度(0-100)，L: 亮度(0-100)
-        const saturation = 80; // 饱和度固定
-        const lightness = 50;  // 亮度固定
+        // Using HSL color space makes it easier to generate evenly distributed colors
+        // H: Hue (0-360), S: Saturation (0-100), L: Lightness (0-100)
+        const saturation = 80; // Fixed saturation
+        const lightness = 50;  // Fixed lightness
 
         if (count <= 0) return colors;
 
-        // 生成均匀分布的颜色
+        // Generate evenly distributed colors
         for (let i = 0; i < count; i++) {
-            // 在整个色谱上均匀分布色相值
+            // Evenly distribute hue values across the spectrum
             const hue = Math.floor((i / count) * 360);
             const color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
             colors.push(color);
@@ -793,94 +791,94 @@ export class ClassvizManager {
     }
 
     /**
-     * 切换图表的边创建模式并重新创建所有边
-     * @param {boolean} traceMode - 是否启用时序模式的边创建
-     * @param {boolean} useNumbering - 是否使用带编号和颜色的边
+     * Switch the chart's edge creation mode and recreate all edges
+     * @param {boolean} traceMode - Whether to enable sequential mode edge creation
+     * @param {boolean} useNumbering - Whether to use numbered and colored edges
      */
     switchTraceMode(traceMode, useNumbering = this.useNumberedEdges) {
-        // 更新模式设置
+        // Update mode settings
         this.data.traceMode = traceMode;
         console.log(`Switched to ${traceMode ? 'trace' : 'call tree'} mode with ${useNumbering ? 'numbered' : 'standard'} edges`);
 
-        // 如果没有足够的节点，则无需处理
+        // If not enough nodes, no need to process
         if (this.insertedNodes.size <= 1) {
             console.log("Less than 2 nodes exist, no edges to recreate");
             return;
         }
 
-        // 清除所有现有边
+        // Clear all existing edges
         this.clearAllEdges();
 
-        // 根据当前模式和编号选项重新创建边
+        // Recreate edges based on current mode and numbering option
         if (traceMode) {
-            // 时序模式
+            // Sequential mode
             if (useNumbering) {
-                // 使用带编号和颜色的时序边
+                // Use numbered and colored sequential edges
                 this.createNumberedSequentialEdges();
             } else {
-                // 使用标准时序边
+                // Use standard sequential edges
                 this.createSequentialEdges();
             }
         } else {
-            // 调用树模式
+            // Call tree mode
             if (useNumbering) {
-                // 使用带编号和颜色的调用树边
+                // Use numbered and colored call tree edges
                 this.rebuildNumberedCallTreeEdges();
             } else {
-                // 使用标准调用树边
+                // Use standard call tree edges
                 this.rebuildCallTreeEdges();
             }
         }
     }
 
     /**
-     * 切换边的编号和颜色模式
-     * @param {boolean} useNumbering - 是否启用编号模式，如果为undefined则切换当前模式
-     * @returns {boolean} - 切换后的模式状态
+     * Toggle edge numbering and coloring mode
+     * @param {boolean} useNumbering - Whether to enable numbering mode, if undefined toggle current mode
+     * @returns {boolean} - Mode status after toggling
      */
     toggleEdgeNumbering(useNumbering) {
-        // 如果未指定，则切换当前状态
+        // If not specified, toggle current state
         if (useNumbering === undefined) {
             this.useNumberedEdges = !this.useNumberedEdges;
         } else {
             this.useNumberedEdges = useNumbering;
         }
 
-        // 使用当前traceMode和新的编号设置重新创建边
+        // Recreate edges with current traceMode and new numbering setting
         this.switchTraceMode(this.data.traceMode, this.useNumberedEdges);
 
         return this.useNumberedEdges;
     }
 
     /**
-     * 清除图表中的所有边
+     * Clear all edges in the chart
      */
     clearAllEdges() {
-        // 收集所有需要移除的边的ID
+        // Collect all edge IDs that need to be removed
         const edgeIds = [];
         this.insertedEdges.forEach((_, id) => {
             edgeIds.push(id);
         });
 
-        // 循环移除每条边
+        // Loop through and remove each edge
         for (const edgeId of edgeIds) {
             if (this.insertedEdges.has(edgeId)) {
                 const edge = this.insertedEdges.get(edgeId);
-                // 从cytoscape中移除边
+                // Remove edge from cytoscape
                 this.cy.remove(edge);
-                // 从我们的映射中移除边
+                // Remove edge from our mappings
                 this.insertedEdges.delete(edgeId);
 
-                // 获取源和目标节点信息
+                // Get source and target node information
                 const sourceOriginalId = edge.data('sourceOriginalId');
                 const targetOriginalId = edge.data('targetOriginalId');
 
-                // 从源节点的边集合中移除
+                // Remove from source node's edge collection
                 if (sourceOriginalId && this.originalIdToSourceEdges.has(sourceOriginalId)) {
                     this.originalIdToSourceEdges.get(sourceOriginalId).delete(edgeId);
                 }
 
-                // 从目标节点的边集合中移除
+                // Remove from target node's edge collection
                 if (targetOriginalId && this.originalIdToTargetEdges.has(targetOriginalId)) {
                     this.originalIdToTargetEdges.get(targetOriginalId).delete(edgeId);
                 }
@@ -891,20 +889,20 @@ export class ClassvizManager {
     }
 
     /**
- * 为调用树模式重建所有边
- */
+     * Rebuild all edges for call tree mode
+     */
     rebuildCallTreeEdges() {
-        // 利用已有的树结构数据重建边
+        // Use existing tree structure data to rebuild edges
         this.threadToMethodNodesInOrder.forEach((_, threadName) => {
-            // 获取该线程的树数据
+            // Get tree data for this thread
             const treeData = this.data.threadsData[threadName];
             if (!treeData) return;
 
-            // 获取该树的根节点
+            // Get root node of this tree
             const rootNode = treeData;
             if (!rootNode) return;
 
-            // 从根节点开始遍历树，创建所有边
+            // Start traversing tree from root node, creating all edges
             this.traverseTreeAndCreateEdges(rootNode);
         });
 
@@ -912,39 +910,39 @@ export class ClassvizManager {
     }
 
     /**
-     * 遍历树并创建边
-     * @param {Object} node - 当前树节点
-     * @param {Set} visited - 已访问节点的集合（防止循环引用）
-     * @param {String|null} lastSelectedParentId - 上一个选中的父节点ID
-     * @param {String|null} lastSelectedParentLabel - 上一个选中的父节点标签
+     * Traverse tree and create edges
+     * @param {Object} node - Current tree node
+     * @param {Set} visited - Set of visited nodes (to prevent circular references)
+     * @param {String|null} lastSelectedParentId - Last selected parent node ID
+     * @param {String|null} lastSelectedParentLabel - Last selected parent node label
      */
     traverseTreeAndCreateEdges(node, visited = new Set(), lastSelectedParentId = null, lastSelectedParentLabel = null) {
         if (!node || visited.has(node.id)) return;
         visited.add(node.id);
 
-        // 获取当前节点信息
+        // Get current node information
         const nodeData = this.data.nodes.get(node.id)?.data;
-        if (!nodeData) return; // 节点不存在，跳过处理
+        if (!nodeData) return; // Node doesn't exist, skip processing
 
         const nodeLabel = this.getMethodLabelById(node.id);
         const isCurrentNodeSelected = nodeData.selected && nodeLabel && this.insertedNodes.has(nodeLabel);
 
-        // 如果当前节点被选中，更新"最后选中的父节点"为当前节点
+        // If current node is selected, update "last selected parent node" to current node
         let currentSelectedParentId = lastSelectedParentId;
         let currentSelectedParentLabel = lastSelectedParentLabel;
 
         if (isCurrentNodeSelected) {
-            // 当前节点被选中，更新为新的父节点
+            // Current node is selected, update as new parent node
             currentSelectedParentId = node.id;
             currentSelectedParentLabel = nodeLabel;
 
-            // 如果有上一个选中的父节点，创建从父节点到当前节点的边
+            // If there's a previous selected parent node, create edge from parent to current node
             if (lastSelectedParentId && lastSelectedParentLabel) {
                 this.createEdge(lastSelectedParentId, lastSelectedParentLabel, node.id, nodeLabel);
             }
         }
 
-        // 递归处理所有子节点，无论当前节点是否被选中
+        // Recursively process all child nodes, regardless of whether current node is selected
         const children = node.children || [];
         for (const child of children) {
             this.traverseTreeAndCreateEdges(
@@ -956,7 +954,7 @@ export class ClassvizManager {
         }
     }
 
-    // 从线程方法节点列表中移除节点
+    // Remove node from thread method node list
     removeFromThreadMethodNodes(id, nodeLabel) {
         const currentThreadName = this.data.currentThreadName;
         if (currentThreadName && this.threadToMethodNodesInOrder.has(currentThreadName)) {
@@ -964,19 +962,19 @@ export class ClassvizManager {
             const nodeIndex = threadNodes.findIndex(node => node.originalId === id);
 
             if (nodeIndex !== -1) {
-                // 从线程的有序列表中移除节点
+                // Remove node from thread's ordered list
                 threadNodes.splice(nodeIndex, 1);
             }
         }
     }
 
-    // 处理节点的边和连接关系
+    // Handle node edges and connections
     handleNodeEdges(id, nodeLabel) {
-        // 收集父节点和子节点
+        // Collect parent and children nodes
         const targetChildrenOriginalIds = [];
         let parentOriginalId = null;
 
-        // 处理以此节点为源的边
+        // Process edges where this node is the source
         if (this.originalIdToSourceEdges.has(id)) {
             this.originalIdToSourceEdges.get(id).forEach(edgeId => {
                 const edge = this.insertedEdges.get(edgeId);
@@ -984,11 +982,11 @@ export class ClassvizManager {
                     const targetOriginalId = edge.data('targetOriginalId');
                     targetChildrenOriginalIds.push(targetOriginalId);
 
-                    // 移除边
+                    // Remove edge
                     this.cy.remove(edge);
                     this.insertedEdges.delete(edgeId);
 
-                    // 更新跟踪映射
+                    // Update tracking mappings
                     if (this.originalIdToTargetEdges.has(targetOriginalId)) {
                         this.originalIdToTargetEdges.get(targetOriginalId).delete(edgeId);
                     }
@@ -996,27 +994,27 @@ export class ClassvizManager {
             });
         }
 
-        // 处理以此节点为目标的边
+        // Process edges where this node is the target
         if (this.originalIdToTargetEdges.has(id)) {
             const parentEdges = Array.from(this.originalIdToTargetEdges.get(id));
 
-            // 确保只有一个父节点
+            // Ensure only one parent node
             if (parentEdges.length > 1) {
                 console.warn(`Method ${nodeLabel} has multiple parents, expected only one in tree structure`);
             }
 
-            // 处理父边（在树结构中应该只有一个）
+            // Process parent edge (should be only one in tree structure)
             if (parentEdges.length > 0) {
                 const edgeId = parentEdges[0];
                 const edge = this.insertedEdges.get(edgeId);
                 if (edge) {
                     parentOriginalId = edge.data('sourceOriginalId');
 
-                    // 移除边
+                    // Remove edge
                     this.cy.remove(edge);
                     this.insertedEdges.delete(edgeId);
 
-                    // 更新跟踪映射
+                    // Update tracking mappings
                     if (this.originalIdToSourceEdges.has(parentOriginalId)) {
                         this.originalIdToSourceEdges.get(parentOriginalId).delete(edgeId);
                     }
@@ -1024,17 +1022,17 @@ export class ClassvizManager {
             }
         }
 
-        // 在父节点和子节点之间创建边
+        // Create edges between parent and children nodes
         this.reconnectParentToChildren(parentOriginalId, targetChildrenOriginalIds);
     }
 
-    // 重新连接父节点和子节点
+    // Reconnect parent node to children nodes
     reconnectParentToChildren(parentOriginalId, targetChildrenOriginalIds) {
         if (parentOriginalId && targetChildrenOriginalIds.length > 0) {
             const parentNodeLabel = this.getMethodLabelById(parentOriginalId);
 
             if (parentNodeLabel && this.insertedNodes.has(parentNodeLabel)) {
-                // 从父节点到每个子节点创建直接边
+                // Create direct edges from parent to each child node
                 targetChildrenOriginalIds.forEach(childId => {
                     const childNodeLabel = this.getMethodLabelById(childId);
                     if (childNodeLabel && this.insertedNodes.has(childNodeLabel)) {
@@ -1045,12 +1043,12 @@ export class ClassvizManager {
         }
     }
 
-    // 更新映射并决定是否删除节点
+    // Update mappings and decide whether to delete node
     updateMappingsAndRemoveNode(id, nodeLabel, methodNode) {
-        // 检查这是否是库方法
+        // Check if this is a library method
         const isLibraryMethod = this.ALLOWED_LIB_METHODS.includes(nodeLabel) || !methodNode.parent().length;
 
-        // 如果这不是库方法，获取类节点
+        // If this isn't a library method, get the class node
         let classId = null;
         if (!isLibraryMethod) {
             const classNode = this.findClassNodeByNodeLabel(nodeLabel);
@@ -1061,38 +1059,39 @@ export class ClassvizManager {
             classId = classNode.id();
         }
 
-        // 更新methodLabelToOriginalIds映射
+        // Update methodLabelToOriginalIds mapping
         this.methodLabelToOriginalIds.get(nodeLabel).delete(id);
 
-        // 仅当没有更多原始ID与它关联时才删除节点
+        // Only delete node when no more original IDs are associated with it
         const shouldRemoveNode = this.methodLabelToOriginalIds.get(nodeLabel).size === 0;
 
         if (shouldRemoveNode) {
-            // 从cytoscape中删除节点本身
+            // Remove the node itself from cytoscape
             this.cy.remove(methodNode);
 
-            // 更新我们的跟踪数据结构
+            // Update our tracking data structures
             this.insertedNodes.delete(nodeLabel);
             this.methodLabelToOriginalIds.delete(nodeLabel);
 
-            // 如果这不是库方法，更新类到方法的映射
+            // If this isn't a library method, update class-to-methods mapping
             if (!isLibraryMethod && classId && this.classToMethodsMap.has(classId)) {
                 this.classToMethodsMap.get(classId).delete(nodeLabel);
 
-                // 如果这是类中的最后一个方法，恢复原始尺寸
+                // If this is the last method in the class, restore original dimensions
                 if (this.classToMethodsMap.get(classId).size === 0) {
                     this.restoreClassOriginalDimensions(classId);
                 } else {
-                    // 否则，根据剩余方法调整类大小
+                    // Otherwise, adjust class size based on remaining methods
                     this.adjustClassSize(classId);
                 }
             }
         }
 
-        // 清理跟踪映射，无论我们是否删除了节点
+        // Clean up tracking mappings regardless of whether we deleted the node
         this.originalIdToSourceEdges.delete(id);
         this.originalIdToTargetEdges.delete(id);
     }
+
     // Helper method to restore class to original dimensions
     restoreClassOriginalDimensions(classId) {
         const classNode = this.cy.$id(classId);
@@ -1170,69 +1169,63 @@ export class ClassvizManager {
     }
 
     createEdgesForNode(id, nodeLabel) {
-        // 如果只有一个插入的节点，还不需要创建边
-        // if (this.insertedNodes.size <= 1) {
-        //     console.log("Only one node exists, skipping edge creation");
-        //     return;
-        // }
-
-        // 从原始数据源获取节点数据
+        // Get node data from original data source
         const nodeData = this.data.nodes.get(id).data;
         if (!nodeData) {
             console.error(`Node data not found for id ${id}`);
             return;
         }
 
-        // 根据traceMode决定边的创建方式
+        // Decide edge creation method based on traceMode
         if (!this.data.traceMode) {
-            // 原有的非traceMode逻辑
-            // 通过向上遍历调用树查找父节点
+            // Original non-traceMode logic
+            // Find parent node by traversing up the call tree
             const parentInfo = this.findFirstSelectedParent(id);
 
             if (parentInfo) {
                 const { parentId, parentNodeLabel } = parentInfo;
 
-                // 移除从父节点发出的所有边
+                // Remove all edges from parent node
                 this.removeAllEdgesFromNode(parentId);
 
-                // 现在从父节点向下遍历以创建新边
+                // Now traverse down from parent to create new edges
                 this.traverseDownAndCreateEdges(parentId, parentNodeLabel);
             }
-            // 如果没有找到选中的父节点，只处理当前节点的连接
+            // If no selected parent node is found, just handle connections for current node
             this.traverseDownAndCreateEdges(id, nodeLabel);
         } else {
-            // 处理traceMode下的边缘创建
+            // Handle edge creation in traceMode
             this.createSequentialEdges();
         }
     }
 
-    // 在traceMode下按照线程内节点的序列顺序创建边
+    // Create edges sequentially in order of thread nodes in traceMode
     createSequentialEdges() {
-        // 遍历每个线程
+        // Iterate each thread
         this.threadToMethodNodesInOrder.forEach((methodNodes, threadName) => {
-            // 获取已插入的节点（已选中的节点）
+            // Get inserted nodes (selected nodes)
             const selectedNodes = methodNodes.filter(node =>
                 this.insertedNodes.has(node.label) &&
                 this.data.nodes.get(node.originalId)?.data?.selected
             );
 
-            // 如果线程中少于2个已选中的节点，则无需创建边
+            // If thread has fewer than 2 selected nodes, no need to create edges
             if (selectedNodes.length < 2) {
                 return;
             }
 
-            // 清除所有现有边，为重建边做准备
-            // 我们只需清除与这个线程中节点相关的边
+            // Clear all existing edges to prepare for rebuilding
+            // We only need to clear edges related to nodes in this thread
             selectedNodes.forEach(node => {
                 this.removeAllEdgesFromNode(node.originalId);
             });
 
-            // 按照节点在列表中的顺序创建边（链表式连接）
+            // Create edges in order of nodes in the list (linked list style)
             for (let i = 0; i < selectedNodes.length - 1; i++) {
                 const currentNode = selectedNodes[i];
                 const nextNode = selectedNodes[i + 1];
 
-                // 创建从当前节点到下一个节点的边
+                // Create edge from current node to next node
                 this.createEdge(
                     currentNode.originalId,
                     currentNode.label,
@@ -1262,7 +1255,6 @@ export class ClassvizManager {
             }
             // Clear the set of source edges
             this.originalIdToSourceEdges.set(originalId, new Set());
-            // console.log(`Removed all edges from node ${originalId}`);
         }
     }
 
@@ -1302,7 +1294,6 @@ export class ClassvizManager {
     // Uses DFS traversal to create edges
     traverseDownAndCreateEdges(originalId, sourceNodeLabel) {
         const visited = new Set();
-        // console.log(`Traversing down from ${originalId}  ${sourceNodeLabel} to create edges`);
 
         // Helper function using DFS traversal
         const dfs = (currentId) => {
@@ -1349,7 +1340,6 @@ export class ClassvizManager {
 
         // Check if this edge already exists
         if (this.insertedEdges.has(edgeId)) {
-            // console.log(`Edge ${edgeId} already exists, skipping creation`);
             return;
         }
 
@@ -1369,7 +1359,6 @@ export class ClassvizManager {
 
         // Add the edge to cytoscape
         const edge = this.cy.add(edgeData);
-        // console.log(`Edge created: ${edgeId} from ${sourceNodeLabel} to ${targetNodeLabel}`);
 
         // Style the edge
         edge.style({
@@ -1404,7 +1393,5 @@ export class ClassvizManager {
             this.originalIdToTargetEdges.set(targetOriginalId, new Set());
         }
         this.originalIdToTargetEdges.get(targetOriginalId).add(edgeId);
-
-        // console.log(`Created edge from ${sourceNodeLabel} to ${targetNodeLabel}`);
     }
 }

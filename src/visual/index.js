@@ -1,11 +1,7 @@
-/**
- * Flame Graph Module
- * A collection of functions for managing the flame graph visualization with a draggable container
- */
+
 import { $ } from "../shorthands.js";
 import { TraceStackApp } from "./TraceStackApp.js";
-// import { FlameGraphService } from "./services/flameGraphMain.js";
-// Export the flame graph plugin loader
+
 export const loadFlameGraphPlugin = (cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap) => {
     // const service = new FlameGraphService(cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap);
     const traceStackApp = new TraceStackApp(cascadeTree, idRangeByThreadMap);

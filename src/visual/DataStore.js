@@ -435,31 +435,7 @@ class DataStore {
       return true;
     }
   }
-//   /**
-//  * 简单显示节点数据
-//  * @param {string} nodeId - 要显示的节点ID
-//  */
-//   printNodeData(nodeId) {
-//     const nodeInfo = this.nodes.get(nodeId);
-//     if (!nodeInfo || !nodeInfo.data) {
-//       console.log(`节点 ${nodeId} 不存在`);
-//       return;
-//     }
 
-//     const nodeData = nodeInfo.data;
-//     console.log('节点数据:', {
-//       id: nodeId,
-//       label: nodeData.label,
-//       compressed: nodeData.compressed,
-//       children: nodeData.children ? nodeData.children.length : 0,
-//       childrenData: nodeData.children
-//     });
-
-//     // 打印子节点ID列表
-//     if (this.children.has(nodeId)) {
-//       console.log('全局映射中的子节点IDs:', this.children.get(nodeId));
-//     }
-//   }
 
   /**
  * Rebuilds data structures for the current thread only
@@ -1047,7 +1023,7 @@ deselectParent(nodeId) {
   }
 
   //===============================================
-  // Package related operations - MODIFIED for current-thread specific operations
+  // Package related operations
   //===============================================
 
   // Select nodes by package name for the current thread only
@@ -1238,5 +1214,4 @@ deselectParent(nodeId) {
   }
 }
 
-// Export class
 export { DataStore };

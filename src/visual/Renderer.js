@@ -46,7 +46,7 @@ class Renderer {
         if (nodeId) {
           this.renderTree();
   
-          // 恢复当前节点的焦点
+          // restore current nodes
           if (this.data.current) {
             this.ensureNodeVisible(this.data.current);
             this.updateCurrentNodeFocusUI(this.data.current);
@@ -552,44 +552,6 @@ class Renderer {
     // Use the existing toggleNodeExpansion method with the found element
     this.toggleNodeExpansion(nodeElement, nodeId);
   }
-
-//   /**
-//  * 移除节点的所有子节点
-//  * @param {string} nodeId - 要移除子节点的节点ID
-//  * @returns {boolean} - 操作是否成功
-//  */
-//   removeChildNodes(nodeId) {
-//     // 获取节点元素
-//     const nodeElement = document.querySelector(`li[data-node-id="${nodeId}"]`);
-//     if (!nodeElement) return false;
-
-//     // 保存当前滚动位置
-//     const container = document.querySelector('.visualization-container');
-//     const scrollTop = container ? container.scrollTop : 0;
-
-//     // 获取子节点列表
-//     const childList = nodeElement.querySelector('ul');
-//     if (childList) {
-//       // 移除子节点列表
-//       childList.remove();
-
-//       // 更新展开/折叠按钮状态
-//       const nodeItemElement = nodeElement.querySelector('.call-item');
-//       const toggleBtn = nodeItemElement?.querySelector('.toggle-btn');
-//       if (toggleBtn) {
-//         toggleBtn.textContent = '▶';
-//       }
-//     }
-
-//     // 恢复滚动位置
-//     if (container) {
-//       container.scrollTop = scrollTop;
-//     }
-
-//     console.log("[DEBUG]Child nodes removed successfully.");
-
-//     return true;
-//   }
 
   // Ensure node is visible (expand all parent nodes)
   ensureNodeVisible(nodeId) {

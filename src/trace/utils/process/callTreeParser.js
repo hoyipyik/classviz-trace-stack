@@ -6,7 +6,6 @@ import { fetchNodeData } from './nodeDataProcessor.js';
 import { createCytoscapeNode, createCytoscapeEdge } from './graphBuilder.js';
 import { calculateNodePosition } from './layoutCalculator.js';
 import { LAYOUT } from './constants.js';
-import { getCytoscapeStyles } from './cytoscapeStyles.js';
 
 /**
  * Extracts method calls from source code in the order they appear
@@ -214,7 +213,7 @@ const PACKAGE_COLORS = [
   "#000000"  // Black
 ];
 
-
+// We have filtered native java libs, we preserve these below as they are entries of a thread
 export const ALLOWED_LIB_METHODS = [
   'java.awt.EventDispatchThread.run()',
   'java.util.concurrent.ThreadPoolExecutor$Worker.run()'
@@ -454,9 +453,6 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     labelBasedTree[rootData.label] = rootData;
   }
 
-  // Get Cytoscape styles
-  const styles = getCytoscapeStyles(LAYOUT.NODE_SIZE);
-
   const idRangeByThreadMap = new Map();
 
   // Process each thread to determine its ID range
@@ -485,7 +481,6 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     rootNode: rootData,             // Original root node
     nodes: nodes,                   // Node array for graph representation
     edges: edges,                   // Edge array for graph representation
-    cytoscapeStyles: styles,        // Cytoscape styles
     packageColorMap: packageColorMap, // Map of package names to colors
     idRangeByThreadMap: idRangeByThreadMap
   };

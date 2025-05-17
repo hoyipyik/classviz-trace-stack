@@ -299,6 +299,8 @@ class Explainer {
                 parallelRegions: config.parallel
             });
 
+            // If you want to display results of both quick mode and think mode
+
             // Start both explanations concurrently
             // const [quickResult, detailedResult] = await Promise.all([
             //     this.performQuickExplanation({ parallel: config.parallel }),
@@ -347,7 +349,7 @@ class Explainer {
         console.log(`Starting quick mode explanation in ${config.parallel ? 'PARALLEL' : 'SEQUENTIAL'} mode...`);
 
         if (config.parallel) {
-            // 並行處理所有樹
+            // process all the traces concurrently
             const explanationPromises = Array.from(this.selectedTrees.entries()).map(async ([treeId, treeData]) => {
                 if (treeData.KNT) {
                     try {
@@ -367,10 +369,10 @@ class Explainer {
                 }
             });
 
-            // 等待所有並行任務完成
+            // wait untill all finished
             await Promise.all(explanationPromises);
         } else {
-            // 原有的順序處理方式
+            // process in order
             for (const [treeId, treeData] of this.selectedTrees.entries()) {
                 if (treeData.KNT) {
                     try {
@@ -874,8 +876,3 @@ class Explainer {
 }
 
 export { Explainer };
-
-// --- Assumed External AI Helper Functions (placeholders) ---
-// async function explainPureKNT(KNT) { /* ... */ return `Quick summary for ${KNT.id}`; }
-// async function explainRegion(regionData) { /* ... */ return { briefSummary: `Brief for ${regionData.id}`, detailedBehaviour: `Detail for ${regionData.id}`, flowRepresentation: `Flow for ${regionData.id}` }; }
-// async function explainKNTWithData(augmentedKNT) { /* ... */ return `Detailed trace summary for ${augmentedKNT.id}`; };

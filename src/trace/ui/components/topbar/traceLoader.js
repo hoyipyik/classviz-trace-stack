@@ -22,7 +22,7 @@ export const traceLoader = () => {
                 const parsedXml = await xmlFileReader(file);
                 console.log("context", window.context);
                 const { cascadeTree, nodeMap, nodes: parsedNodes, rootNode,
-                    edges: parsedEdges, cytoscapeStyles: style, packageColorMap, idRangeByThreadMap } = callTreeParser(parsedXml);
+                    edges: parsedEdges, packageColorMap, idRangeByThreadMap } = callTreeParser(parsedXml);
                 // const graph = { nodes: parsedNodes, edges: parsedEdges, style };
                 // renderCallTree(graph);
                 loadFlameGraphPlugin(cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap);
