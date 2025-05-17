@@ -474,13 +474,13 @@ export class ExplanationUIController {
         });
 
         // Create collapsible sections
-        const { section: quickSummarySection, content: quickSummaryContent, contentWrapper: quickSummaryContentWrapper } = 
+        const { section: quickSummarySection, content: quickSummaryContent, contentWrapper: quickSummaryContentWrapper } =
             this.createCollapsibleSection('Quick Summary');
-        
-        const { section: detailedSummarySection, content: detailedSummaryContent, contentWrapper: detailedSummaryContentWrapper } = 
+
+        const { section: detailedSummarySection, content: detailedSummaryContent, contentWrapper: detailedSummaryContentWrapper } =
             this.createCollapsibleSection('Summary After Thinking', { marginTop: '6px' });
-        
-        const { section: regionSummarySection, content: regionSummaryContent, contentWrapper: regionSummaryContentWrapper } = 
+
+        const { section: regionSummarySection, content: regionSummaryContent, contentWrapper: regionSummaryContentWrapper } =
             this.createCollapsibleSection('Region Summary', { marginTop: '6px' });
 
         resultsContainer.appendChild(quickSummarySection);
@@ -531,13 +531,13 @@ export class ExplanationUIController {
 
         const interval = setInterval(() => {
             position += (5 * direction);
-            
+
             if (position >= 90) {
                 direction = -1;
             } else if (position <= 10) {
                 direction = 1;
             }
-            
+
             this.loadingProgress.style.width = `${position}%`;
         }, 100);
 
@@ -722,29 +722,103 @@ export class ExplanationUIController {
         this.detailedSummarySection.style.display = 'none';
     }
 
+    /**
+  * Identifies and marks method references in text with clickable underlined spans.
+  * This function handles different patterns of method references:
+  * - Method calls with parentheses: method(), ClassName.method(), ClassName$InnerClass.method()
+  * - Method references in backticks: `method`, `ClassName.method`
+  *
+  * @param {string} text - The input text to process
+   * @return {string} - HTML formatted text with method references wrapped in clickable spans
+  */
+    identifyMethodNames(text) {
+        if (!text) return text;
+        const threadName = this.explainer.selectedTrees.get(this.currentSelectedTreeId).threadName;
+
+        // Store reference to this for use in the event handler
+        const self = this;
+
+        // Function to create a global click handler with access to eventBus
+        // This addresses the 'this' context issue in the inline event handler
+        const methodClickHandlerId = `methodClickHandler_${Math.random().toString(36).substr(2, 9)}`;
+        window[methodClickHandlerId] = function (methodName, thread) {
+            console.log('Method clicked:', methodName, 'Thread:', thread);
+            self.eventBus.publish("fuzzySearchFromDetailedBehaviour", {
+                name: methodName,
+                threadName: thread
+            });
+        };
+
+        // 1. Handle method references with parentheses: ClassName.method(), method()
+        let processedText = text.replace(
+            /\b([a-zA-Z][a-zA-Z0-9_]*(?:[$\.][a-zA-Z][a-zA-Z0-9_]*)*)\(\)/g,
+            (match) => {
+                // Escape any single quotes in the method name to prevent JS errors
+                const safeMatch = match.replace(/'/g, "\\'");
+                // Escape any single quotes in the thread name to prevent JS errors
+                const safeThreadName = threadName ? threadName.replace(/'/g, "\\'") : '';
+                return `<span class="method-name" style="text-decoration: underline; cursor: pointer;" 
+                   onclick="${methodClickHandlerId}('${safeMatch}', '${safeThreadName}')">${match}</span>`;
+            }
+        );
+
+        // 2. Handle backtick-wrapped method references: `ClassName.method`, `method`
+        processedText = processedText.replace(
+            /`([a-zA-Z][a-zA-Z0-9_]*(?:[$\.][a-zA-Z][a-zA-Z0-9_]*)*)`/g,
+            (match, methodRef) => {
+                // Escape any single quotes in the method name to prevent JS errors
+                const safeMethodRef = methodRef.replace(/'/g, "\\'");
+                // Escape any single quotes in the thread name to prevent JS errors
+                const safeThreadName = threadName ? threadName.replace(/'/g, "\\'") : '';
+                return `<span class="method-name" style="text-decoration: underline; cursor: pointer;" 
+                   onclick="${methodClickHandlerId}('${safeMethodRef}', '${safeThreadName}')">${match}</span>`;
+            }
+        );
+
+        return processedText;
+    }
+
     renderSummarySection(container, data) {
         container.innerHTML = '';
 
         const createSubsection = (title, content, isLast = false) => {
             if (!content) return null;
-            
+
             const section = this.createElement('div', title.toLowerCase().replace(' ', '-') + '-summary', {
                 marginBottom: isLast ? '0' : '15px'
             });
-            
+
             const sectionTitle = this.createElement('h6', null, {
                 margin: '0 0 5px 0',
                 fontWeight: 'bold',
                 fontSize: '14px'
             }, title);
-            
+
+            // Apply method name parsing for Detailed Behaviour section
+            let processedContent = content;
+            if (title === 'Detailed Behaviour') {
+                processedContent = this.identifyMethodNames(content);
+
+                const sectionContent = document.createElement('p');
+                sectionContent.style.margin = '0';
+                sectionContent.style.fontSize = '14px';
+                sectionContent.style.wordWrap = 'break-word';
+                sectionContent.style.whiteSpace = 'normal';
+                sectionContent.innerHTML = processedContent; // Use innerHTML to render the HTML
+
+                section.appendChild(sectionTitle);
+                section.appendChild(sectionContent);
+                return section;
+            }
+
+            // For other sections, use regular text content
             const sectionContent = this.createElement('p', null, {
                 margin: '0',
                 fontSize: '14px',
                 wordWrap: 'break-word',
                 whiteSpace: 'normal'
             }, content);
-            
+
             section.appendChild(sectionTitle);
             section.appendChild(sectionContent);
             return section;
@@ -752,10 +826,10 @@ export class ExplanationUIController {
 
         const briefSection = createSubsection('Brief Summary', data.briefSummary);
         if (briefSection) container.appendChild(briefSection);
-        
+
         const flowSection = createSubsection('Flow Representation', data.flowRepresentation);
         if (flowSection) container.appendChild(flowSection);
-        
+
         const detailedSection = createSubsection('Detailed Behaviour', data.detailedBehaviour, true);
         if (detailedSection) container.appendChild(detailedSection);
     }

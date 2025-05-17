@@ -35,6 +35,12 @@ export class StepByStepPlayController {
             this.refresh();
             this.onModeToggle(this.classvizManager.stepByStepMode);
         });
+
+        this.eventBus.subscribe('switchStepByStepMode', ({ flag }) => {
+            this.classvizManager.stepByStepMode = flag;
+            this.onModeToggle(flag);
+        });
+
     }
 
     init() {

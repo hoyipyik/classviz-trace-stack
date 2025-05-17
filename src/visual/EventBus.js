@@ -10,7 +10,6 @@ export const eventNames = {
 
   viewModeChanged: 'viewModeChanged',
   nodeDataChanged: 'nodeDataChanged',
-  searchResultsChanged: 'searchResultsChanged',
   scrollToFocusedNode: 'scrollToFocusedNode',
   changeLogicalStyle: 'changeLogicalStyle',
   changeTraceMode: 'changeTraceMode',
@@ -26,7 +25,12 @@ export const eventNames = {
 
   // explanation
   explanationCompleted: 'explanationCompleted',
-  changeLLMServiceProvider: 'changeLLMServiceProvider'
+  changeLLMServiceProvider: 'changeLLMServiceProvider',
+
+  // search for detailed behaviour summary
+  fuzzySearchFromDetailedBehaviour: 'fuzzySearchFromDetailedBehaviour',
+
+  switchStepByStepMode: 'switchStepByStepMode'
 }
 
 class EventBus {

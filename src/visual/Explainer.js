@@ -7,7 +7,7 @@ class Explainer {
         this.eventBus = eventBus;
         this.aiService = aiService;
 
-        this.selectedTrees = new Map(); // entry method original Id -> { tree: tree data, KNT: KNT, explanation: { quickSummary: "", summaryAfterThinking: ""} }
+        this.selectedTrees = new Map(); // entry method original Id -> { tree: tree data, KNT: KNT, explanation: { quickSummary: "", summaryAfterThinking: ""}, threadName: "" }
         this.traceToRegion = new Map(); // entry original id of a trace -> [region entry original id]
         this.regions = new Map(); // entry special method original Id -> { data: subtree, explained: false, detailedBehaviour: "", flowRepresentation: "", briefSummary: "" }
     }
@@ -258,7 +258,8 @@ class Explainer {
                     explanation: {
                         quickSummary: "",
                         summaryAfterThinking: ""
-                    }
+                    },
+                    threadName: threadName
                 });
 
                 // Identify regions and populate traceToRegion mapping
@@ -309,7 +310,7 @@ class Explainer {
             // backData = detailedResult;
         }
 
-        this.saveToLocalStorage();
+        // this.saveToLocalStorage();
         this.eventBus.publish('explanationCompleted', { backData });
         return backData;
     }

@@ -35,9 +35,115 @@ class Search {
         this.find(searchInput.value)
       }
     });
+
+    this.eventBus.subscribe('fuzzySearchFromDetailedBehaviour', ({ name, threadName }) => {
+      this.switchThreadUI(threadName);
+      this.data.switchThread(threadName);
+      this.view.renderTree();
+
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput) {
+        searchInput.value = name;
+        this.find(searchInput.value);
+      }
+
+      this.resetToFirstResultInCurrentThread();
+
+      this.toggleStepByStepMode(true);
+      this.eventBus.publish('switchStepByStepMode', {flag: true});
+
+      if (this.highlightAll) {
+        // Use setTimeout to ensure the thread switch is complete
+        setTimeout(() => {
+          // Manually trigger highlighting
+          this.clearAllHighlights();
+          this.highlightAllResults();
+        }, 200); // Small delay to ensure the thread switch and rendering is complete
+      }
+
+
+    })
   }
 
-  // Set up search functionality))
+  toggleStepByStepMode(enabled) {
+    // 找到模式切换的复选框
+    const toggleInput = document.querySelector('#stepByStepPlay input[type="checkbox"]');
+
+    // 如果找不到元素，返回失败
+    if (!toggleInput) {
+      console.error('Step-by-step mode toggle not found in DOM');
+      return false;
+    }
+
+    // 如果当前状态已经是目标状态，不需要改变
+    if (toggleInput.checked === enabled) {
+      return true;
+    }
+
+    // 更新复选框状态
+    toggleInput.checked = enabled;
+
+    // 找到滑块元素并更新其视觉效果
+    const toggleSlider = toggleInput.nextElementSibling;
+    if (toggleSlider) {
+      toggleSlider.style.backgroundColor = enabled ? '#337ab7' : '#d1d5db';
+
+      // 找到滑块按钮并更新其位置
+      const sliderButton = toggleSlider.querySelector('span');
+      if (sliderButton) {
+        sliderButton.style.left = enabled ? '18px' : '2px';
+      }
+    }
+
+    console.log(`Step-by-step mode ${enabled ? 'enabled' : 'disabled'}`);
+    return true;
+  }
+
+  // Set up thread switcher 
+  /**
+* 手动切换线程的函数
+* 该函数会直接从DOM中获取线程选择器并切换到指定线程
+* 
+* @param {string} threadName - 要切换到的线程名称
+* @returns {boolean} - 切换是否成功
+*/
+  switchThreadUI(threadName) {
+    // 从DOM中获取线程选择器
+    const threadSelect = document.getElementById('threadSelect');
+
+    // 如果找不到选择器，返回失败
+    if (!threadSelect) {
+      console.error('Thread select element not found in DOM');
+      return false;
+    }
+
+    // 检查是否已经是当前线程
+    if (threadSelect.value === threadName) {
+      console.log(`Already on thread: ${threadName}`);
+      return false;
+    }
+
+    // 检查线程名是否存在于选项中
+    let threadExists = false;
+    for (let i = 0; i < threadSelect.options.length; i++) {
+      if (threadSelect.options[i].value === threadName) {
+        threadExists = true;
+        break;
+      }
+    }
+
+    if (!threadExists) {
+      console.error(`Thread "${threadName}" does not exist in options`);
+      return false;
+    }
+
+    // 设置选择器的值
+    threadSelect.value = threadName;
+    threadSelect.title = threadName; // 更新工具提示
+
+    console.log(`Thread switched to: ${threadName}`);
+    return true;
+  }
 
 
   // Set up search functionality
@@ -362,6 +468,13 @@ class Search {
 
     // Set as current node and update UI
     this.data.setCurrent(nodeId);
+    console.log("!!!!focus changed, start lassviz focus change event")
+    this.eventBus.publish('changeCurrentFocusedNodeForStepByStep', {
+      nodeId: nodeId
+    });
+    this.eventBus.publish('changeClassvizFocus', {
+      nodeId: nodeId
+    });
     this.view.updateCurrentNodeFocusUI(nodeId);
     this.view.updateCurrentMethodDisplay(result.data.label);
 
