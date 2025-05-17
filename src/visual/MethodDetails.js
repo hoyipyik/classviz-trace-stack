@@ -18,25 +18,7 @@ class MethodDetails {
     
     // Set up the view details button
     this.setupViewButton();
-    
-    // Listen for node selection events
-    // if (this.eventBus) {
-    //   this.eventBus.subscribe('changeCurrentFocusedNode', (data) => {
-    //     if (data && data.nodeId) {
-    //       // Enable the view details button
-    //       const viewBtn = document.getElementById('viewMethodDetailsBtn');
-    //       if (viewBtn) {
-    //         viewBtn.disabled = false;
-    //       }
-    //     } else {
-    //       // If no node is selected, disable the button
-    //       const viewBtn = document.getElementById('viewMethodDetailsBtn');
-    //       if (viewBtn) {
-    //         viewBtn.disabled = true;
-    //       }
-    //     }
-    //   });
-    // }
+  
   }
   
   // Set up modal and tabs
@@ -197,25 +179,22 @@ class MethodDetails {
     this.updateField('methodSourceCode', nodeData.sourceCode || '-');
 
     if (status.recursiveEntryPoint === true) {
-      // 如果是遞迴入口點，則檢查壓縮狀態
       const compressedContainer = document.getElementById('iscompressed-container');
       if (compressedContainer) {
-        // 顯示壓縮狀態行
         compressedContainer.style.display = 'flex';
         
-        // 更新壓縮狀態的 checkbox
         const checkboxContainer = document.getElementById('iscompressed');
         if (checkboxContainer) {
-          // 清空容器
+     
           checkboxContainer.innerHTML = '';
           
-          // 創建 checkbox
+         
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
-          checkbox.checked = !!nodeData.compressed; // 確保值為布林值
+          checkbox.checked = !!nodeData.compressed; 
           checkbox.className = 'status-checkbox';
           
-          // 添加事件監聽器
+       
           checkbox.addEventListener('change', (e) => {
             // this.data.deselect(this.data.current);
             this.data.deselectAllChildren(this.data.current);
@@ -223,12 +202,12 @@ class MethodDetails {
             console.log(e.target.checked, "clicked compression");
           });
           
-          // 將 checkbox 添加到容器中
+        
           checkboxContainer.appendChild(checkbox);
         }
       }
     } else {
-      // 如果不是遞迴入口點，隱藏壓縮狀態行
+
       const compressedContainer = document.getElementById('iscompressed-container');
       if (compressedContainer) {
         compressedContainer.style.display = 'none';
