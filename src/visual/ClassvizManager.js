@@ -61,14 +61,16 @@ export class ClassvizManager {
         this.eventBus.subscribe('changeMultiMethodByIdsToClassviz', (
             { nodeIds, selected }) => {
             if (selected) {
-                nodeIds.forEach((nodeId) => {
-                    this.insertSingleMethodById(nodeId);
-                });
+                // nodeIds.forEach((nodeId) => {
+                //     this.insertSingleMethodById(nodeId);
+                // });
+                this.insertMultipleMethodByIds(nodeIds);
             } else {
                 // remove single node
-                nodeIds.forEach((nodeId) => {
-                    this.removeSingleMethodById(nodeId);
-                });
+                // nodeIds.forEach((nodeId) => {
+                //     this.removeSingleMethodById(nodeId);
+                // });
+                this.removeMultipleMethodByIds(nodeIds)
             }
             if (this.useNumberedEdges) {
                 this.switchTraceMode(this.data.traceMode, true);
@@ -1394,4 +1396,391 @@ export class ClassvizManager {
         }
         this.originalIdToTargetEdges.get(targetOriginalId).add(edgeId);
     }
+
+    // ===== multi node management
+    /**
+ * Insert multiple method nodes by their IDs in a batch operation
+ * @param {Array<String>} ids - Array of node IDs to insert
+ * @returns {Array<String>} - Array of successfully inserted node labels
+ */
+    insertMultipleMethodByIds(ids) {
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            console.warn("No valid IDs provided for batch insertion");
+            return [];
+        }
+
+        console.log(`Batch inserting ${ids.length} method nodes`);
+        const insertedLabels = [];
+
+        // Process each ID individually but without creating edges yet
+        for (const id of ids) {
+            // Get the node label (which will be used as the cy node id)
+            const nodeLabel = this.getMethodLabelById(id);
+            if (!nodeLabel) {
+                console.warn(`Could not get label for node with id ${id}, skipping`);
+                continue;
+            }
+
+            // Update the methodLabelToOriginalIds map
+            if (!this.methodLabelToOriginalIds.has(nodeLabel)) {
+                this.methodLabelToOriginalIds.set(nodeLabel, new Set());
+            }
+            this.methodLabelToOriginalIds.get(nodeLabel).add(id);
+
+            // Add to threadToMethodNodesInOrder map based on current thread
+            const currentThreadName = this.data.currentThreadName;
+            if (currentThreadName) {
+                if (!this.threadToMethodNodesInOrder.has(currentThreadName)) {
+                    this.threadToMethodNodesInOrder.set(currentThreadName, []);
+                }
+
+                // Check if this node is already in the thread's list
+                const threadNodes = this.threadToMethodNodesInOrder.get(currentThreadName);
+                const existingNodeIndex = threadNodes.findIndex(node => node.originalId === id);
+
+                // Only add if not already in the list
+                if (existingNodeIndex === -1) {
+                    threadNodes.push({
+                        originalId: id,
+                        label: nodeLabel
+                    });
+
+                    // Sort the array by originalId to maintain order
+                    threadNodes.sort((a, b) => {
+                        // Convert originalIds to integers for proper numeric comparison
+                        return parseInt(a.originalId) - parseInt(b.originalId);
+                    });
+                }
+            }
+
+            // Check if the node already exists
+            const nodeExists = this.insertedNodes.has(nodeLabel);
+
+            if (!nodeExists) {
+                // Find the corresponding class node
+                const classNode = this.findClassNodeByNodeLabel(nodeLabel);
+                const nodeData = this.data.nodes.get(id).data;
+
+                // Check if this is an allowed library method
+                const isAllowedLibMethod = this.ALLOWED_LIB_METHODS.includes(nodeLabel);
+
+                // If there's no class node but it's an allowed library method, create it without a parent
+                if ((!classNode || classNode.length === 0) && !isAllowedLibMethod) {
+                    console.warn(`Class node for method ${nodeLabel} not found in cytoscape and not in allowed library methods, skipping`);
+                    continue;
+                }
+
+                if (isAllowedLibMethod && (!classNode || classNode.length === 0)) {
+                    // Create library method node without a parent
+                    const methodNodeData = {
+                        group: 'nodes',
+                        data: {
+                            id: nodeLabel,
+                            originalId: id,
+                            visible: true,
+                            name: nodeLabel.split('.').pop(),
+                            labels: ["LibraryOperation"],
+                            properties: {
+                                ...nodeData,
+                                kind: "library-method",
+                                simpleName: nodeLabel.split('.').pop()
+                            }
+                        }
+                    };
+
+                    // Add library method node to cytoscape
+                    const addedNode = this.cy.add(methodNodeData);
+                    this.insertedNodes.set(nodeLabel, addedNode);
+
+                    // Find an appropriate position for the library method node
+                    // Calculate position that avoids overlap with existing nodes
+                    const positions = this.cy.nodes().map(n => n.position());
+                    let posX = 100, posY = 100;
+
+                    // If there are other nodes, position relative to them
+                    if (positions.length > 0) {
+                        // Find average position of all nodes
+                        const avgX = positions.reduce((sum, pos) => sum + pos.x, 0) / positions.length;
+                        const avgY = positions.reduce((sum, pos) => sum + pos.y, 0) / positions.length;
+
+                        // Calculate position with some offset from average
+                        posX = avgX + (Math.random() * 200 - 100);
+                        posY = avgY + (Math.random() * 200 - 100);
+
+                        // Make sure we don't overlap with any existing node
+                        let overlap = true;
+                        let attempts = 0;
+                        while (overlap && attempts < 10) {
+                            overlap = false;
+                            for (const pos of positions) {
+                                const distance = Math.sqrt(Math.pow(posX - pos.x, 2) + Math.pow(posY - pos.y, 2));
+                                if (distance < 150) { // Minimum distance to avoid overlap
+                                    overlap = true;
+                                    break;
+                                }
+                            }
+                            if (overlap) {
+                                posX = avgX + (Math.random() * 400 - 200);
+                                posY = avgY + (Math.random() * 400 - 200);
+                                attempts++;
+                            }
+                        }
+                    }
+
+                    // Set the library method node's position
+                    addedNode.position({
+                        x: posX,
+                        y: posY
+                    });
+
+                    // Set specialized styles for library method nodes - use node's own color but with dashed border
+                    const color = nodeData.color || nodeData.nodeColor || '#D3D3D3';
+                    addedNode.style({
+                        'label': nodeData.properties?.simpleName || nodeLabel.split('.').pop(),
+                        'color': 'black',
+                        'font-size': '12px',
+                        'text-valign': 'center',
+                        'text-halign': 'center',
+                        'background-color': color,
+                        'border-width': '2px',
+                        'border-color': '#666', // Darker border
+                        'border-style': 'dashed', // Dashed border to distinguish library methods
+                        'border-opacity': 1,
+                        'shape': 'round-rectangle',
+                        'width': '140px', // Slightly wider than regular methods
+                        'height': '35px', // Slightly taller than regular methods
+                        'text-wrap': 'ellipsis',
+                        'text-max-width': '130px'
+                    });
+                } else {
+                    // Regular method node with parent class node
+                    const classId = classNode.id();
+                    const currentPosition = classNode.position();
+
+                    // If we haven't stored the original dimensions and position of the class node, save them (for potential restoration later)
+                    if (!this.originalDimensions[classId]) {
+                        this.originalDimensions[classId] = {
+                            width: classNode.style('width'),
+                            height: classNode.style('height'),
+                            textValign: classNode.style('text-valign'),
+                            textHalign: classNode.style('text-halign'),
+                            textMarginY: classNode.style('text-margin-y'),
+                            position: { x: currentPosition.x, y: currentPosition.y }
+                        };
+                    }
+
+                    // Create method node (note that this node's data.parent is set to classNode)
+                    const methodNodeData = {
+                        group: 'nodes',
+                        data: {
+                            id: nodeLabel,
+                            originalId: id, // We keep just one originalId in the node data
+                            parent: classId,
+                            visible: true,
+                            name: nodeLabel.split('.').pop(),
+                            labels: ["Operation"],
+                            properties: {
+                                ...nodeData,
+                                kind: "method",
+                                simpleName: nodeLabel.split('.').pop()
+                            }
+                        }
+                    };
+
+                    // Add method node to cytoscape
+                    const addedNode = this.cy.add(methodNodeData);
+                    this.insertedNodes.set(nodeLabel, addedNode);
+
+                    // Update the classToMethodsMap
+                    if (!this.classToMethodsMap.has(classId)) {
+                        this.classToMethodsMap.set(classId, new Set());
+                    }
+                    this.classToMethodsMap.get(classId).add(nodeLabel);
+
+                    // Adjust the parent (class) node's style while maintaining its position
+                    // Dynamically adjust the height based on the number of method nodes
+                    const methodCount = classNode.children().length;
+                    const newHeight = Math.max(150, 80 + (methodCount * 110)); // Increased spacing between methods
+                    const newWidth = Math.max(parseInt(this.originalDimensions[classId].width), 800); // Greatly increased width
+
+                    classNode.style({
+                        'width': newWidth,
+                        'height': newHeight,
+                        'text-valign': 'top',
+                        'text-halign': 'center',
+                        'text-margin-y': 18
+                    });
+
+                    // Explicitly reset the class node's position to avoid offset due to style changes
+                    classNode.position(currentPosition);
+
+                    // Calculate the position for the method node
+                    const methodIndex = classNode.children().length - 1;
+                    const parentCenter = currentPosition;
+                    const parentTopY = parentCenter.y - (newHeight / 2);
+
+                    // Improved positioning calculation to prevent overlap
+                    const offsetY = 60 + (methodIndex * 40); // Increased vertical spacing
+                    const methodAbsoluteY = parentTopY + offsetY;
+
+                    // Horizontal centering with variance for many methods
+                    const horizontalVariance = methodCount > 4 ? (methodIndex % 2) * 20 - 10 : 0;
+                    const methodAbsoluteX = parentCenter.x + horizontalVariance;
+
+                    // Set the method node's position
+                    addedNode.position({
+                        x: methodAbsoluteX,
+                        y: methodAbsoluteY
+                    });
+
+                    // Set other styles for the method node (excluding position)
+                    const color = nodeData.color || nodeData.nodeColor || '#D3D3D3';
+                    addedNode.style({
+                        'label': nodeData.properties?.simpleName || nodeLabel.split('.').pop(),
+                        'color': 'black',
+                        'font-size': '12px',
+                        'text-valign': 'center',
+                        'text-halign': 'center',
+                        'background-color': color,
+                        'border-width': '1px',
+                        'border-color': '#999',
+                        'border-opacity': 0.8,
+                        'shape': 'round-rectangle',
+                        'width': '120px',
+                        'height': '30px',
+                        'text-wrap': 'ellipsis',
+                        'text-max-width': '110px'
+                    });
+                }
+            }
+
+            insertedLabels.push(nodeLabel);
+        }
+
+        // After all nodes are created, recreate edges in a single operation
+        if (insertedLabels.length > 0) {
+            if (this.useNumberedEdges) {
+                this.switchTraceMode(this.data.traceMode, true);
+            } else {
+                this.switchTraceMode(this.data.traceMode, false);
+            }
+        }
+
+        return insertedLabels;
+    }
+
+    /**
+     * Remove multiple method nodes by their IDs in a batch operation
+     * @param {Array<String>} ids - Array of node IDs to remove
+     * @returns {Array<String>} - Array of successfully removed node labels
+     */
+    removeMultipleMethodByIds(ids) {
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            console.warn("No valid IDs provided for batch removal");
+            return [];
+        }
+
+        console.log(`Batch removing ${ids.length} method nodes`);
+        const removedLabels = [];
+        const affectedClassIds = new Set();
+
+        // Process each ID individually but defer edge recreation
+        for (const id of ids) {
+            // get node label
+            const nodeLabel = this.getMethodLabelById(id);
+            if (!nodeLabel) {
+                console.warn(`Could not get label for node with id ${id}, skipping`);
+                continue;
+            }
+
+            // remove node from threadList
+            this.removeFromThreadMethodNodes(id, nodeLabel);
+
+            // check node existence
+            if (!this.insertedNodes.has(nodeLabel)) {
+                console.warn(`Method node ${nodeLabel} not found, skipping`);
+                continue;
+            }
+
+            // check the connection between id and label
+            if (!this.methodLabelToOriginalIds.has(nodeLabel) ||
+                !this.methodLabelToOriginalIds.get(nodeLabel).has(id)) {
+                console.warn(`ID ${id} not associated with method ${nodeLabel}, skipping`);
+                continue;
+            }
+
+            const methodNode = this.insertedNodes.get(nodeLabel);
+            if (!methodNode) continue;
+
+            // handle edges
+            this.handleNodeEdges(id, nodeLabel);
+
+            // Check if this is a library method
+            const isLibraryMethod = this.ALLOWED_LIB_METHODS.includes(nodeLabel) || !methodNode.parent().length;
+
+            // If this isn't a library method, get the class node
+            let classId = null;
+            if (!isLibraryMethod) {
+                const classNode = this.findClassNodeByNodeLabel(nodeLabel);
+                if (!classNode || classNode.length === 0) {
+                    console.warn(`Class node for method ${nodeLabel} not found, skipping`);
+                    continue;
+                }
+                classId = classNode.id();
+                affectedClassIds.add(classId);
+            }
+
+            // Update methodLabelToOriginalIds mapping
+            this.methodLabelToOriginalIds.get(nodeLabel).delete(id);
+
+            // Only delete node when no more original IDs are associated with it
+            const shouldRemoveNode = this.methodLabelToOriginalIds.get(nodeLabel).size === 0;
+
+            if (shouldRemoveNode) {
+                // Remove the node itself from cytoscape
+                this.cy.remove(methodNode);
+
+                // Update our tracking data structures
+                this.insertedNodes.delete(nodeLabel);
+                this.methodLabelToOriginalIds.delete(nodeLabel);
+
+                // If this isn't a library method, update class-to-methods mapping
+                if (!isLibraryMethod && classId && this.classToMethodsMap.has(classId)) {
+                    this.classToMethodsMap.get(classId).delete(nodeLabel);
+                }
+            }
+
+            // Clean up tracking mappings regardless of whether we deleted the node
+            this.originalIdToSourceEdges.delete(id);
+            this.originalIdToTargetEdges.delete(id);
+
+            removedLabels.push(nodeLabel);
+        }
+
+        // Final pass: update affected class nodes
+        affectedClassIds.forEach(classId => {
+            if (this.classToMethodsMap.has(classId)) {
+                const methodCount = this.classToMethodsMap.get(classId).size;
+                if (methodCount === 0) {
+                    // If no methods left, restore original dimensions
+                    this.restoreClassOriginalDimensions(classId);
+                } else {
+                    // Otherwise adjust class size based on remaining methods
+                    this.adjustClassSize(classId);
+                }
+            }
+        });
+
+        // Recreate edges after all nodes are removed
+        if (removedLabels.length > 0) {
+            if (this.useNumberedEdges) {
+                this.switchTraceMode(this.data.traceMode, true);
+            } else {
+                this.switchTraceMode(this.data.traceMode, false);
+            }
+        }
+
+        return removedLabels;
+    }
+
 }
