@@ -138,7 +138,6 @@ export const isMethodNameEntryPoint = (methodName) => {
  * @return {Object} Object containing isRecursiveEntryPoint status and updated visitedPaths
  */
 export const checkRecursiveEntryPoint = (className, methodName, childNodes, visitedPaths) => {
-  return false;
   const nodePath = `${className}.${methodName}`;
   let isRecursiveEntryPoint = false;
 
@@ -222,7 +221,7 @@ export const computeNodeStatus = (
     };
   } catch (error) {
    // if there is an error, return all false safe obj
-   console.error(error)
+  //  console.error(error)
     return {
       status: {
         fanOut: false,
@@ -232,5 +231,50 @@ export const computeNodeStatus = (
         isSummarised: false
       }
     };
+  }
+};
+
+
+// ====== recursive ========
+/**
+ * Utility for processing recursive statuses throughout the tree after it's built
+ */
+/**
+ * Utility for identifying recursive entry points in the tree
+ */
+
+/**
+ * Identifies and marks recursive entry points in the tree
+ * @param {Object} rootNode - The root node of the tree
+ * @param {Object} nodeMap - Map of all nodes by their IDs
+ */
+export const processRecursiveStatuses = (rootNode, nodeMap) => {
+  // First identify nodes that have direct recursion (call themselves directly)
+  markDirectRecursiveEntryPoints(rootNode);
+};
+
+/**
+ * Marks nodes that directly call themselves as recursive entry points
+ * @param {Object} node - Current node to process
+ */
+const markDirectRecursiveEntryPoints = (node) => {
+  if (!node) return;
+  
+  const nodeSignature = node.label;
+  
+  // Check if any of the children call the same method (direct recursion)
+  if (node.children && node.children.length > 0) {
+    // Check if this node calls itself directly (through one of its children)
+    const hasDirectRecursion = node.children.some(child => child.label === nodeSignature);
+    
+    if (hasDirectRecursion) {
+      // This is a recursive entry point - it directly calls itself
+      node.status.recursiveEntryPoint = true;
+    }
+    
+    // Process all children recursively
+    node.children.forEach(child => {
+      markDirectRecursiveEntryPoints(child);
+    });
   }
 };

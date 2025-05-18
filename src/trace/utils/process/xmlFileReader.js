@@ -4,7 +4,10 @@ export const xmlFileReader = async (file) => {
 
         // Read the file as text
         reader.onload = (event) => {
-            const xmlData = event.target.result; // Get the file content as text
+            // Preprocess XML to remove whitespace between tags
+            // This preserves whitespace inside tags but removes it between tags
+            const xmlData = event.target.result.replace(/>\s+</g, '><');
+            
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(xmlData, "application/xml");
 

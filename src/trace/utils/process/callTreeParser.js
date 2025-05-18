@@ -1,10 +1,9 @@
-import { getNodeAttributes, createNodeLabel } from './nodeDataProcessor.js';
+import { getNodeAttributes } from './nodeDataProcessor.js';
 import { calculateTreeMetrics } from './treeMetricsCalculator.js';
-import { computeNodeStatus } from './nodeStatusUtils.js';
-import { createNodeFilter, getFilteredChildNodes } from './nodeFilter.js';
+import { getFilteredChildNodes } from './nodeFilter.js';
 import { fetchNodeData } from './nodeDataProcessor.js';
-import { extractPackageName } from '../context/nodeDataFetcher.js';
 import { PACKAGE_COLORS } from '../colour/colourConstant.js';
+import { processRecursiveStatuses } from './nodeStatusUtils.js';
 
 // We have filtered native java libs, we preserve these below as they are entries of a thread
 export const ALLOWED_LIB_METHODS = [
@@ -58,7 +57,6 @@ export const callTreeParser = (xmlDoc, options = {}) => {
    * @param {Element} xmlNode - XML node to traverse
    * @param {string|null} parentId - Parent node ID, null for root
    * @param {number} depth - Current depth in tree
-   * @param {Map} visitedPaths - Map of visited paths for recursion detection
    * @param {boolean} parentIsFanout - Whether parent node has fanout
    * @return {Object} Node data
    */
@@ -74,15 +72,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     // }
 
     // Extract package name and assign a color
-    let packageName = '';
     let packageColor = '';
-
-    if (attributes.className) {
-      packageName = extractPackageName(attributes.className);
-      if (packageName) {
-        packageColor = assignPackageColor(packageName);
-      }
-    }
 
     // Create unique numeric ID for node (starting from 0)
     const nodeId = (nodeIdCounter++).toString();
@@ -95,8 +85,13 @@ export const callTreeParser = (xmlDoc, options = {}) => {
 
     // Fetch and process node data
     const processedData = fetchNodeData(attributes.cvizId, isRoot);
+
+    if (processedData.packageName) {
+      // console.log(processedData.packageName)
+      packageColor = assignPackageColor(processedData.packageName);
+    }
     // Create node label
-    const label = processedData.qualifiedName;
+    const label = processedData.qualifiedName + "()";
     const visibility = processedData.visibility || null;
     const treeStats = {
       directChildrenCount: treeMetrics.directChildrenCount,
@@ -105,8 +100,8 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       level: depth
     }
 
-    // Calculate node status
-    const status = {
+    // Create initial node status (without recursive evaluation)
+    const initialStatus = {
       fanOut: false,
       implementationEntryPoint: false,
       chainStartPoint: false,
@@ -119,8 +114,8 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       id: nodeId,
       parentId: parentId, // Include parent node ID
       label,
-      className: attributes.className,
-      methodName: attributes.methodName,
+      className: label.split(".")[0],
+      methodName: label.split(".")[1],
       // packageName,
       color: packageColor,
       originalColor: packageColor,
@@ -133,8 +128,8 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       selected: false,
       // Tree statistics
       treeStats: treeStats,
-      // Node status
-      status,
+      // Initial node status (without recursion detection yet)
+      status: initialStatus,
       // Initialize children array
       children: []
     };
@@ -149,7 +144,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
           childNode,
           nodeId, // Pass current node ID as parent ID for children
           depth + 1,
-          status.fanOut
+          initialStatus.fanOut
         );
 
         if (childData) {
@@ -163,7 +158,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
 
   // Get root node and start processing
   const rootNode = xmlDoc.getElementsByTagName('tree')[0];
-  console.log(rootNode)
+
   if (!rootNode) {
     console.error("Root 'tree' element not found in XML document");
     return {
@@ -186,6 +181,9 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       packageColorMap: new Map()
     };
   }
+
+  // Process recursion status after tree is built
+  processRecursiveStatuses(rootData, nodeMap);
 
   // Create structure with root children's labels as keys
   const labelBasedTree = {};

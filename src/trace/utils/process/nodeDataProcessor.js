@@ -11,6 +11,7 @@ import { nodeDataFetcher } from "../context/nodeDataFetcher.js";
 export const fetchNodeData = (cvizId, isRoot) => {
   // Fetch raw data from the nodeDataFetcher service
   const nodeData = nodeDataFetcher(cvizId);
+  // console.log(cvizId)
   return processNodeData(nodeData, isRoot);
 };
 
@@ -24,15 +25,15 @@ export const fetchNodeData = (cvizId, isRoot) => {
 export const processNodeData = (nodeData, isRoot) => {
   const properties = nodeData?.properties || {};
   // const layerColor = getLayerColor(properties.layer || '', isRoot);
-  const packageName = "";
   // const packageColor = getPackageColor(packageName, isRoot);
-
+  // console.log(properties.folder)
   return {
-    packageName: packageName || '',
+    packageName: properties.folder || '',
     sourceCode: properties.sourceText || '',
     visibility: properties.visibility || '',
     simpleName: properties.simpleName || '',
     qualifiedName: properties.qualifiedName || '',
+    file: properties.file || '',
     kind: properties.kind || '',
     docComment: properties.docComment || '',
     metaSrc: properties.metaSrc || '',
@@ -55,16 +56,18 @@ export const processNodeData = (nodeData, isRoot) => {
  * @return {Object} Node attributes
  */
 export const getNodeAttributes = (xmlNode) => {
-  
-  return {
-    methodName:  '',
-    className:  '',
-    value:  '0',
+  // console.log("!hihihi", xmlNode)
+  const output = {
+    methodName: '',
+    className: '',
+    value: "0",
     time: xmlNode.getAttribute('time') || '0',
     percent: '0',
     selfTime: xmlNode.getAttribute('selfTime') || '0',
     cvizId: xmlNode.getAttribute('cvizId') || ''
   };
+  // console.log("€€€€€", output)
+  return output;
 };
 
 /**
