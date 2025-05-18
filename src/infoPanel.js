@@ -28,66 +28,66 @@ const prepareRenderData = (node) => {
 	}
 
 	// For methods, always include the explanation sections even if empty
-	if (node.data('properties.kind') === "method") {
-		// Add briefSummary (always for methods)
-		renderData.properties.push({
-			key: "briefSummary",
-			value: (node.data('briefSummary') || "No explanation available")
-				.replace(/\./g, '.\u200B')
-				.replace(/([A-Z])/g, '\u200B$1')
-		});
+	// if (node.data('properties.kind') === "method") {
+	// 	// Add briefSummary (always for methods)
+	// 	renderData.properties.push({
+	// 		key: "briefSummary",
+	// 		value: (node.data('briefSummary') || "No explanation available")
+	// 			.replace(/\./g, '.\u200B')
+	// 			.replace(/([A-Z])/g, '\u200B$1')
+	// 	});
 
-		// Add detailedBehavior (always for methods)
-		renderData.properties.push({
-			key: "detailedBehavior",
-			value: (node.data('detailedBehavior') || "No explanation available")
-				.replace(/\./g, '.\u200B')
-				.replace(/([A-Z])/g, '\u200B$1')
-		});
+	// 	// Add detailedBehavior (always for methods)
+	// 	renderData.properties.push({
+	// 		key: "detailedBehavior",
+	// 		value: (node.data('detailedBehavior') || "No explanation available")
+	// 			.replace(/\./g, '.\u200B')
+	// 			.replace(/([A-Z])/g, '\u200B$1')
+	// 	});
 
-		// Add flowRepresentation (always for methods)
-		renderData.properties.push({
-			key: "flowRepresentation",
-			value: (node.data('flowRepresentation') || "No explanation available")
-				.replace(/\./g, '.\u200B')
-				.replace(/([A-Z])/g, '\u200B$1')
-		});
-	} else {
-		// For non-methods, only add if they exist
-		// Add briefSummary if available
-		if (node.data('briefSummary')) {
-			renderData.properties.push({
-				key: "briefSummary",
-				value: node.data('briefSummary')
-					.replace(/\./g, '.\u200B')
-					.replace(/([A-Z])/g, '\u200B$1')
-			});
-		}
+	// 	// Add flowRepresentation (always for methods)
+	// 	renderData.properties.push({
+	// 		key: "flowRepresentation",
+	// 		value: (node.data('flowRepresentation') || "No explanation available")
+	// 			.replace(/\./g, '.\u200B')
+	// 			.replace(/([A-Z])/g, '\u200B$1')
+	// 	});
+	// } else {
+	// 	// For non-methods, only add if they exist
+	// 	// Add briefSummary if available
+	// 	if (node.data('briefSummary')) {
+	// 		renderData.properties.push({
+	// 			key: "briefSummary",
+	// 			value: node.data('briefSummary')
+	// 				.replace(/\./g, '.\u200B')
+	// 				.replace(/([A-Z])/g, '\u200B$1')
+	// 		});
+	// 	}
 
-		// Add detailedBehavior if available
-		if (node.data('detailedBehavior')) {
-			const behaviourDiv = h('div');
-			behaviourDiv.appendChild(h('p', {}, [node.data('detailedBehavior')
-				.replace(/\./g, '.\u200B')
-				.replace(/([A-Z])/g, '\u200B$1')]));
-			renderData.properties.push({
-				key: "detailedBehavior",
-				value: behaviourDiv
-			});
-		}
+	// 	// Add detailedBehavior if available
+	// 	if (node.data('detailedBehavior')) {
+	// 		const behaviourDiv = h('div');
+	// 		behaviourDiv.appendChild(h('p', {}, [node.data('detailedBehavior')
+	// 			.replace(/\./g, '.\u200B')
+	// 			.replace(/([A-Z])/g, '\u200B$1')]));
+	// 		renderData.properties.push({
+	// 			key: "detailedBehavior",
+	// 			value: behaviourDiv
+	// 		});
+	// 	}
 
-		// Add flowRepresentation if available
-		if (node.data('flowRepresentation')) {
-			const flowDiv = h('div');
-			flowDiv.appendChild(h('p', {}, [node.data('flowRepresentation')
-				.replace(/\./g, '.\u200B')
-				.replace(/([A-Z])/g, '\u200B$1')]));
-			renderData.properties.push({
-				key: "flowRepresentation",
-				value: flowDiv
-			});
-		}
-	}
+	// 	// Add flowRepresentation if available
+	// 	if (node.data('flowRepresentation')) {
+	// 		const flowDiv = h('div');
+	// 		flowDiv.appendChild(h('p', {}, [node.data('flowRepresentation')
+	// 			.replace(/\./g, '.\u200B')
+	// 			.replace(/([A-Z])/g, '\u200B$1')]));
+	// 		renderData.properties.push({
+	// 			key: "flowRepresentation",
+	// 			value: flowDiv
+	// 		});
+	// 	}
+	// }
 
 	if (node.data('properties.description')) {
 		const d = h('div');
@@ -270,31 +270,31 @@ export const displayInfo = (sel) => (node) => {
 	element.appendChild(h('h2', {}, [renderData.title]));
 	
 	// Only add explain button and loading container if properties.kind is "method"
-	if (node.data('properties.kind') === "method") {
+	// if (node.data('properties.kind') === "method") {
 		// Add explain button
-		const explainButton = h('button', {
-			class: 'explain-button',
-			style: 'background-color: hsl(333, 70%, 50%); color: white; border: none; padding: 6px 12px; border-radius: 4px; margin-top: 8px; cursor: pointer; display: flex; align-items: center;'
-		}, [
-			h('span', { 
-				class: 'play-icon',
-				style: 'display: inline-block; width: 0; height: 0; border-style: solid; border-width: 6px 0 6px 10px; border-color: transparent transparent transparent white; margin-right: 6px;'
-			}, []),
-			'Explain Region'
-		]);
+		// const explainButton = h('button', {
+		// 	class: 'explain-button',
+		// 	style: 'background-color: hsl(333, 70%, 50%); color: white; border: none; padding: 6px 12px; border-radius: 4px; margin-top: 8px; cursor: pointer; display: flex; align-items: center;'
+		// }, [
+		// 	h('span', { 
+		// 		class: 'play-icon',
+		// 		style: 'display: inline-block; width: 0; height: 0; border-style: solid; border-width: 6px 0 6px 10px; border-color: transparent transparent transparent white; margin-right: 6px;'
+		// 	}, []),
+		// 	'Explain Region'
+		// ]);
 		
-		explainButton.addEventListener('click', () => handleExplain(node));
-		element.appendChild(explainButton);
+		// explainButton.addEventListener('click', () => handleExplain(node));
+		// element.appendChild(explainButton);
 		
 		// Add loading container
-		const loadingContainer = h('div', { id: 'classviz-loading-container', class: 'loading-container' }, [
-			h('div', { class: 'loading-text' }, ['Explaining subtree...']),
-			h('div', { class: 'loading-bar' }, [
-				h('div', { class: 'loading-progress' }, [])
-			])
-		]);
-		element.appendChild(loadingContainer);
-	}
+	// 	const loadingContainer = h('div', { id: 'classviz-loading-container', class: 'loading-container' }, [
+	// 		h('div', { class: 'loading-text' }, ['Explaining subtree...']),
+	// 		h('div', { class: 'loading-bar' }, [
+	// 			h('div', { class: 'loading-progress' }, [])
+	// 		])
+	// 	]);
+	// 	element.appendChild(loadingContainer);
+	// }
 	
 	element.appendChild(ul);
 	
