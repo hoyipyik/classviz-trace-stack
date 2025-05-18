@@ -1,4 +1,4 @@
-import { DEEPSEEK_API_KEY, DEEPSEEK_URL, OLLAMA_API_KEY, OLLAMA_URL } from "../../config.js";
+import { DEEPSEEK_API_KEY, DEEPSEEK_URL, OLLAMA_API_KEY, OLLAMA_URL } from "../../../config.js";
 
 class AiService {
     constructor(eventBus) {

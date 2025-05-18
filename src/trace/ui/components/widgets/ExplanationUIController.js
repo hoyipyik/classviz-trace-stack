@@ -1,4 +1,4 @@
-import { DEEPSEEK_API_KEY, DEEPSEEK_URL } from "../../config.js";
+import { DEEPSEEK_API_KEY, DEEPSEEK_URL } from "../../../../../config.js";
 
 /**
  * Controller for LLM Explanation UI
@@ -70,7 +70,7 @@ export class ExplanationUIController {
         // Check if the region exists in our available regions
         const regionData = this.explainer.regions.get(focusedRegionId);
         if (!regionData || !regionData.explained) {
-            console.warn(`Region ${focusedRegionId} not found or not explained yet`);
+            // console.warn(`Region ${focusedRegionId} not found or not explained yet`);
             return;
         }
         

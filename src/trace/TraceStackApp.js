@@ -1,20 +1,20 @@
 // TraceStackApp.js - Main application entry point
-import { DataStore } from './DataStore.js';
-import { Renderer } from './Renderer.js';
-import { Actions } from './Actions.js';
-import { Search } from './Search.js';
-import { Filter } from './Filter.js';
-import { EventBus } from './EventBus.js';
-import { MethodDetails } from './MethodDetails.js';
-import { FlameGraphRenderer } from './FlameGraphRenderer.js';
-import { ViewSwitcher } from './ViewSwitcher.js'; // Add new import
-import { ResizeManager } from './ResizeManager.js';
-import { SidebarController } from './SidebarController.js';
-import { ClassvizManager } from './ClassvizManager.js'; // Import ClassvizManager
-import { StepByStepPlayController } from './StepByStepPlayController.js';
-import { Explainer } from './Explainer.js';
-import { AiService } from './AiService.js';
-import { ExplanationUIController } from './ExplanationUIController.js';
+import { DataStore } from './data/DataStore.js';
+import { Renderer } from './ui/components/diagram/Renderer.js';
+import { Actions } from './ui/components/widgets/Actions.js';
+import { Search } from './service/Search.js';
+import { Filter } from './service/Filter.js';
+import { EventBus } from './events/EventBus.js';
+import { MethodDetails } from './ui/components/widgets/MethodDetails.js';
+import { FlameGraphRenderer } from './ui/components/diagram/FlameGraphRenderer.js';
+import { ViewSwitcher } from './ui/components/diagram/ViewSwitcher.js'; // Add new import
+import { ResizeManager } from './ui/components/widgets/ResizeManager.js';
+import { SidebarController } from './ui/components/widgets/SidebarController.js';
+import { ClassvizManager } from './service/ClassvizManager.js'; // Import ClassvizManager
+import { StepByStepPlayController } from './ui/components/widgets/StepByStepPlayController.js';
+import { Explainer } from './service/Explainer.js';
+import { AiService } from './service/AiService.js';
+import { ExplanationUIController } from './ui/components/widgets/ExplanationUIController.js';
 
 /**
  * Call Tree Visualization Application Main Entry

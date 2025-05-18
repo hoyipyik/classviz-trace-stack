@@ -1,4 +1,5 @@
-import { colorUtils } from "./colorChanger.js";
+import { colorUtils } from "../colour/colorChanger.js";
+
 
 /**
  * Maps method call data to flame graph compatible format

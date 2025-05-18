@@ -1,6 +1,6 @@
 // FlameGraphRenderer.js - Flame Graph visualization module
-import { colorUtils } from './colorChanger.js';
-import { mapMethodDataToLogicalFlameGraph, mapMethodDataToTemporalFlameGraph } from './dataTransformer.js';
+import { colorUtils } from "../../../utils/colour/colorChanger.js";
+import { mapMethodDataToLogicalFlameGraph, mapMethodDataToTemporalFlameGraph } from '../../../utils/process/dataTransformer.js';
 
 /**
  * Application Constants
