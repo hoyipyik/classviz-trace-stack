@@ -1393,20 +1393,6 @@ export class ClassvizManager {
         }
     }
 
-    // Remove node from thread method list
-    removeFromThreadMethodNodes(id, nodeLabel) {
-        const currentThreadName = this.data.currentThreadName;
-        if (!currentThreadName || !this.threadToMethodNodesInOrder.has(currentThreadName)) return;
-
-        const threadNodes = this.threadToMethodNodesInOrder.get(currentThreadName);
-        const nodeIndex = threadNodes.findIndex(node => node.originalId === id);
-
-        if (nodeIndex !== -1) {
-            // Remove node from thread's ordered list
-            threadNodes.splice(nodeIndex, 1);
-        }
-    }
-
     // ===== multi node management
     // Updated insertMultipleMethodByIds function
     insertMultipleMethodByIds(ids) {
@@ -1438,9 +1424,9 @@ export class ClassvizManager {
         }
 
         // After all nodes are created, recreate edges in a single operation
-        if (insertedLabels.length > 0) {
-            this.switchTraceMode(this.data.traceMode, this.useNumberedEdges);
-        }
+        // if (insertedLabels.length > 0) {
+        this.switchTraceMode(this.data.traceMode, this.useNumberedEdges);
+        // }
 
         return insertedLabels;
     }
@@ -1475,9 +1461,9 @@ export class ClassvizManager {
         }
 
         // After all nodes are removed, recreate edges in a single operation
-        if (removedLabels.length > 0) {
-            this.switchTraceMode(this.data.traceMode, this.useNumberedEdges);
-        }
+        // if (removedLabels.length > 0) {
+        this.switchTraceMode(this.data.traceMode, this.useNumberedEdges);
+        // }
 
         return removedLabels;
     }
