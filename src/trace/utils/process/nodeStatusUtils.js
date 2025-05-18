@@ -231,3 +231,132 @@ export const computeNodeStatus = (
     };
   }
 };
+
+// ====== recursive ========
+/**
+ * Utility for processing recursive statuses throughout the tree after it's built
+ */
+/**
+ * Utility for identifying recursive entry points in the tree
+ */
+
+/**
+ * Identifies and marks recursive entry points in the tree
+ * @param {Object} rootNode - The root node of the tree
+ * @param {Object} nodeMap - Map of all nodes by their IDs
+ */
+export const processRecursiveStatuses = (rootNode, nodeMap) => {
+  // First identify nodes that have direct recursion (call themselves directly)
+  markDirectRecursiveEntryPoints(rootNode);
+};
+
+/**
+ * Marks nodes that directly call themselves as recursive entry points
+ * @param {Object} node - Current node to process
+ */
+const markDirectRecursiveEntryPoints = (node) => {
+  if (!node) return;
+
+  const nodeSignature = node.label;
+
+  // Check if any of the children call the same method (direct recursion)
+  if (node.children && node.children.length > 0) {
+    // Check if this node calls itself directly (through one of its children)
+    const hasDirectRecursion = node.children.some(child => child.label === nodeSignature);
+
+    if (hasDirectRecursion) {
+      // This is a recursive entry point - it directly calls itself
+      node.status.recursiveEntryPoint = true;
+    }
+
+    // Process all children recursively
+    node.children.forEach(child => {
+      markDirectRecursiveEntryPoints(child);
+    });
+  }
+};
+
+//========= compress loop ===========
+/**
+ * Generates a unique signature for a subtree based on its structure
+ * @param {Object} node - The node to generate a signature for
+ * @return {string} A string signature representing the subtree structure
+ */
+const generateSubtreeSignature = (node) => {
+  if (!node) return '';
+
+  let signature = node.label; // Start with the current node's label
+
+  // Sort children to ensure consistent ordering
+  if (node.children && node.children.length > 0) {
+    const childSignatures = node.children.map(child => generateSubtreeSignature(child));
+    childSignatures.sort(); // Sort for consistent ordering regardless of original order
+    signature += '(' + childSignatures.join(',') + ')';
+  }
+
+  return signature;
+};
+
+/**
+ * Simple deduplication of children nodes for each node
+ * @param {Object} root - Root node to process
+ */
+export const deduplicateTree = (root) => {
+
+  if (!root || !root.children) {
+    return;
+  }
+
+  if (root.label === "class35791.2702()") {
+    console.log(root)
+  }
+
+  // Use Map to store unique child nodes, with signature as key
+  const uniqueChildrenMap = new Map();
+
+  // First pass: find all unique child nodes
+  for (const child of root.children) {
+    // Use method name as simple signature
+    const signature = child.label;
+
+    if (!uniqueChildrenMap.has(signature)) {
+      // First time seeing this signature, record it
+      uniqueChildrenMap.set(signature, {
+        node: child,
+        count: 1,
+        totalTime: parseFloat(child.time) || 0
+      });
+    } else {
+      // Already have a node with same signature, increment count and time
+      const info = uniqueChildrenMap.get(signature);
+      info.count++;
+      info.totalTime += parseFloat(child.time) || 0;
+    }
+  }
+
+  // Create new children array containing only unique child nodes
+  const newChildren = [];
+
+  // Iterate through unique child nodes Map, update node data
+  uniqueChildrenMap.forEach((info, signature) => {
+    const node = info.node;
+
+    // If this method appears multiple times, update label and status
+    if (info.count > 1) {
+      node.label = `${signature} (×${info.count})`;
+      node.time = info.totalTime.toString();
+      node.status.isMerged = true;
+      node.occurrenceCount = info.count;
+    }
+
+    newChildren.push(node);
+  });
+
+  // Replace original children list with new unique children list
+  root.children = newChildren;
+
+  // Recursively process children of each child node
+  for (const child of root.children) {
+    deduplicateTree(child);
+  }
+};
