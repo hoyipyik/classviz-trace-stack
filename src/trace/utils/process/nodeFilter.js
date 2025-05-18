@@ -83,8 +83,6 @@ export const createNodeFilter = (config) => {
  * @param {boolean} isRoot - Whether this is the root node
  * @return {Array} Filtered array of child nodes
  */
-export const getFilteredChildNodes = (xmlNode, shouldIncludeNode, isRoot = false) => {
-  return Array.from(xmlNode.childNodes).filter(
-    node => shouldIncludeNode(node, isRoot)
-  );
+export const getFilteredChildNodes = (xmlNode, isRoot = false) => {
+  return Array.from(xmlNode.childNodes);
 };

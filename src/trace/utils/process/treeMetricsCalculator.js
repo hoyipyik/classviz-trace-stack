@@ -1,19 +1,15 @@
 /**
  * Calculate tree metrics for a node and its subtree
  * @param {Element} xmlNode - XML node to calculate metrics for
- * @param {Function} shouldIncludeNode - Function to determine if a node should be included
  * @param {Set} visitedNodes - Set of visited node signatures to detect recursion
  * @return {Object} Tree metrics including direct children count, total descendants,
  *                 subtree depth, and whether it's a recursive call
  */
-export const calculateTreeMetrics = (xmlNode, shouldIncludeNode, visitedNodes = new Set()) => {
-    const childNodes = Array.from(xmlNode.childNodes).filter(
-      node => shouldIncludeNode(node)
-    );
+export const calculateTreeMetrics = (xmlNode, cvizId, visitedNodes = new Set()) => {
+    const childNodes = Array.from(xmlNode.childNodes);
   
     // Check for recursion by examining class+method signature
-    const nodeSignature = xmlNode.getAttribute ?
-      `${xmlNode.getAttribute('class') || ''}.${xmlNode.getAttribute('methodName') || ''}` : '';
+    const nodeSignature = cvizId;
   
     const isRecursive = nodeSignature && visitedNodes.has(nodeSignature);
   
@@ -36,7 +32,7 @@ export const calculateTreeMetrics = (xmlNode, shouldIncludeNode, visitedNodes = 
     let maxDepth = 0;
   
     for (const child of childNodes) {
-      const childMetrics = calculateTreeMetrics(child, shouldIncludeNode, new Set(visitedNodes));
+      const childMetrics = calculateTreeMetrics(child, cvizId, new Set(visitedNodes));
       totalDescendants += 1 + childMetrics.totalDescendants;
       maxDepth = Math.max(maxDepth, childMetrics.subtreeDepth);
     }

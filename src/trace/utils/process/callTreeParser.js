@@ -14,30 +14,29 @@ export const ALLOWED_LIB_METHODS = [
 
 export const callTreeParser = (xmlDoc, options = {}) => {
   // Default options with reasonable defaults
-  const config = {
-    methodExclusions: ['<init>', '<clinit>'],
-    allowExcludedMethodsAtRoot: false,
-    filterNativeLibs: true,
-    includedPackages: ['nl.tudelft.jpacman'],
-    allowedLibMethods: ALLOWED_LIB_METHODS,
-    skipAllFilters: false,
-    ...options
-  };
+  // const config = {
+  //   methodExclusions: ['<init>', '<clinit>'],
+  //   allowExcludedMethodsAtRoot: false,
+  //   filterNativeLibs: true,
+  //   includedPackages: ['nl.tudelft.jpacman'],
+  //   allowedLibMethods: ALLOWED_LIB_METHODS,
+  //   skipAllFilters: false,
+  //   ...options
+  // };
+
+  console.log(xmlDoc)
 
   // Node mapping for direct access
   const nodeMap = {};
-  
+
   // Map to store package names and their assigned colors
   const packageColorMap = new Map();
-  
+
   // Package color assignment counter
   let colorIndex = 0;
 
   // Node ID counter (starts from 0)
   let nodeIdCounter = 0;
-
-  // Create node filter
-  const shouldIncludeNode = createNodeFilter(config);
 
   /**
    * Assign a color to a package
@@ -63,14 +62,16 @@ export const callTreeParser = (xmlDoc, options = {}) => {
    * @param {boolean} parentIsFanout - Whether parent node has fanout
    * @return {Object} Node data
    */
-  const processNodeDFS = (xmlNode, parentId = null, depth = 0, visitedPaths = new Map(), parentIsFanout = false) => {
+  const processNodeDFS = (xmlNode, parentId = null, depth = 0, parentIsFanout = false) => {
     const isRoot = !parentId;
     const attributes = getNodeAttributes(xmlNode);
+    const cvizId = attributes.cvizId;
+    const sourceCode = attributes.sourceCode;
 
     // Skip excluded methods (unless at root and allowed)
-    if (config.methodExclusions.includes(attributes.methodName) && !(isRoot && config.allowExcludedMethodsAtRoot)) {
-      return { nodeData: null };
-    }
+    // if (config.methodExclusions.includes(attributes.methodName) && !(isRoot && config.allowExcludedMethodsAtRoot)) {
+    //   return { nodeData: null };
+    // }
 
     // Extract package name and assign a color
     let packageName = '';
@@ -87,17 +88,15 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     const nodeId = (nodeIdCounter++).toString();
 
     // Filter child nodes based on configuration
-    const childNodes = getFilteredChildNodes(xmlNode, shouldIncludeNode, isRoot);
-
-    // Create node label
-    const label = createNodeLabel(isRoot, attributes.className, attributes.methodName);
+    const childNodes = getFilteredChildNodes(xmlNode, isRoot);
 
     // Calculate tree metrics
-    const treeMetrics = calculateTreeMetrics(xmlNode, shouldIncludeNode);
+    const treeMetrics = calculateTreeMetrics(xmlNode, cvizId);
 
     // Fetch and process node data
-    const processedData = fetchNodeData(attributes.className, attributes.methodName, isRoot);
-    const sourceCode = processedData.sourceCode || null;
+    const processedData = fetchNodeData(attributes.cvizId, isRoot);
+    // Create node label
+    const label = processedData.qualifiedName;
     const visibility = processedData.visibility || null;
     const treeStats = {
       directChildrenCount: treeMetrics.directChildrenCount,
@@ -107,19 +106,14 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     }
 
     // Calculate node status
-    const { status, visitedPaths: updatedVisitedPaths } = computeNodeStatus(
-      isRoot,
-      visibility,
-      sourceCode,
-      childNodes,
-      attributes.className,
-      attributes.methodName,
-      visitedPaths,
-      parentIsFanout,
-      nodeId,
-      treeStats
-    );
-    
+    const status = {
+      fanOut: false,
+      implementationEntryPoint: false,
+      chainStartPoint: false,
+      recursiveEntryPoint: false,
+      isSummarised: false
+    }
+
     // Create node data with all information
     const nodeData = {
       id: nodeId,
@@ -155,7 +149,6 @@ export const callTreeParser = (xmlDoc, options = {}) => {
           childNode,
           nodeId, // Pass current node ID as parent ID for children
           depth + 1,
-          new Map(updatedVisitedPaths),
           status.fanOut
         );
 
@@ -170,6 +163,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
 
   // Get root node and start processing
   const rootNode = xmlDoc.getElementsByTagName('tree')[0];
+  console.log(rootNode)
   if (!rootNode) {
     console.error("Root 'tree' element not found in XML document");
     return {
@@ -181,7 +175,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
   }
 
   // Start processing from root node
-  const { nodeData: rootData } = processNodeDFS(rootNode, null, 0, new Map(), false);
+  const { nodeData: rootData } = processNodeDFS(rootNode, null, 0, false);
 
   // Return empty result if processing failed
   if (!rootData) {

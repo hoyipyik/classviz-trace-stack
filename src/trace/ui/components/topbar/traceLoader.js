@@ -20,9 +20,10 @@ export const traceLoader = () => {
             const file = event.target.files[0];
             if (file) {
                 const parsedXml = await xmlFileReader(file);
+                
                 console.log("context", window.context);
-                const { cascadeTree, nodeMap, nodes: parsedNodes, rootNode,
-                    edges: parsedEdges, packageColorMap, idRangeByThreadMap } = callTreeParser(parsedXml);
+                const { cascadeTree, nodeMap,  rootNode,
+                   packageColorMap, idRangeByThreadMap } = callTreeParser(parsedXml);
                 // const graph = { nodes: parsedNodes, edges: parsedEdges, style };
                 // renderCallTree(graph);
                 loadFlameGraphPlugin(cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap);

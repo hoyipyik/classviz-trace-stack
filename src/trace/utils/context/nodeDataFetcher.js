@@ -1,9 +1,9 @@
-export const nodeDataFetcher = (className, methodName) => {
+export const nodeDataFetcher = (cvizId) => {
   // Check if required parameters are provided
-  if (!className || !methodName) {
+  
+  if (!cvizId) {
     return null;
   }
-
   // Safely access window.context, return null if it doesn't exist
   const context = window.context || {};
   const { nodes, edges } = context;
@@ -13,22 +13,8 @@ export const nodeDataFetcher = (className, methodName) => {
     return null;
   }
 
-  // Build the query factor
-  let queryFactor = `${className}.${methodName}(`;
-  if (methodName === "<init>") {
-    queryFactor = `${className}(`;
-  }
-
-  // Find the node key with error handling
-  const nodeKey = findSpecificKey(nodes, queryFactor);
-
-  // If no key is found, return null
-  if (!nodeKey) {
-    return null;
-  }
-
   // Return the node data, or null if it doesn't exist
-  return nodes[nodeKey] || null;
+  return nodes[cvizId] || null;
 };
 
 // Modified findSpecificKey function to handle null/undefined input

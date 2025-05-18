@@ -12,6 +12,7 @@
  * @return {boolean} Whether the node has fanout
  */
 export const hasFanout = (childNodes, className, methodName, config = {}) => {
+  return false;
   // Default configuration parameters
   const {
     fanoutThreshold = 4,          // Minimum child nodes for standard fanout
@@ -68,7 +69,9 @@ export const hasFanout = (childNodes, className, methodName, config = {}) => {
 * @param {Object} nodeInfo - Additional node information (optional)
 * @return {boolean} Whether the node is an implementation entry point
 */
+
 export const isImplementationEntryPoint = (isRoot, childNodes, methodName, parentIsFanout, visibility, treeStats) => {
+  return false;
   // Root nodes or nodes without children cannot be implementation entry points
   if (isRoot || !childNodes || childNodes.length === 0) {
     return false;
@@ -106,6 +109,7 @@ export const isImplementationEntryPoint = (isRoot, childNodes, methodName, paren
  * @return {boolean} Whether the method name suggests an entry point
  */
 export const isMethodNameEntryPoint = (methodName) => {
+  return false;
   if (!methodName) {
     return false;
   }
@@ -134,6 +138,7 @@ export const isMethodNameEntryPoint = (methodName) => {
  * @return {Object} Object containing isRecursiveEntryPoint status and updated visitedPaths
  */
 export const checkRecursiveEntryPoint = (className, methodName, childNodes, visitedPaths) => {
+  return false;
   const nodePath = `${className}.${methodName}`;
   let isRecursiveEntryPoint = false;
 
@@ -213,8 +218,7 @@ export const computeNodeStatus = (
         chainStartPoint,
         recursiveEntryPoint: isRecursiveEntryPoint,
         isSummarised: false // This would be set elsewhere based on user interaction
-      },
-      visitedPaths: updatedVisitedPaths
+      }
     };
   } catch (error) {
    // if there is an error, return all false safe obj
@@ -226,8 +230,7 @@ export const computeNodeStatus = (
         chainStartPoint: false,
         recursiveEntryPoint: false,
         isSummarised: false
-      },
-      visitedPaths: new Map() 
+      }
     };
   }
 };
