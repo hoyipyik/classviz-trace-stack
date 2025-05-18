@@ -235,50 +235,6 @@ export const computeNodeStatus = (
 };
 
 
-// ====== recursive ========
-/**
- * Utility for processing recursive statuses throughout the tree after it's built
- */
-/**
- * Utility for identifying recursive entry points in the tree
- */
-
-/**
- * Identifies and marks recursive entry points in the tree
- * @param {Object} rootNode - The root node of the tree
- * @param {Object} nodeMap - Map of all nodes by their IDs
- */
-export const processRecursiveStatuses = (rootNode, nodeMap) => {
-  // First identify nodes that have direct recursion (call themselves directly)
-  markDirectRecursiveEntryPoints(rootNode);
-};
-
-/**
- * Marks nodes that directly call themselves as recursive entry points
- * @param {Object} node - Current node to process
- */
-const markDirectRecursiveEntryPoints = (node) => {
-  if (!node) return;
-
-  const nodeSignature = node.label;
-
-  // Check if any of the children call the same method (direct recursion)
-  if (node.children && node.children.length > 0) {
-    // Check if this node calls itself directly (through one of its children)
-    const hasDirectRecursion = node.children.some(child => child.label === nodeSignature);
-
-    if (hasDirectRecursion) {
-      // This is a recursive entry point - it directly calls itself
-      node.status.recursiveEntryPoint = true;
-    }
-
-    // Process all children recursively
-    node.children.forEach(child => {
-      markDirectRecursiveEntryPoints(child);
-    });
-  }
-};
-
 //========= compress loop ===========
 /**
  * Generates a unique signature for a subtree based on its structure
@@ -300,10 +256,9 @@ const generateSubtreeSignature = (node) => {
   return signature;
 };
 
-
 /**
- * 簡單地對每個節點的子節點進行去重
- * @param {Object} root - 要處理的根節點
+ * Simple deduplication of children nodes for each node
+ * @param {Object} root - Root node to process
  */
 export const deduplicateTree = (root) => {
 
@@ -315,37 +270,37 @@ export const deduplicateTree = (root) => {
     console.log(root)
   }
 
-  // 使用Map來存儲唯一的子節點，以signature為key
+  // Use Map to store unique child nodes, with signature as key
   const uniqueChildrenMap = new Map();
 
-  // 第一次遍歷：找出所有唯一子節點
+  // First pass: find all unique child nodes
   for (const child of root.children) {
-    // 使用方法名稱作為簡單的簽名
+    // Use method name as simple signature
     const signature = child.label;
 
     if (!uniqueChildrenMap.has(signature)) {
-      // 首次遇到這個簽名，記錄下來
+      // First time seeing this signature, record it
       uniqueChildrenMap.set(signature, {
         node: child,
         count: 1,
         totalTime: parseFloat(child.time) || 0
       });
     } else {
-      // 已經有相同簽名的節點，增加計數和時間
+      // Already have a node with same signature, increment count and time
       const info = uniqueChildrenMap.get(signature);
       info.count++;
       info.totalTime += parseFloat(child.time) || 0;
     }
   }
 
-  // 創建新的子節點數組，只包含唯一的子節點
+  // Create new children array containing only unique child nodes
   const newChildren = [];
 
-  // 遍歷唯一子節點Map，更新節點數據
+  // Iterate through unique child nodes Map, update node data
   uniqueChildrenMap.forEach((info, signature) => {
     const node = info.node;
 
-    // 如果這個方法出現了多次，更新標籤和狀態
+    // If this method appears multiple times, update label and status
     if (info.count > 1) {
       node.label = `${signature} (×${info.count})`;
       node.time = info.totalTime.toString();
@@ -356,10 +311,10 @@ export const deduplicateTree = (root) => {
     newChildren.push(node);
   });
 
-  // 用新的唯一子節點列表替換原來的子節點列表
+  // Replace original children list with new unique children list
   root.children = newChildren;
 
-  // 遞歸處理每個子節點的子節點
+  // Recursively process children of each child node
   for (const child of root.children) {
     deduplicateTree(child);
   }
