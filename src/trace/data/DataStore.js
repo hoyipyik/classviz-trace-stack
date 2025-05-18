@@ -30,7 +30,7 @@ class DataStore {
     this.threadToNodesMap = new Map(); // Mapping from thread name to array of node IDs
 
     // Package name mapping related
-    this.packageInfo = new Map(); // Mapping from package name to {totalCount:0, color:""}
+    this.packageInfo = new Map(); // Mapping from package name to {totalCount:0, color:""export { DataStore };
     this.packageIDs = new Map(); // Mapping from package name to all node ID arrays
     this.packageSelectedIDs = new Map(); // Mapping from package name to selected node ID arrays
     
@@ -68,36 +68,36 @@ class DataStore {
   }
 
   //===============================================
-  // 全局线程节点映射的初始化和访问方法
+  // Initialization and access methods for global thread nodes mapping
   //===============================================
 
-  // 初始化所有线程的节点映射
+  // Initialize all thread node mappings
   initAllThreadsNodes() {
-    // 遍历所有线程
+    // Iterate through all threads
     Object.entries(this.threadsData).forEach(([threadName, threadData]) => {
-      // 为每个线程创建节点映射
+      // Create node mapping for each thread
       const threadNodes = new Map();
 
-      // 设置到全局映射
+      // Set to global mapping
       this.allThreadsNodes.set(threadName, threadNodes);
 
-      // 构建节点映射
+      // Build node mapping
       this.buildThreadNodesMap(threadName, threadData);
     });
   }
 
-  // 为特定线程构建节点映射
+  // Build node mapping for a specific thread
   buildThreadNodesMap(threadName, threadData) {
     const threadNodes = this.allThreadsNodes.get(threadName);
 
-    // 递归构建节点映射
+    // Recursively build node mapping
     const buildNodeMap = (node) => {
       if (!node || !node.id) return;
 
-      // 只存储节点ID到节点数据的映射
+      // Only store node ID to node data mapping
       threadNodes.set(node.id, { data: node });
 
-      // 递归处理子节点
+      // Recursively process child nodes
       if (node.children && node.children.length > 0) {
         node.children.forEach(child => {
           buildNodeMap(child);
@@ -105,57 +105,57 @@ class DataStore {
       }
     };
 
-    // 从根节点开始构建映射
+    // Start building mapping from the root node
     buildNodeMap(threadData);
   }
 
   //===============================================
-  // 初始化所有线程的数据
+  // Initialize data for all threads
   //===============================================
 
-  // 初始化所有线程的所有数据
+  // Initialize all data for all threads
   initAllThreadsData() {
     // Initialize thread-to-package mappings
     Object.keys(this.threadsData).forEach(threadName => {
       this.threadToPackageMap.set(threadName, new Set());
     });
 
-    // 遍历所有线程
+    // Iterate through all threads
     Object.entries(this.threadsData).forEach(([threadName, threadData]) => {
-      // 为每个线程创建节点ID数组
+      // Create node ID array for each thread
       this.threadToNodesMap.set(threadName, []);
 
-      // 初始化该线程的所有数据
+      // Initialize all data for this thread
       this.initThreadData(threadName, threadData);
     });
   }
 
-  // 初始化特定线程的数据
+  // Initialize data for a specific thread
   initThreadData(threadName, node, parentId = null) {
     if (!node || !node.id) return;
 
-    // 存储节点数据
+    // Store node data
     this.nodes.set(node.id, { data: node });
 
-    // 存储节点ID到线程的映射
+    // Store node ID to thread mapping
     this.originalIdToThreadMap.set(node.id, threadName);
 
-    // 存储线程到节点ID的映射
+    // Store thread to node ID mapping
     this.threadToNodesMap.get(threadName).push(node.id);
 
-    // 设置初始状态
+    // Set initial state
     this.state.set(node.id, {
       selected: node.selected || false,
       expanded: !node.collapsed,
       highlight: false
     });
 
-    // 处理包名映射
+    // Process package name mapping
     if (node.packageName) {
       // Add package name to thread's package set
       this.threadToPackageMap.get(threadName).add(node.packageName);
       
-      // 初始化包信息
+      // Initialize package information
       if (!this.packageInfo.has(node.packageName)) {
         this.packageInfo.set(node.packageName, {
           totalCount: 0,
@@ -165,24 +165,24 @@ class DataStore {
         this.packageSelectedIDs.set(node.packageName, []);
       }
 
-      // 更新包信息
+      // Update package information
       const info = this.packageInfo.get(node.packageName);
       info.totalCount++;
       if (!info.color && node.color) {
         info.color = node.color;
       }
 
-      // 添加节点ID到包ID列表
+      // Add node ID to package ID list
       this.packageIDs.get(node.packageName).push(node.id);
 
-      // 如果节点已经被选中，添加到选中ID列表
+      // If node is already selected, add to selected ID list
       if (node.selected) {
         this.packageSelectedIDs.get(node.packageName).push(node.id);
         this.selected.add(node.id);
       }
     }
 
-    // 设置父子关系
+    // Set parent-child relationships
     if (parentId) {
       this.parents.set(node.id, parentId);
 
@@ -192,7 +192,7 @@ class DataStore {
       this.children.get(parentId).push(node.id);
     }
 
-    // 递归处理子节点
+    // Recursively process child nodes
     if (node.children && node.children.length > 0) {
       node.children.forEach(child => {
         this.initThreadData(threadName, child, node.id);
@@ -200,101 +200,101 @@ class DataStore {
     }
   }
   /**
-    * 压缩递归树节点
-    * @param {string} nodeId - 递归入口点节点ID
-    * @param {boolean} compress - true表示压缩，false表示恢复
-    * @returns {boolean} - 操作是否成功
+    * Compress or decompress recursive tree nodes
+    * @param {string} nodeId - Node ID of the recursive entry point
+    * @param {boolean} compress - true for compression, false for restoration
+    * @returns {boolean} - Whether the operation was successful
     */
   compressRecursiveTree(nodeId, compress = true) {
-    // 获取节点数据
+    // Get node data
     const nodeInfo = this.nodes.get(nodeId);
     if (!nodeInfo || !nodeInfo.data) return false;
 
     const nodeData = nodeInfo.data;
 
-    // 如果节点不是递归入口点，则返回
+    // If node is not a recursive entry point, return
     if (!nodeData.status || !nodeData.status.recursiveEntryPoint) {
       return false;
     }
 
-    // 获取当前节点的子节点
+    // Get the current node's children
     const children = nodeData.children || [];
 
-    // 获取递归节点的标签（方法名）
+    // Get recursive node's label (method name)
     const recursiveLabel = nodeData.label;
 
-    // 如果是压缩操作
+    // If it's a compression operation
     if (compress) {
-      // 已经压缩过，无需再次操作
+      // Already compressed, no need to operate again
       if (nodeData._originalChildren) {
         return false;
       }
 
-      // 深拷贝原始子节点结构以便还原
+      // Deep copy the original children structure for future restoration
       nodeData._originalChildren = JSON.parse(JSON.stringify(children));
 
-      // 用于存储合并后的直接子节点
-      // 键是子树的调用路径签名，值是子树节点
+      // For storing merged direct children
+      // Key is the child tree's call path signature, value is the child tree node
       const mergedDirectChildren = new Map();
 
-      // 用于存储出口节点（没有递归调用的叶节点）
+      // For storing exit nodes (leaf nodes without recursive calls)
       const exitNodes = [];
 
-      // 存储需要取消选择的节点ID列表
+      // For storing node IDs that need to be deselected
       const nodesToDeselect = new Set();
 
-      // 收集所有非递归调用的直接子节点和出口节点，同时记录所有访问过的节点
+      // Collect all non-recursive direct children and exit nodes, also record all visited nodes
       const collectNodes = (nodes, isDirectChild = true) => {
         for (const child of nodes) {
-          // 记录当前节点ID，用于后续取消选择
+          // Record current node ID for later deselection
           nodesToDeselect.add(child.id);
 
-          // 检查节点是否是递归出口节点
+          // Check if the node is a recursive exit node
           const isExitNode = (node) => {
-            // 必须是递归标签
+            // Must be a recursive label
             if (node.label !== recursiveLabel) {
               return false;
             }
 
-            // 如果没有子节点，则是出口节点
+            // If no children, it's an exit node
             if (!node.children || node.children.length === 0) {
               return true;
             }
 
-            // 检查子节点中是否有递归调用
+            // Check if there are recursive calls in the children
             for (const childNode of node.children || []) {
               if (childNode.label === recursiveLabel) {
-                return false; // 有递归调用，不是出口节点
+                return false; // Has recursive calls, not an exit node
               }
             }
 
-            return true; // 是递归标签，且子节点中不包含递归调用，是出口节点
+            return true; // Is a recursive label, and children don't contain recursive calls, so it's an exit node
           };
 
           if (isExitNode(child)) {
-            // 是出口节点，整个保留下来
-            // console.log("找到出口节点:", child.label);
+            // It's an exit node, keep it entirely
+            // console.log("Found exit node:", child.label);
             const exitNode = JSON.parse(JSON.stringify(child));
             exitNode.isExit = true;
-            // 设置正确的parentId
+            // Set correct parentId
             exitNode.parentId = nodeId;
             exitNodes.push(exitNode);
           } else if (child.label === recursiveLabel) {
-            // 这是递归调用但不是出口节点，继续向下找
+            // This is a recursive call but not an exit node, continue looking downward
             collectNodes(child.children || [], false);
           } else {
-            // 非递归标签节点，生成路径签名并合并
+            // Non-recursive label node, generate path signature and merge
             const pathSignature = generatePathSignature(child);
 
             if (mergedDirectChildren.has(pathSignature)) {
-              // 已存在相同路径签名的节点，合并
+              // Node with the same path signature already exists, merge
               const existingNode = mergedDirectChildren.get(pathSignature);
               const currentNode = JSON.parse(JSON.stringify(child));
 
-              // 设置正确的parentId
+              // Set correct parentId
               currentNode.parentId = nodeId;
 
-              // 使用ID较小的节点作为保留节点
+              // Use the node with the smaller ID as the preserved node
               let targetNode, sourceNode;
               if (parseInt(existingNode.id) < parseInt(currentNode.id)) {
                 targetNode = existingNode;
@@ -302,31 +302,31 @@ class DataStore {
               } else {
                 targetNode = currentNode;
                 sourceNode = existingNode;
-                // 更新Map中的节点
+                // Update the node in the Map
                 mergedDirectChildren.set(pathSignature, targetNode);
               }
 
-              // 合并频率
+              // Merge frequency
               targetNode.freq = (targetNode.freq || 1) + (sourceNode.freq || 1);
             } else {
-              // 第一次遇到这个路径签名
+              // First time encountering this path signature
               const clonedChild = JSON.parse(JSON.stringify(child));
-              // 设置正确的parentId
+              // Set correct parentId
               clonedChild.parentId = nodeId;
               clonedChild.freq = clonedChild.freq || 1;
               mergedDirectChildren.set(pathSignature, clonedChild);
             }
           }
 
-          // 递归处理子节点，收集更多需要取消选择的节点
+          // Recursively process children, collect more nodes that need to be deselected
           if (child.children && child.children.length > 0) {
-            // 递归遍历所有子节点，记录节点ID
+            // Recursively traverse all child nodes, record node IDs
             collectChildrenIds(child.children, nodesToDeselect);
           }
         }
       };
 
-      // 辅助函数：递归收集所有子节点ID
+      // Helper function: recursively collect all child node IDs
       const collectChildrenIds = (nodes, idSet) => {
         for (const node of nodes) {
           idSet.add(node.id);
@@ -336,27 +336,27 @@ class DataStore {
         }
       };
 
-      // 生成节点的路径签名
+      // Generate path signature for a node
       const generatePathSignature = (node) => {
-        // 基本签名是节点的标签
+        // Basic signature is the node's label
         let signature = node.label;
 
-        // 如果有子节点，递归生成子节点的签名
+        // If there are child nodes, recursively generate signatures for child nodes
         if (node.children && node.children.length > 0) {
-          // 收集所有子节点的签名
+          // Collect signatures for all child nodes
           const childSignatures = [];
           for (const child of node.children) {
-            // 跳过递归调用
+            // Skip recursive calls
             if (child.label === recursiveLabel) {
               continue;
             }
             childSignatures.push(generatePathSignature(child));
           }
 
-          // 对子节点签名排序，确保相同结构的子树生成相同的签名
+          // Sort child node signatures to ensure that trees with the same structure generate the same signature
           childSignatures.sort();
 
-          // 将子节点签名加入到当前节点的签名中
+          // Add child node signatures to the current node's signature
           if (childSignatures.length > 0) {
             signature += "[" + childSignatures.join(",") + "]";
           }
@@ -365,25 +365,25 @@ class DataStore {
         return signature;
       };
 
-      // 从当前节点的子节点开始收集
+      // Start collecting from the current node's children
       collectNodes(children);
 
-      // 转换合并后的直接子节点为数组
+      // Convert merged direct children to an array
       const mergedChildrenArray = Array.from(mergedDirectChildren.values());
 
-      // 合并直接子节点和出口节点
+      // Merge direct children and exit nodes
       const newChildren = [...mergedChildrenArray, ...exitNodes];
 
-      // 更新节点的子节点为压缩后的结果
+      // Update the node's children to the compressed result
       nodeData.children = newChildren.sort((a, b) => parseInt(a.id) - parseInt(b.id));;
 
-      // 更新节点的压缩状态
+      // Update node's compression state
       nodeData.compressed = true;
 
       // console.log("finish compression")
       // this.printNodeData(nodeId);
 
-      // 重建所有数据关系
+      // Rebuild all data relationships
       this.rebuildDataStructures();
 
       // console.log("finish decompression")
@@ -391,7 +391,7 @@ class DataStore {
       // this.printNodeData(nodeId);
 
 
-      // 触发更新事件
+      // Trigger update event
       if (this.eventBus) {
         this.eventBus.publish('nodeStructureChanged', {
           nodeId,
@@ -401,30 +401,30 @@ class DataStore {
 
       return true;
     } else {
-      // 恢复操作
+      // Restoration operation
 
-      // 如果没有保存的原始结构，无法恢复
+      // If no saved original structure, cannot restore
       if (!nodeData._originalChildren) {
         return false;
       }
 
-      // 恢复原始子节点结构
+      // Restore original children structure
       nodeData.children = JSON.parse(JSON.stringify(nodeData._originalChildren));
 
-      // 清除保存的原始结构
+      // Clear saved original structure
       delete nodeData._originalChildren;
 
-      // 更新节点的压缩状态
+      // Update node's compression state
       nodeData.compressed = false;
 
-      // 重建所有数据关系
+      // Rebuild all data relationships
       this.rebuildDataStructures();
 
       // console.log("finish decompression")
 
       // this.printNodeData(nodeId);
 
-      // 触发更新事件
+      // Trigger update event
       if (this.eventBus) {
         this.eventBus.publish('nodeStructureChanged', {
           nodeId,
@@ -498,12 +498,12 @@ class DataStore {
   }
 
   getNodeDataById(nodeId) {
-    // 直接从全局nodes表中获取
+    // Get directly from the global nodes table
     const node = this.nodes.get(nodeId);
     return node ? node.data : null;
   }
 
-  // 根据线程名称和节点ID获取节点数据
+  // Get node data by thread name and node ID
   getNodeDataByThreadAndId(threadName, nodeId) {
     const threadNodes = this.allThreadsNodes.get(threadName);
     if (!threadNodes) return null;
@@ -512,12 +512,12 @@ class DataStore {
     return node ? node.data : null;
   }
 
-  // 获取特定线程中的所有节点ID
+  // Get all node IDs for a specific thread
   getAllNodeIdsForThread(threadName) {
     return this.threadToNodesMap.get(threadName) || [];
   }
 
-  // 获取节点ID所属的线程
+  // Get the thread that a node ID belongs to
   getThreadForNodeId(nodeId) {
     return this.originalIdToThreadMap.get(nodeId);
   }
