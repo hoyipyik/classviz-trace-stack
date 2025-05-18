@@ -23,11 +23,11 @@ class TraceStackApp {
   constructor(rawThreadData, idRangeByThreadMap) {
     this.rawData = rawThreadData || null; // Raw data from external source
     this.idRangeByThreadMap = idRangeByThreadMap || null; // ID range map for threads  
-  //   this.sharedStates = {
-  //     traceMode: false
-  // }
+    //   this.sharedStates = {
+    //     traceMode: false
+    // }
     // this.methodDisplayManager = new MethodsDisplayManager(window.cy, rootNode, nodeMap, this.sharedStates);
-            
+
     // Module instances
     this.data = null;    // DataStore instance
     this.view = null;    // Renderer instance
@@ -41,6 +41,8 @@ class TraceStackApp {
     this.aiService = null; // AiService instance
     this.explainer = null; // Explainer instance
     this.resizeManager = new ResizeManager(); // Draggable resize manager
+    this.explanationUIController = null; // ExplanationUIController instance
+
 
     // Create event bus
     this.eventBus = new EventBus();
@@ -70,6 +72,10 @@ class TraceStackApp {
     // Initialize data store
     this.data = new DataStore(threadsData, this.eventBus);
 
+    // Initialize ai service and explainer
+    this.aiService = new AiService(this.eventBus);
+    this.explainer = new Explainer(this.data, this.eventBus, this.aiService);
+
     // Initialize methods display manager
     this.classvizManager = new ClassvizManager(this.data, window.cy, this.eventBus, this.idRangeByThreadMap);
 
@@ -89,10 +95,10 @@ class TraceStackApp {
     this.sidebar = new SidebarController(this.eventBus);
 
     // Initialize renderer
-    this.view = new Renderer(this.data, container, this.eventBus);
+    this.view = new Renderer(this.data, container, this.eventBus, this.explainer);
 
     // Initialize flame graph renderer
-    this.flameGraph = new FlameGraphRenderer(this.data, container, this.eventBus);
+    this.flameGraph = new FlameGraphRenderer(this.data, container, this.eventBus, this.explainer);
 
     // Initialize other modules
     this.actions = new Actions(this.data, this.view, this.eventBus);
@@ -101,9 +107,6 @@ class TraceStackApp {
     this.filter = new Filter(this.data, this.view, this.eventBus, this.search);
     this.methodDetails = new MethodDetails(this.data, this.eventBus);
 
-    this.aiService = new AiService(this.eventBus);
-    this.explainer = new Explainer(this.data, this.eventBus, this.aiService);
-    window.explainer = this.explainer;
     this.explanationUIController = new ExplanationUIController(this.explainer, this.eventBus);
 
     // Subscribe to view mode changes to update sidebar UI (new)

@@ -38,6 +38,12 @@ export class ExplanationUIController {
             this.loadExplanations();
         });
         
+        // Subscribe to the changeRegionFocus event
+        this.eventBus.subscribe('changeRegionFocus', ({ focusedRegionId }) => {
+            this.handleRegionFocus(focusedRegionId);
+            console.log(`Explanation: Region focus changed to ${focusedRegionId}`)
+        });
+        
         // Check for current LLM settings if available
         if (this.explainer.llmService) {
             setTimeout(() => {
@@ -52,6 +58,47 @@ export class ExplanationUIController {
                 }
             }, 100);
         }
+    }
+
+    /**
+     * Handles external region focus events by switching to the specified region if it exists
+     * @param {string} focusedRegionId - The ID of the region to focus on
+     */
+    handleRegionFocus(focusedRegionId) {
+        if (!focusedRegionId) return;
+        
+        // Check if the region exists in our available regions
+        const regionData = this.explainer.regions.get(focusedRegionId);
+        if (!regionData || !regionData.explained) {
+            console.warn(`Region ${focusedRegionId} not found or not explained yet`);
+            return;
+        }
+        
+        // Find which tree this region belongs to
+        let foundTreeId = null;
+        for (const [treeId, regionIds] of this.explainer.traceToRegion.entries()) {
+            if (regionIds.includes(focusedRegionId)) {
+                foundTreeId = treeId;
+                break;
+            }
+        }
+        
+        if (!foundTreeId) {
+            console.warn(`Could not find tree containing region ${focusedRegionId}`);
+            return;
+        }
+        
+        // Change tree selection if needed
+        if (foundTreeId !== this.currentSelectedTreeId) {
+            this.currentSelectedTreeId = foundTreeId;
+            this.treeSelector.value = foundTreeId;
+            this.loadRegionsForTree();
+        }
+        
+        // Change region selection
+        this.regionSelector.value = focusedRegionId;
+        this.currentSelectedRegionId = focusedRegionId;
+        this.updateDisplayedRegionData();
     }
 
     applyStyles(element, styles) {

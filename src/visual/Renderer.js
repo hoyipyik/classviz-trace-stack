@@ -4,7 +4,7 @@
  * Responsible for creating and updating DOM elements
  */
 class Renderer {
-  constructor(dataStore, container, eventBus) {
+  constructor(dataStore, container, eventBus, explainer) {
     // Data source manager
     this.data = dataStore;
 
@@ -12,6 +12,8 @@ class Renderer {
     this.container = container;
 
     this.eventBus = eventBus;
+
+    this.explainer = explainer;
 
     // Batch update mode
     this.batchMode = false;
@@ -31,7 +33,7 @@ class Renderer {
           }, 100);
         }
       });
-      
+
       this.eventBus.subscribe('changeCurrentFocusedNode', (data) => {
         if (data && data.nodeId) {
           const label = this.data.getNodeDataById(data.nodeId).label;
@@ -45,7 +47,7 @@ class Renderer {
       this.eventBus.subscribe('nodeStructureChanged', ({ nodeId, compressed }) => {
         if (nodeId) {
           this.renderTree();
-  
+
           // restore current nodes
           if (this.data.current) {
             this.ensureNodeVisible(this.data.current);
@@ -58,7 +60,7 @@ class Renderer {
       this.eventBus.subscribe('nodeDataChanged', (data) => {
         this.nodeDataChangedEventHandler(data);
       });
-      
+
       this.eventBus.subscribe('nodeSelectionChanged', (data) => {
         if (data && data.nodeId) {
           // Update current node selection
@@ -249,21 +251,21 @@ class Renderer {
             this.batchUpdateNodes(changedIds);
             console.log("auto expand and create finished")
           }, 100);
-        }else{
+        } else {
           console.log("auto expand and create not triggered")
         }
 
         if (this.eventBus) {
-            this.eventBus.publish('changeCurrentFocusedNodeForStepByStep', {
-              nodeId: nodeId
-            });
-       
+          this.eventBus.publish('changeCurrentFocusedNodeForStepByStep', {
+            nodeId: nodeId
+          });
+
         }
       });
     } else {
       // No children, hide toggle button
-      toggleBtn.textContent = ''; 
-      toggleBtn.style.display = 'none'; 
+      toggleBtn.textContent = '';
+      toggleBtn.style.display = 'none';
     }
     itemDiv.appendChild(toggleBtn);
 
@@ -298,17 +300,117 @@ class Renderer {
 
         // Update current method display UI
         this.updateCurrentMethodDisplay(nodeData.label);
-        
+
         if (this.eventBus) {
           this.eventBus.publish('changeCurrentFocusedNodeForStepByStep', {
             nodeId: nodeId
           });
           this.eventBus.publish('changeClassvizFocus', {
             nodeId: nodeId
-        });
+          });
         }
+        this.eventBus.publish('changeRegionFocus', { focusedRegionId: nodeId });
       }
     });
+
+    const createHoverCard = (nodeId) => {
+      const itemData = this.data.nodes.get(nodeId).data;
+
+      const hoverCard = document.createElement('div');
+      hoverCard.className = 'hover-card';
+      hoverCard.style.display = 'none';
+      hoverCard.style.position = 'fixed';
+      hoverCard.style.backgroundColor = 'white';
+      hoverCard.style.border = '1px solid #ccc';
+      hoverCard.style.borderRadius = '4px';
+      hoverCard.style.padding = '8px';
+      hoverCard.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+      hoverCard.style.width = '450px';
+      hoverCard.style.zIndex = '10000';
+
+      const handleMouseOver = (e) => {
+        if (e.target !== checkbox && e.target !== toggleBtn) {
+          const isSpecialNode = itemData.status.fanOut ||
+            itemData.status.implementationEntryPoint ||
+            itemData.status.recursiveEntryPoint;
+          const regionText = this.explainer.regions.get(nodeId)?.briefSummary;
+          // console.log("check for hover");
+
+          // display only for special node 
+          if (isSpecialNode && regionText) {
+            // console.log("hover - should display card");
+
+            hoverCard.innerHTML = ''; // clear old data
+
+            // add data rows
+            const labelRow = document.createElement('div');
+            labelRow.innerHTML = `<strong>${itemData.label}</strong>`;
+            hoverCard.appendChild(labelRow);
+
+            const regionRow = document.createElement('div');
+            regionRow.innerHTML = `${regionText}`;
+            hoverCard.appendChild(regionRow);
+
+            // get position from pointer
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+
+            // console.log(`Card position: left=${mouseX + 10}px, top=${mouseY}px`);
+
+            // avoid overflow from the viewport
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const cardWidth = 250;
+            const cardHeight = 100;
+
+            let leftPos = mouseX + 10;
+            let topPos = mouseY;
+
+            // if overflow
+            if (leftPos + cardWidth > viewportWidth) {
+              leftPos = Math.max(0, mouseX - cardWidth - 10);
+            }
+
+
+            if (topPos + cardHeight > viewportHeight) {
+              topPos = Math.max(0, mouseY - cardHeight);
+            }
+
+            hoverCard.style.left = `${leftPos}px`;
+            hoverCard.style.top = `${topPos}px`;
+
+            // add on body to avoid overflow
+            if (!document.body.contains(hoverCard)) {
+              // console.log("Adding hover card to DOM");
+              document.body.appendChild(hoverCard);
+            } 
+
+            hoverCard.style.display = 'block';
+            
+            document.body.appendChild(hoverCard);
+          }
+        }
+      };
+
+      const handleMouseOut = () => {
+        hoverCard.style.display = 'none';
+      };
+
+      itemDiv.addEventListener('mouseover', handleMouseOver);
+      itemDiv.addEventListener('mouseout', handleMouseOut);
+
+      document.body.appendChild(hoverCard);
+
+      return () => {
+        itemDiv.removeEventListener('mouseover', handleMouseOver);
+        itemDiv.removeEventListener('mouseout', handleMouseOut);
+        if (document.body.contains(hoverCard)) {
+          document.body.removeChild(hoverCard);
+        }
+      };
+    };
+
+    createHoverCard(nodeId);
 
     li.appendChild(itemDiv);
 
@@ -473,24 +575,24 @@ class Renderer {
         el.classList.remove('focused');
       }
     });
-  
+
     // // Find the node element in the DOM (in case the reference is stale)
     let nodeElement = this.data.getNodeElement(nodeId);
-    
+
     // If the stored reference is stale, try to find the element in the DOM directly
     if (!nodeElement || !document.contains(nodeElement)) {
       nodeElement = document.querySelector(`.call-item[data-node-id="${nodeId}"]`);
-      
+
       // If found, update the reference in the data store
       if (nodeElement) {
         this.data.setNodeElement(nodeId, nodeElement);
       }
     }
-    
+
     if (nodeElement) {
       nodeElement.classList.add('focused');
     }
-  
+
     // Update current node checkbox
     const currentNodeCheckbox = document.getElementById('currentNodeCheckbox');
     if (currentNodeCheckbox && nodeId) {

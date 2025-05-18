@@ -10,12 +10,12 @@ export const CONSTANTS = {
     CELL_HEIGHT: 18,            // Cell height
     TRANSITION_DURATION: 750,   // Transition animation duration (milliseconds)
     MIN_FRAME_SIZE: 0.003,      // Minimum frame size
-    
+
     // Color related constants
     DEFAULT_COLOR: "#337ab7",   // Default color
     SELECTED_OPACITY: 1.0,      // Selected node opacity
     UNSELECTED_OPACITY: 0.6,    // Unselected node opacity
-    
+
     // Other constants
     MAX_LABEL_LENGTH: 60        // Maximum label length
 };
@@ -25,49 +25,51 @@ export const CONSTANTS = {
  * Responsible for creating and updating Flame Graph visualization
  */
 class FlameGraphRenderer {
-    constructor(dataStore, container, eventBus) {
+    constructor(dataStore, container, eventBus, explainer) {
         // Data store reference
         this.data = dataStore;
-        
+
         // DOM container
         this.container = container;
-        
+
         // Event bus
         this.eventBus = eventBus;
-        
+
+        this.explainer = explainer;
+
         // D3 Flame Graph instance
         this.flameGraph = null;
-        
+
         // Chart selector
         this.chartSelector = "#flameGraph";
-        
+
         // Chart data
         this.graphData = null;
-        
+
         // Pattern settings
         this.patterns = new Map();
         this._patterns = new Map();
-        
+
         // Initialize
         this.init();
     }
-    
+
     // Initialize
     init() {
         // Create Flame Graph base container
         this.createContainer();
-        
+
         // Create Flame Graph instance
         this.createFlameGraph();
-        
+
         // Subscribe to events
         this.subscribeToEvents();
     }
-    
+
     // Subscribe to events
     subscribeToEvents() {
         if (!this.eventBus) return;
-        
+
         // Subscribe to view mode change event
         this.eventBus.subscribe('viewModeChanged', (data) => {
             if (data.mode === 'flameGraph') {
@@ -76,13 +78,13 @@ class FlameGraphRenderer {
                 this.hideFlameGraph();
             }
         });
-        
+
         // Subscribe to thread change event
         this.eventBus.subscribe('threadChanged', () => {
             this.update();
         });
 
-        this.eventBus.subscribe('refreshFlame', () =>{
+        this.eventBus.subscribe('refreshFlame', () => {
             this.update();
         });
 
@@ -94,7 +96,7 @@ class FlameGraphRenderer {
             this.update();
         });
     }
-    
+
     // Create container
     createContainer() {
         // If container doesn't exist, create a new one
@@ -106,7 +108,7 @@ class FlameGraphRenderer {
             this.container.parentNode.insertBefore(flameGraphDiv, this.container.nextSibling);
         }
     }
-    
+
     // Create Flame Graph
     createFlameGraph() {
         try {
@@ -115,7 +117,7 @@ class FlameGraphRenderer {
                 console.error('D3 or FlameGraph library not loaded');
                 return;
             }
-            
+
             this.flameGraph = flamegraph()
                 .cellHeight(CONSTANTS.CELL_HEIGHT)
                 .transitionDuration(CONSTANTS.TRANSITION_DURATION)
@@ -127,13 +129,95 @@ class FlameGraphRenderer {
                 .title("")
                 .onClick(d => this.handleNodeClick(d))
                 .selfValue(false)
+                .onHover(d => this.handleOnHover(d))
                 .color(d => this.getNodeColor(d.data));
-                
+
             // Initial update
             this.update();
         } catch (err) {
             console.error('Error creating flame graph:', err);
         }
+    }
+
+    handleOnHover(d) {
+        if (!d || !d.data || !d.data.id) {
+            const existingCards = document.querySelectorAll('.flame-hover-card');
+            existingCards.forEach(card => card.remove());
+            return;
+        }
+
+        const nodeId = d.data.id;
+
+        const nodeData = this.data.nodes.get(nodeId);
+        if (!nodeData || !nodeData.data) return;
+
+        const itemData = nodeData.data;
+
+        const isSpecialNode = itemData.status && (
+            itemData.status.fanOut ||
+            itemData.status.implementationEntryPoint ||
+            itemData.status.recursiveEntryPoint
+        );
+
+        const regionText = this.explainer?.regions?.get(nodeId)?.briefSummary;
+
+        if (!isSpecialNode || !regionText) return;
+
+        const existingCards = document.querySelectorAll('.flame-hover-card');
+        existingCards.forEach(card => card.remove());
+
+        const hoverCard = document.createElement('div');
+        hoverCard.className = 'flame-hover-card';
+        hoverCard.style.position = 'fixed';
+        hoverCard.style.backgroundColor = 'white';
+        hoverCard.style.border = '1px solid #ccc';
+        hoverCard.style.borderRadius = '4px';
+        hoverCard.style.padding = '8px';
+        hoverCard.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+        hoverCard.style.width = '450px';
+        hoverCard.style.zIndex = '10000';
+
+
+        const labelRow = document.createElement('div');
+        labelRow.innerHTML = `<strong>${itemData.label}</strong>`;
+        hoverCard.appendChild(labelRow);
+
+        const regionRow = document.createElement('div');
+        regionRow.innerHTML = `${regionText}`;
+        hoverCard.appendChild(regionRow);
+
+        const event = d3.event || window.event;
+        if (!event) return;
+
+        const mouseX = event.clientX;
+        const mouseY = event.clientY;
+
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const cardWidth = 450;
+        const cardHeight = 100;
+
+        let leftPos = mouseX + 10;
+        let topPos = mouseY;
+
+        if (leftPos + cardWidth > viewportWidth) {
+            leftPos = Math.max(0, mouseX - cardWidth - 10);
+        }
+
+        if (topPos + cardHeight > viewportHeight) {
+            topPos = Math.max(0, mouseY - cardHeight);
+        }
+
+        hoverCard.style.left = `${leftPos}px`;
+        hoverCard.style.top = `${topPos}px`;
+
+        document.body.appendChild(hoverCard);
+
+        setTimeout(() => {
+            hoverCard.style.display = 'none';
+        }, 3500);
+
+        return hoverCard;
     }
 
     // Get node color
@@ -155,7 +239,7 @@ class FlameGraphRenderer {
 
         return this.getPatternForNode(nodeData, color, isSelected);
     }
-    
+
     // Create and get pattern for node
     getPatternForNode(nodeData, color, isSelected) {
         // Create pattern container (if it doesn't exist)
@@ -163,10 +247,10 @@ class FlameGraphRenderer {
 
         // Determine pattern type
         let patternType = this.determinePatternType(nodeData);
-        
+
         // Use darker color as pattern base color to compensate for visual lightening due to white elements in pattern
-        const patternBaseColor = isSelected ? 
-            colorUtils.darkenColor(color, 0.16) : 
+        const patternBaseColor = isSelected ?
+            colorUtils.darkenColor(color, 0.16) :
             colorUtils.darkenColor(color, 0.16);
 
         // Create safe pattern ID
@@ -179,7 +263,7 @@ class FlameGraphRenderer {
 
         return `url(#${patternId})`;
     }
-    
+
     // Initialize pattern container
     initPatterns() {
         if (!this._patterns) {
@@ -192,7 +276,7 @@ class FlameGraphRenderer {
             }
         }
     }
-    
+
     // Determine pattern type for node
     determinePatternType(nodeData) {
         if (nodeData.status?.fanOut) {
@@ -204,14 +288,14 @@ class FlameGraphRenderer {
         }
         return "default";
     }
-    
+
     // Create safe pattern ID
     createSafePatternId(color, patternType) {
         return 'pattern-' + patternType + '-' + color.toString()
             .replace(/[^a-zA-Z0-9]/g, '')
             .toLowerCase();
     }
-    
+
     // Create pattern
     createPattern(patternType, patternId, patternBaseColor) {
         const svg = d3.select('.d3-flame-graph');
@@ -241,7 +325,7 @@ class FlameGraphRenderer {
         // Store in map
         this._patterns.set(patternId, true);
     }
-    
+
     // Create implementation entry point pattern
     createImplementationPattern(defs, patternId, patternWidth, patternHeight, patternBaseColor) {
         // Horizontal dense single row of large dots pattern
@@ -266,7 +350,7 @@ class FlameGraphRenderer {
                 ${dotsHtml}
             `);
     }
-    
+
     // Create fan-out point pattern
     createFanoutPattern(defs, patternId, patternWidth, patternHeight, patternBaseColor) {
         // Star-shaped dot pattern
@@ -302,7 +386,7 @@ class FlameGraphRenderer {
                 ${unitsHtml}
             `);
     }
-    
+
     // Create recursive entry point pattern
     createRecursivePattern(defs, patternId, patternWidth, patternHeight, patternBaseColor) {
         // Thick diagonal line pattern
@@ -317,17 +401,18 @@ class FlameGraphRenderer {
                     style="stroke:#fff; stroke-width:2.2; stroke-opacity:0.4"/>
             `);
     }
-    
+
     // Handle node click
     handleNodeClick(d) {
         if (!d || !d.data || !d.data.id) return;
-        
+
         const nodeId = d.data.id;
+        this.eventBus.publish('changeRegionFocus', { focusedRegionId: nodeId });
         console.info("Clicked on:", d.data);
-        
+
         // Set current node
         this.data.setCurrent(nodeId);
-        
+
         this.eventBus.publish('changeCurrentFocusedNode', {
             nodeId: nodeId
         });
@@ -335,14 +420,14 @@ class FlameGraphRenderer {
         this.eventBus.publish('changeClassvizFocus', {
             nodeId: nodeId
         });
-        
+
     }
-    
+
     // Update node selection state
     updateNodeSelection(nodeId, selected) {
         try {
             const chartSelection = d3.select(this.chartSelector);
-            
+
             // Refresh display of specified node in flame graph
             chartSelection.selectAll("rect").each((d) => {
                 if (d && d.data && d.data.id === nodeId && d3.event.currentTarget) {
@@ -353,14 +438,14 @@ class FlameGraphRenderer {
             console.error('Error updating node selection:', err);
         }
     }
-    
+
     // Reset zoom
     resetZoom() {
         if (this.flameGraph) {
             this.flameGraph.resetZoom();
         }
     }
-    
+
     // Update data
     update() {
         try {
@@ -368,31 +453,31 @@ class FlameGraphRenderer {
                 this.showError("No data available");
                 return;
             }
-            
+
             // Choose mapping function based on view mode
             const data = this.data.showLogical
                 ? mapMethodDataToLogicalFlameGraph(this.data.tree)
                 : mapMethodDataToTemporalFlameGraph(this.data.tree, true);
-            
+
             this.graphData = data;
-            
+
             // Store current zoom state to preserve it
             let currentZoom = null;
             if (this.flameGraph && this.flameGraph.currentZoom) {
                 currentZoom = this.flameGraph.currentZoom();
             }
-            
+
             // Update chart
             const chartSelection = d3.select(this.chartSelector);
             chartSelection
                 .datum(data)
                 .call(this.flameGraph);
-            
+
             // Apply stored zoom state if available
             if (currentZoom && typeof this.flameGraph.setZoom === 'function') {
                 this.flameGraph.setZoom(currentZoom);
             }
-            
+
             // Ensure selected nodes maintain appearance
             this.updateNodeAppearance(chartSelection);
         } catch (err) {
@@ -400,33 +485,33 @@ class FlameGraphRenderer {
             this.showError("Error updating flame graph");
         }
     }
-    
+
     // Update node appearance
     updateNodeAppearance(chartSelection) {
         requestAnimationFrame(() => {
             // Reset opacity for all rectangles
             chartSelection.selectAll("rect").style("fill-opacity", "1");
-            
+
             // Update colors for all nodes
             const self = this;
-            chartSelection.selectAll("rect").each(function(d) {
+            chartSelection.selectAll("rect").each(function (d) {
                 if (d && d.data) {
                     d3.select(this).style("fill", self.getNodeColor(d.data));
                 }
             });
-            
+
             // Set up reflow handler
             this.setupReflowHandler();
         });
     }
-    
+
     // Set up reflow handler
     setupReflowHandler() {
         const self = this;
         const chartSelection = d3.select(this.chartSelector);
-        
-        chartSelection.on("d3-flamegraph-reflow", function() {
-            chartSelection.selectAll("rect").each(function(d) {
+
+        chartSelection.on("d3-flamegraph-reflow", function () {
+            chartSelection.selectAll("rect").each(function (d) {
                 if (d && d.data) {
                     const nodeState = self.data.getNodeState(d.data.id);
                     if (nodeState && nodeState.selected) {
@@ -436,7 +521,7 @@ class FlameGraphRenderer {
             });
         });
     }
-    
+
     // Show error message
     showError(message) {
         const chartElement = document.querySelector(this.chartSelector);
@@ -449,24 +534,24 @@ class FlameGraphRenderer {
             `;
         }
     }
-    
+
     // Show flame graph
     showFlameGraph() {
         const flameGraphEl = document.querySelector(this.chartSelector);
         const callTreeEl = document.querySelector('#callTree').closest('.call-tree-container');
-        
+
         if (flameGraphEl) {
             flameGraphEl.style.display = '';
-            
+
             // Force layout recalculation
             setTimeout(() => {
                 this.adjustFlameGraphLayout(flameGraphEl);
             }, 100);
         }
-        
+
         if (callTreeEl) callTreeEl.style.display = 'none';
     }
-    
+
     // Adjust flame graph layout
     adjustFlameGraphLayout(flameGraphEl) {
         // Check if flame graph SVG already exists, redraw if it does
@@ -476,31 +561,31 @@ class FlameGraphRenderer {
             svg.setAttribute('width', '100%');
             svg.setAttribute('height', '100%');
         }
-        
+
         // Refresh flame graph
         this.update();
-        
+
         // Redraw on window resize
         window.addEventListener('resize', this.handleResize.bind(this));
     }
-    
+
     // Hide flame graph
     hideFlameGraph() {
         const flameGraphEl = document.querySelector(this.chartSelector);
         const callTreeEl = document.querySelector('#callTree').closest('.call-tree-container');
-        
+
         if (flameGraphEl) flameGraphEl.style.display = 'none';
         if (callTreeEl) callTreeEl.style.display = '';
-        
+
         // Remove window resize event
         window.removeEventListener('resize', this.handleResize.bind(this));
     }
-    
+
     // Handle window resize
     handleResize() {
         // Debounce to avoid frequent redraws
         if (this._resizeTimer) clearTimeout(this._resizeTimer);
-        
+
         this._resizeTimer = setTimeout(() => {
             // Only redraw when flame graph is visible
             const flameGraphEl = document.querySelector(this.chartSelector);
@@ -509,12 +594,12 @@ class FlameGraphRenderer {
             }
         }, 250);
     }
-    
+
     // Toggle view mode
     toggleViewMode() {
         this.data.showLogical = !this.data.showLogical;
         this.update();
-        
+
         // Trigger view mode change event
         if (this.eventBus) {
             this.eventBus.publish('viewModeChanged', {
