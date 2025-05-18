@@ -3,7 +3,7 @@ import { calculateTreeMetrics } from './treeMetricsCalculator.js';
 import { getFilteredChildNodes } from './nodeFilter.js';
 import { fetchNodeData } from './nodeDataProcessor.js';
 import { PACKAGE_COLORS } from '../colour/colourConstant.js';
-import { processRecursiveStatuses } from './nodeStatusUtils.js';
+import { deduplicateTree, processRecursiveStatuses } from './nodeStatusUtils.js';
 
 // We have filtered native java libs, we preserve these below as they are entries of a thread
 export const ALLOWED_LIB_METHODS = [
@@ -11,19 +11,21 @@ export const ALLOWED_LIB_METHODS = [
   'java.util.concurrent.ThreadPoolExecutor$Worker.run()'
 ];
 
+
 export const callTreeParser = (xmlDoc, options = {}) => {
   // Default options with reasonable defaults
-  // const config = {
-  //   methodExclusions: ['<init>', '<clinit>'],
-  //   allowExcludedMethodsAtRoot: false,
-  //   filterNativeLibs: true,
-  //   includedPackages: ['nl.tudelft.jpacman'],
-  //   allowedLibMethods: ALLOWED_LIB_METHODS,
-  //   skipAllFilters: false,
-  //   ...options
-  // };
+  const config = {
+    methodExclusions: ['<init>', '<clinit>'],
+    allowExcludedMethodsAtRoot: false,
+    filterNativeLibs: true,
+    includedPackages: ['nl.tudelft.jpacman'],
+    allowedLibMethods: ALLOWED_LIB_METHODS,
+    skipAllFilters: false,
+    deduplicateSiblings: true,
+    ...options
+  };
 
-  console.log(xmlDoc)
+  console.log('Starting tree parsing with deduplication:', config.deduplicateSiblings);
 
   // Node mapping for direct access
   const nodeMap = {};
@@ -67,9 +69,9 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     const sourceCode = attributes.sourceCode;
 
     // Skip excluded methods (unless at root and allowed)
-    // if (config.methodExclusions.includes(attributes.methodName) && !(isRoot && config.allowExcludedMethodsAtRoot)) {
-    //   return { nodeData: null };
-    // }
+    if (config.methodExclusions.includes(attributes.methodName) && !(isRoot && config.allowExcludedMethodsAtRoot)) {
+      return { nodeData: null };
+    }
 
     // Extract package name and assign a color
     let packageColor = '';
@@ -87,7 +89,6 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     const processedData = fetchNodeData(attributes.cvizId, isRoot);
 
     if (processedData.packageName) {
-      // console.log(processedData.packageName)
       packageColor = assignPackageColor(processedData.packageName);
     }
     // Create node label
@@ -106,7 +107,8 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       implementationEntryPoint: false,
       chainStartPoint: false,
       recursiveEntryPoint: false,
-      isSummarised: false
+      isSummarised: false,
+      isLoop: false // Add isLoop flag for loop detection
     }
 
     // Create node data with all information
@@ -116,7 +118,6 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       label,
       className: label.split(".")[0],
       methodName: label.split(".")[1],
-      // packageName,
       color: packageColor,
       originalColor: packageColor,
       ...processedData,
@@ -184,6 +185,10 @@ export const callTreeParser = (xmlDoc, options = {}) => {
 
   // Process recursion status after tree is built
   processRecursiveStatuses(rootData, nodeMap);
+
+  if (config.deduplicateSiblings) {
+    deduplicateTree(rootData);
+  }
 
   // Create structure with root children's labels as keys
   const labelBasedTree = {};

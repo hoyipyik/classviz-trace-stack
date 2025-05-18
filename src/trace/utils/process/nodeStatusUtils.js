@@ -220,8 +220,8 @@ export const computeNodeStatus = (
       }
     };
   } catch (error) {
-   // if there is an error, return all false safe obj
-  //  console.error(error)
+    // if there is an error, return all false safe obj
+    //  console.error(error)
     return {
       status: {
         fanOut: false,
@@ -259,22 +259,108 @@ export const processRecursiveStatuses = (rootNode, nodeMap) => {
  */
 const markDirectRecursiveEntryPoints = (node) => {
   if (!node) return;
-  
+
   const nodeSignature = node.label;
-  
+
   // Check if any of the children call the same method (direct recursion)
   if (node.children && node.children.length > 0) {
     // Check if this node calls itself directly (through one of its children)
     const hasDirectRecursion = node.children.some(child => child.label === nodeSignature);
-    
+
     if (hasDirectRecursion) {
       // This is a recursive entry point - it directly calls itself
       node.status.recursiveEntryPoint = true;
     }
-    
+
     // Process all children recursively
     node.children.forEach(child => {
       markDirectRecursiveEntryPoints(child);
     });
+  }
+};
+
+//========= compress loop ===========
+/**
+ * Generates a unique signature for a subtree based on its structure
+ * @param {Object} node - The node to generate a signature for
+ * @return {string} A string signature representing the subtree structure
+ */
+const generateSubtreeSignature = (node) => {
+  if (!node) return '';
+
+  let signature = node.label; // Start with the current node's label
+
+  // Sort children to ensure consistent ordering
+  if (node.children && node.children.length > 0) {
+    const childSignatures = node.children.map(child => generateSubtreeSignature(child));
+    childSignatures.sort(); // Sort for consistent ordering regardless of original order
+    signature += '(' + childSignatures.join(',') + ')';
+  }
+
+  return signature;
+};
+
+
+/**
+ * 簡單地對每個節點的子節點進行去重
+ * @param {Object} root - 要處理的根節點
+ */
+export const deduplicateTree = (root) => {
+
+  if (!root || !root.children) {
+    return;
+  }
+
+  if (root.label === "class35791.2702()") {
+    console.log(root)
+  }
+
+  // 使用Map來存儲唯一的子節點，以signature為key
+  const uniqueChildrenMap = new Map();
+
+  // 第一次遍歷：找出所有唯一子節點
+  for (const child of root.children) {
+    // 使用方法名稱作為簡單的簽名
+    const signature = child.label;
+
+    if (!uniqueChildrenMap.has(signature)) {
+      // 首次遇到這個簽名，記錄下來
+      uniqueChildrenMap.set(signature, {
+        node: child,
+        count: 1,
+        totalTime: parseFloat(child.time) || 0
+      });
+    } else {
+      // 已經有相同簽名的節點，增加計數和時間
+      const info = uniqueChildrenMap.get(signature);
+      info.count++;
+      info.totalTime += parseFloat(child.time) || 0;
+    }
+  }
+
+  // 創建新的子節點數組，只包含唯一的子節點
+  const newChildren = [];
+
+  // 遍歷唯一子節點Map，更新節點數據
+  uniqueChildrenMap.forEach((info, signature) => {
+    const node = info.node;
+
+    // 如果這個方法出現了多次，更新標籤和狀態
+    if (info.count > 1) {
+      node.label = `${signature} (×${info.count})`;
+      node.time = info.totalTime.toString();
+      node.status.isMerged = true;
+      node.occurrenceCount = info.count;
+    }
+
+    newChildren.push(node);
+  });
+
+  // 用新的唯一子節點列表替換原來的子節點列表
+  root.children = newChildren;
+
+  // 遞歸處理每個子節點的子節點
+  for (const child of root.children) {
+    deduplicateTree(child);
   }
 };
