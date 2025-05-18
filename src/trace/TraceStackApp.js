@@ -11,7 +11,7 @@ import { ViewSwitcher } from './ui/components/diagram/ViewSwitcher.js'; // Add n
 import { ResizeManager } from './ui/components/widgets/ResizeManager.js';
 import { SidebarController } from './ui/components/widgets/SidebarController.js';
 import { ClassvizManager } from './service/ClassvizManager.js'; // Import ClassvizManager
-import { StepByStepPlayController } from './ui/components/widgets/StepByStepPlayController.js';
+import { StepByStepPlayController } from './service/StepByStepPlayController.js';
 import { Explainer } from './service/Explainer.js';
 import { AiService } from './service/AiService.js';
 import { ExplanationUIController } from './ui/components/widgets/ExplanationUIController.js';
