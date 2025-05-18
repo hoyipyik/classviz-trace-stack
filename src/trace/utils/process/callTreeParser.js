@@ -3,61 +3,8 @@ import { calculateTreeMetrics } from './treeMetricsCalculator.js';
 import { computeNodeStatus } from './nodeStatusUtils.js';
 import { createNodeFilter, getFilteredChildNodes } from './nodeFilter.js';
 import { fetchNodeData } from './nodeDataProcessor.js';
-
-/**
- * Extracts the package name from a fully qualified class name
- * @param {string} className - Fully qualified class name (e.g., nl.tudelft.jpacman.board.Square)
- * @return {string} Package name (e.g., nl.tudelft.jpacman.board)
- */
-function extractPackageName(className) {
-  if (!className || typeof className !== 'string') {
-    return '';
-  }
-
-  // Find the last dot in the className
-  const lastDotIndex = className.lastIndexOf('.');
-
-  // If there's no dot, return empty string (no package)
-  if (lastDotIndex === -1) {
-    return '';
-  }
-
-  // Return everything before the last dot
-  return className.substring(0, lastDotIndex);
-}
-
-// Package colors palette - 50 distinguishable colors
-const PACKAGE_COLORS = [
-  "#FFFFB3", // Pale Yellow
-  "#E41A1C", // Bright Red
-  "#377EB8", // Steel Blue
-  "#4DAF4A", // Medium Green
-  "#984EA3", // Purple
-  "#FF7F00", // Orange
-  "#A65628", // Brown
-  "#F781BF", // Pink
-  "#8DD3C7", // Mint
-  "#ECC94B", //  Yellow
-  "#BEBADA", // Lavender
-  "#FB8072", // Salmon
-  "#80B1D3", // Light Blue
-  "#FDB462", // Light Orange
-  "#B3DE69", // Lime Green
-  "#FCCDE5", // Light Pink
-  "#BC80BD", // Medium Purple
-  "#CCEBC5", // Pale Green
-  "#FFED6F", // Pale Gold
-  "#E41E36", // Crimson
-  "#00A087", // Teal
-  "#FF00FF", // Magenta
-  "#0072B2", // Dark Blue
-  "#009E73", // Sea Green
-  "#56B4E9", // Sky Blue
-  "#CC79A7", // Rose
-  "#D55E00", // Vermilion
-  "#332288", // Indigo
-  "#000000"  // Black
-];
+import { extractPackageName } from '../context/nodeDataFetcher.js';
+import { PACKAGE_COLORS } from '../colour/colourConstant.js';
 
 // We have filtered native java libs, we preserve these below as they are entries of a thread
 export const ALLOWED_LIB_METHODS = [
@@ -68,20 +15,21 @@ export const ALLOWED_LIB_METHODS = [
 export const callTreeParser = (xmlDoc, options = {}) => {
   // Default options with reasonable defaults
   const config = {
-    excludeMethods: ['<init>', '<clinit>'],
+    methodExclusions: ['<init>', '<clinit>'],
     allowExcludedMethodsAtRoot: false,
-    onlyPackages: true,
+    filterNativeLibs: true,
     includedPackages: ['nl.tudelft.jpacman'],
     allowedLibMethods: ALLOWED_LIB_METHODS,
+    skipAllFilters: false,
     ...options
   };
 
   // Node mapping for direct access
   const nodeMap = {};
-
+  
   // Map to store package names and their assigned colors
   const packageColorMap = new Map();
-
+  
   // Package color assignment counter
   let colorIndex = 0;
 
@@ -98,7 +46,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
    */
   const assignPackageColor = (packageName) => {
     if (!packageColorMap.has(packageName)) {
-      // Assign the next available color from the palette
+      // Assign the next available color from the predefined palette
       const colorCode = PACKAGE_COLORS[colorIndex % PACKAGE_COLORS.length];
       packageColorMap.set(packageName, colorCode);
       colorIndex++;
@@ -120,7 +68,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     const attributes = getNodeAttributes(xmlNode);
 
     // Skip excluded methods (unless at root and allowed)
-    if (config.excludeMethods.includes(attributes.methodName) && !(isRoot && config.allowExcludedMethodsAtRoot)) {
+    if (config.methodExclusions.includes(attributes.methodName) && !(isRoot && config.allowExcludedMethodsAtRoot)) {
       return { nodeData: null };
     }
 
@@ -171,6 +119,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
       nodeId,
       treeStats
     );
+    
     // Create node data with all information
     const nodeData = {
       id: nodeId,
@@ -214,16 +163,6 @@ export const callTreeParser = (xmlDoc, options = {}) => {
           nodeData.children.push(childData);
         }
       });
-
-      // if (sourceCode) {
-      //   const methodCallOrder = extractMethodCalls(sourceCode);
-      //   nodeData.methodCallOrder = methodCallOrder;
-
-      //   // Sort children based on methodCallOrder if methods were found
-      //   if (methodCallOrder.length > 0) {
-      //     nodeData.children = sortChildrenByMethodCalls(nodeData.children, methodCallOrder);
-      //   }
-      // }
     }
 
     return { nodeData };
@@ -280,7 +219,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     if (i < rootData.children.length - 1) {
       endId = parseInt(rootData.children[i + 1].id) - 1;
     } else {
-      // For the last thread, use the total number of nodes (Object.keys(nodeMap).length)
+      // For the last thread, use the total number of nodes
       endId = Object.keys(nodeMap).length - 1;
     }
 
@@ -290,10 +229,10 @@ export const callTreeParser = (xmlDoc, options = {}) => {
 
   // Return comprehensive result
   return {
-    cascadeTree: labelBasedTree,    // Cascade tree with labels as keys
-    nodeMap: nodeMap,               // Node ID mapping
-    rootNode: rootData,             // Original root node
-    packageColorMap: packageColorMap, // Map of package names to colors
+    cascadeTree: labelBasedTree,        // Cascade tree with labels as keys
+    nodeMap: nodeMap,                   // Node ID mapping
+    rootNode: rootData,                 // Original root node
+    packageColorMap: packageColorMap,   // Map of package names to colors
     idRangeByThreadMap: idRangeByThreadMap
   };
 };

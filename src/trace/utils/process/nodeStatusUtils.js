@@ -79,7 +79,7 @@ export const isImplementationEntryPoint = (isRoot, childNodes, methodName, paren
     return true;
   }
 
-   if (!visibility) {
+  if (!visibility) {
     return false;
   }
   // console.log(treeStats)
@@ -192,27 +192,42 @@ export const computeNodeStatus = (
   nodeId,
   treeStats
 ) => {
-  const fanOut = hasFanout(childNodes, className, methodName);
-  const implementationEntryPoint = isImplementationEntryPoint(isRoot, childNodes, methodName, parentIsFanout, visibility, treeStats);
-  const chainStartPoint = isChainStartPoint({ className, methodName });
+  try {
+    const fanOut = hasFanout(childNodes, className, methodName);
+    const implementationEntryPoint = isImplementationEntryPoint(isRoot, childNodes, methodName, parentIsFanout, visibility, treeStats);
+    const chainStartPoint = isChainStartPoint({ className, methodName });
 
-  const nodePath = `${className}.${methodName}`;
-  const { isRecursiveEntryPoint, visitedPaths: updatedVisitedPaths } =
-    checkRecursiveEntryPoint(className, methodName, childNodes, visitedPaths);
+    const nodePath = `${className}.${methodName}`;
+    const { isRecursiveEntryPoint, visitedPaths: updatedVisitedPaths } =
+      checkRecursiveEntryPoint(className, methodName, childNodes, visitedPaths);
 
-  // Update visited paths map for future recursive checks
-  if (!updatedVisitedPaths.has(nodePath)) {
-    updatedVisitedPaths.set(nodePath, nodeId);
+    // Update visited paths map for future recursive checks
+    if (!updatedVisitedPaths.has(nodePath)) {
+      updatedVisitedPaths.set(nodePath, nodeId);
+    }
+
+    return {
+      status: {
+        fanOut,
+        implementationEntryPoint,
+        chainStartPoint,
+        recursiveEntryPoint: isRecursiveEntryPoint,
+        isSummarised: false // This would be set elsewhere based on user interaction
+      },
+      visitedPaths: updatedVisitedPaths
+    };
+  } catch (error) {
+   // if there is an error, return all false safe obj
+   console.error(error)
+    return {
+      status: {
+        fanOut: false,
+        implementationEntryPoint: false,
+        chainStartPoint: false,
+        recursiveEntryPoint: false,
+        isSummarised: false
+      },
+      visitedPaths: new Map() 
+    };
   }
-
-  return {
-    status: {
-      fanOut,
-      implementationEntryPoint,
-      chainStartPoint,
-      recursiveEntryPoint: isRecursiveEntryPoint,
-      isSummarised: false // This would be set elsewhere based on user interaction
-    },
-    visitedPaths: updatedVisitedPaths
-  };
 };
