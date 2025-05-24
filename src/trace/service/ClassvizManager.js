@@ -402,17 +402,23 @@ export class ClassvizManager {
     }
 
     /**
-     * Create an edge with sequence number and color (corrected version)
-     * @param {String} sourceOriginalId - Source node original ID
-     * @param {String} sourceNodeLabel - Source node label
-     * @param {String} targetOriginalId - Target node original ID
-     * @param {String} targetNodeLabel - Target node label
-     * @param {Number} sequenceNumber - Sequence number
-     * @param {String} color - Edge color (ensure it's a valid CSS color string)
-     */
+    * Create an edge with sequence number and gradient color from source to target
+    * @param {String} sourceOriginalId - Source node original ID
+    * @param {String} sourceNodeLabel - Source node label
+    * @param {String} targetOriginalId - Target node original ID
+    * @param {String} targetNodeLabel - Target node label
+    * @param {Number} sequenceNumber - Sequence number
+    * @param {String} color - Edge color (fallback if node colors unavailable)
+    */
     createNumberedEdge(sourceOriginalId, sourceNodeLabel, targetOriginalId, targetNodeLabel, sequenceNumber, color) {
         // Generate a unique ID for the edge
         const edgeId = `edge_${sourceOriginalId}_${targetOriginalId}_${new Date().getTime()}`;
+
+        // Get source and target node colors
+        const sourceNodeData = this.data.nodes.get(sourceOriginalId)?.data;
+        const targetNodeData = this.data.nodes.get(targetOriginalId)?.data;
+        const sourceColour = sourceNodeData?.color || color || '#000000';
+        const targetColour = targetNodeData?.color || color || '#000000';
 
         // Check if edge already exists
         if (this.insertedEdges.has(edgeId)) {
@@ -432,21 +438,22 @@ export class ClassvizManager {
                 label: `${sequenceNumber}`,
                 sequenceNumber: sequenceNumber,
                 interaction: "trace_call",
-                color: color // Store color, but don't use directly for styling
+                sourceColour: sourceColour,
+                targetColour: targetColour
             }
         };
 
         // Add edge to cytoscape
         const edge = this.cy.add(edgeData);
 
-        console.log(`Adding edge ${edgeId} with color = ${color}`);
+        console.log(`Adding edge ${edgeId} with gradient from ${sourceColour} to ${targetColour}`);
 
-        // Important: Override CSS default styles using style method
+        // Apply gradient styling - front half source color, back half target color
         edge.style({
             'width': 3,
-            'line-color': color,
-            'target-arrow-color': color,
-            'line-fill': 'solid', // Important: disable gradient, use solid color
+            'line-gradient-stop-colors': `${sourceColour} ${targetColour}`,
+            'line-gradient-stop-positions': '0% 100%',
+            'target-arrow-color': targetColour, // Arrow uses target color
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
             'label': `${sequenceNumber}`,
@@ -1431,7 +1438,7 @@ export class ClassvizManager {
         return insertedLabels;
     }
 
-    // Updated removeMultipleMethodByIds function
+    //removeMultipleMethodByIds function
     removeMultipleMethodByIds(ids) {
         if (!ids || !Array.isArray(ids) || ids.length === 0) {
             console.warn("No valid IDs provided for batch removal");
@@ -1441,7 +1448,6 @@ export class ClassvizManager {
         console.log(`Batch removing ${ids.length} method nodes`);
         const removedLabels = [];
 
-        // Process each ID
         for (const id of ids) {
             // Get node label
             const nodeLabel = this.getMethodLabelById(id);
@@ -1450,20 +1456,32 @@ export class ClassvizManager {
                 continue;
             }
 
+            // check existence of node and ID mapping
+            if (!this.insertedNodes.has(nodeLabel) ||
+                !this.methodLabelToOriginalIds.has(nodeLabel) ||
+                !this.methodLabelToOriginalIds.get(nodeLabel).has(id)) {
+                console.warn(`Node ${nodeLabel} with ID ${id} not found or not properly mapped`);
+                continue;
+            }
+
+            const methodNode = this.insertedNodes.get(nodeLabel);
+            if (!methodNode) continue;
+
             // Remove from thread method nodes
             this.removeFromThreadMethodNodes(id, nodeLabel);
 
-            // Remove the node
-            const removed = this.removeMethodNode(id, nodeLabel);
-            if (!removed) continue;
+            // Handle node edges and connections
+            this.handleNodeEdges(id, nodeLabel);
+
+            // Update mappings and decide whether to delete node
+            this.updateMappingsAndRemoveNode(id, nodeLabel, methodNode);
 
             removedLabels.push(nodeLabel);
         }
 
-        // After all nodes are removed, recreate edges in a single operation
-        // if (removedLabels.length > 0) {
+      
         this.switchTraceMode(this.data.traceMode, this.useNumberedEdges);
-        // }
+
 
         return removedLabels;
     }
