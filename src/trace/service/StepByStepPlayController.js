@@ -13,6 +13,9 @@ export class StepByStepPlayController {
             return;
         }
         this.players = [];
+        this.playIntervals = new Map(); // Store play intervals for each thread
+        this.autoPlayStates = new Map(); // Store autoplay states for each thread
+        this.currentPlayingThread = null; // Track which thread is currently playing
 
         // Set fixed width for the container to match sidebar
         this.container.style.width = '270px';
@@ -40,11 +43,14 @@ export class StepByStepPlayController {
             this.classvizManager.stepByStepMode = flag;
             this.onModeToggle(flag);
         });
-
     }
 
     init() {
-        // Clear container
+        // Store current playing thread before clearing
+        const wasPlaying = this.currentPlayingThread;
+        
+        // Clear container and stop all intervals
+        this.stopAllPlayback();
         this.container.innerHTML = '';
 
         // Create mode toggle button at the top - even more compact
@@ -60,6 +66,12 @@ export class StepByStepPlayController {
 
             this.createPlayerUI(threadName, methodNodes, currentIndex, maxIndex);
         });
+        
+        // Restore playing thread if it was playing
+        if (wasPlaying) {
+            console.log(`Restoring autoplay for thread: ${wasPlaying}`);
+            this.startPlayback(wasPlaying);
+        }
     }
 
     createModeToggle() {
@@ -151,7 +163,7 @@ export class StepByStepPlayController {
         threadPlayer.style.backgroundColor = '#f5f5f5';
         threadPlayer.style.borderRadius = '4px';
 
-        // 获取这个线程的边框颜色
+        // Get border color for this thread
         const borderColour = this.classvizManager.threadToFocusedBorderColour.get(threadName);
 
         // Thread title container - make it a flex container
@@ -193,28 +205,37 @@ export class StepByStepPlayController {
 
         // Skip to start button
         const skipStartBtn = this.createButton('⏮', () => this.skipToStart(threadName));
-        skipStartBtn.style.width = '26px';
-        skipStartBtn.style.height = '26px';
+        skipStartBtn.style.width = '24px';
+        skipStartBtn.style.height = '24px';
         skipStartBtn.style.fontSize = '10px';
         controlsRow.appendChild(skipStartBtn);
 
         // Step back button
-        const stepBackBtn = this.createButton('◀', () => this.stepBack(threadName));
-        stepBackBtn.style.width = '26px';
-        stepBackBtn.style.height = '26px';
-        stepBackBtn.style.fontSize = '10px';
+        const stepBackBtn = this.createButton('◀◀', () => this.stepBack(threadName));
+        stepBackBtn.style.width = '24px';
+        stepBackBtn.style.height = '24px';
+        stepBackBtn.style.fontSize = '8px';
         controlsRow.appendChild(stepBackBtn);
+
+        // Play/Pause button
+        const playPauseBtn = this.createButton('▶', () => this.togglePlayback(threadName));
+        playPauseBtn.style.width = '24px';
+        playPauseBtn.style.height = '24px';
+        playPauseBtn.style.fontSize = '10px';
+        playPauseBtn.style.backgroundColor = '#e8f4f8';
+        playPauseBtn.id = `play-btn-${threadName.replace(/[^a-zA-Z0-9]/g, '-')}`;
+        controlsRow.appendChild(playPauseBtn);
 
         // Method display
         const methodDisplay = document.createElement('div');
         methodDisplay.className = 'method-display';
         methodDisplay.style.flex = '1';
-        methodDisplay.style.margin = '0 6px';
+        methodDisplay.style.margin = '0 4px';
         methodDisplay.style.padding = '3px 1px';
         methodDisplay.style.backgroundColor = '#f0f0f0';
         methodDisplay.style.borderRadius = '4px';
         methodDisplay.style.textAlign = 'center';
-        methodDisplay.style.maxWidth = '110px'; // Fixed width for 260px sidebar
+        methodDisplay.style.maxWidth = '90px'; // Reduced width to accommodate play button
         methodDisplay.style.overflow = 'hidden';
         methodDisplay.style.whiteSpace = 'nowrap';
         methodDisplay.style.textOverflow = 'ellipsis';
@@ -228,16 +249,16 @@ export class StepByStepPlayController {
         controlsRow.appendChild(methodDisplay);
 
         // Step forward button
-        const stepForwardBtn = this.createButton('▶', () => this.stepForward(threadName));
-        stepForwardBtn.style.width = '26px';
-        stepForwardBtn.style.height = '26px';
-        stepForwardBtn.style.fontSize = '10px';
+        const stepForwardBtn = this.createButton('▶▶', () => this.stepForward(threadName));
+        stepForwardBtn.style.width = '24px';
+        stepForwardBtn.style.height = '24px';
+        stepForwardBtn.style.fontSize = '8px';
         controlsRow.appendChild(stepForwardBtn);
 
         // Skip to end button
         const skipEndBtn = this.createButton('⏭', () => this.skipToEnd(threadName, maxIndex));
-        skipEndBtn.style.width = '26px';
-        skipEndBtn.style.height = '26px';
+        skipEndBtn.style.width = '24px';
+        skipEndBtn.style.height = '24px';
         skipEndBtn.style.fontSize = '10px';
         controlsRow.appendChild(skipEndBtn);
 
@@ -303,7 +324,8 @@ export class StepByStepPlayController {
                 colorDot,        // Store reference to the color dot
                 threadTitle,     // Store reference to thread title
                 slider,
-                counterDisplay
+                counterDisplay,
+                playPauseBtn     // Store reference to play/pause button
             }
         });
     }
@@ -313,11 +335,11 @@ export class StepByStepPlayController {
         button.textContent = text;
         button.style.padding = '2px';
         button.style.backgroundColor = '#f0f0f0';
-        button.style.borderRadius = '50%';
+        button.style.borderRadius = '4px';
         button.style.border = 'none';
         button.style.cursor = 'pointer';
-        button.style.width = '26px';
-        button.style.height = '26px';
+        button.style.width = '24px';
+        button.style.height = '24px';
         button.style.display = 'flex';
         button.style.alignItems = 'center';
         button.style.justifyContent = 'center';
@@ -328,10 +350,102 @@ export class StepByStepPlayController {
             button.style.backgroundColor = '#e5e7eb';
         });
         button.addEventListener('mouseout', () => {
-            button.style.backgroundColor = '#f0f0f0';
+            // Always return to blue background for play buttons, gray for others
+            if (button.id && button.id.startsWith('play-btn-')) {
+                button.style.backgroundColor = '#e8f4f8';
+            } else {
+                button.style.backgroundColor = '#f0f0f0';
+            }
         });
 
         return button;
+    }
+
+    // Playback control methods
+    togglePlayback(threadName) {
+        console.log(`Toggle playback for ${threadName}`);
+        console.log(`Current playing thread: ${this.currentPlayingThread}`);
+        console.log(`Is ${threadName} playing: ${this.isPlaying(threadName)}`);
+        
+        if (this.isPlaying(threadName)) {
+            // If this thread is playing, stop it
+            this.stopPlayback(threadName);
+        } else {
+            // Stop any other playing thread first
+            if (this.currentPlayingThread && this.currentPlayingThread !== threadName) {
+                console.log(`Stopping current playing thread: ${this.currentPlayingThread}`);
+                this.stopPlayback(this.currentPlayingThread);
+            }
+            // Start this thread
+            this.startPlayback(threadName);
+        }
+    }
+
+    startPlayback(threadName) {
+        // Stop any existing playback for this thread
+        this.stopPlayback(threadName);
+
+        console.log(`Starting playback for thread: ${threadName}`);
+
+        const intervalId = setInterval(() => {
+            const methodNodes = this.classvizManager.threadToMethodNodesInOrder.get(threadName) || [];
+            const currentIndex = this.classvizManager.currentIndexByThread.get(threadName) || 0;
+            const maxIndex = methodNodes.length - 1;
+            
+            console.log(`Auto-step: ${threadName} [${currentIndex}/${maxIndex}]`);
+            
+            if (currentIndex < maxIndex) {
+                this.stepForward(threadName);
+            } else {
+                // Reached the end, stop playback
+                console.log(`Reached end for thread: ${threadName}`);
+                this.stopPlayback(threadName);
+            }
+        }, 500);
+
+        this.playIntervals.set(threadName, intervalId);
+        this.autoPlayStates.set(threadName, true);
+        this.currentPlayingThread = threadName;
+        this.updatePlayPauseButton(threadName, true);
+    }
+
+    stopPlayback(threadName) {
+        const intervalId = this.playIntervals.get(threadName);
+        if (intervalId) {
+            console.log(`Stopping playback for thread: ${threadName}`);
+            clearInterval(intervalId);
+            this.playIntervals.delete(threadName);
+        }
+        this.autoPlayStates.set(threadName, false);
+        
+        // Clear current playing thread if it's this one
+        if (this.currentPlayingThread === threadName) {
+            this.currentPlayingThread = null;
+        }
+        
+        this.updatePlayPauseButton(threadName, false);
+    }
+
+    stopAllPlayback() {
+        for (const [threadName] of this.playIntervals) {
+            this.stopPlayback(threadName);
+        }
+        this.currentPlayingThread = null;
+    }
+
+    isPlaying(threadName) {
+        return this.playIntervals.has(threadName);
+    }
+
+    updatePlayPauseButton(threadName, isPlaying) {
+        const buttonId = `play-btn-${threadName.replace(/[^a-zA-Z0-9]/g, '-')}`;
+        const button = document.getElementById(buttonId);
+        
+        if (button) {
+            button.textContent = isPlaying ? '⏸' : '▶';
+            // Always keep blue background
+            button.style.backgroundColor = '#e8f4f8';
+        }
     }
 
     // Control methods
@@ -353,10 +467,12 @@ export class StepByStepPlayController {
     }
 
     skipToStart(threadName) {
+        this.stopPlayback(threadName); // Stop playback when jumping
         this.updateIndex(threadName, 0);
     }
 
     skipToEnd(threadName, maxIndex) {
+        this.stopPlayback(threadName); // Stop playback when jumping
         this.updateIndex(threadName, maxIndex);
     }
 
@@ -372,7 +488,7 @@ export class StepByStepPlayController {
             threadNodes.forEach((node, index) => {
                 const nodeId = node.originalId;
 
-                // 使用全局节点映射获取节点数据，不受当前活跃线程影响
+                // Use global node mapping to get node data, not affected by current active thread
                 const nodeData = this.data.getNodeDataByThreadAndId(threadName, nodeId);
                 // Update
                 if (nodeData) {
@@ -417,12 +533,15 @@ export class StepByStepPlayController {
     onModeToggle(on) {
         this.classvizManager.stepByStepMode = on;
         if (!on) {
+            // Stop all playback when step-by-step mode is turned off
+            this.stopAllPlayback();
+            
             // When step-by-step mode is turned off, reset all thread nodes to their original colors
             for (const [threadName, nodes] of this.classvizManager.threadToMethodNodesInOrder.entries()) {
                 nodes.forEach(node => {
                     const nodeId = node.originalId;
 
-                    // 使用全局节点映射获取节点数据，不受当前活跃线程影响
+                    // Use global node mapping to get node data, not affected by current active thread
                     const nodeData = this.data.getNodeDataByThreadAndId(threadName, nodeId);
 
                     if (nodeData) {
@@ -460,6 +579,7 @@ export class StepByStepPlayController {
             }
         }
     }
+
     // Public API
     refresh() {
         this.init();
