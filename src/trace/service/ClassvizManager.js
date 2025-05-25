@@ -5,7 +5,7 @@ import { ALLOWED_LIB_METHODS } from "../utils/process/callTreeParser.js";
 export class ClassvizManager {
     constructor(data, cy, eventBus, idRangeByThreadMap) {
         this.stepByStepMode = false;
-        this.useNumberedEdges = false;
+        this.useNumberedEdges = true;
         this.ALLOWED_LIB_METHODS = ALLOWED_LIB_METHODS;
         this.data = data;
         this.cy = cy;
@@ -56,6 +56,9 @@ export class ClassvizManager {
             if (this.useNumberedEdges) {
                 this.switchTraceMode(this.data.traceMode, true);
             }
+            if(this.stepByStepMode){
+                this.eventBus.publish('switchStepByStepMode', {flag: true});
+            }
 
         });
 
@@ -75,6 +78,9 @@ export class ClassvizManager {
             }
             if (this.useNumberedEdges) {
                 this.switchTraceMode(this.data.traceMode, true);
+            }
+              if(this.stepByStepMode){
+                this.eventBus.publish('switchStepByStepMode', {flag: true});
             }
         });
 
@@ -140,10 +146,10 @@ export class ClassvizManager {
 
             if (bordered) {
                 styleOptions['border-color'] = borderColor; // Use the provided border color
-                styleOptions['border-width'] = '5px';
+                styleOptions['border-width'] = '3px';
             } else {
                 styleOptions['border-color'] = 'grey';
-                styleOptions['border-width'] = '2px';
+                styleOptions['border-width'] = '3px';
             }
 
             node.style(styleOptions);
