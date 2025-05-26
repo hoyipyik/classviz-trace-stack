@@ -1,8 +1,9 @@
 import { callTreeParser } from "../../../utils/process/callTreeParser.js";
 import { xmlFileReader } from "../../../utils/process/xmlFileReader.js";
 
-import { loadFlameGraphPlugin } from "../../../cmd/index.js"
-// 全局變量來追踪當前的應用實例
+import { TraceStackApp } from "../../../TraceStackApp.js";
+import { relayoutWithBottomSpace } from "../widgets/ResizeManager.js";
+
 let currentTraceStackApp = null;
 
 export const traceLoader = () => {
@@ -22,21 +23,19 @@ export const traceLoader = () => {
             const file = event.target.files[0];
             if (file) {
                 if (currentTraceStackApp) {
+                    currentTraceStackApp.cleanUp(); 
                     currentTraceStackApp = null;
-                    const llmContainer = document.getElementById('llmExplanation');
-                    if (llmContainer) {
-                        llmContainer.innerHTML = '';
-                        console.log('LLM explanation container cleared');
-                    }
-
+                    
                     console.log('Previous TraceStackApp instance cleared');
                 }
 
                 const parsedXml = await xmlFileReader(file);
                 console.log("context", window.context);
-                const { cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap } = callTreeParser(parsedXml);
+                const { cascadeTree, idRangeByThreadMap } = callTreeParser(parsedXml);
 
-                currentTraceStackApp = loadFlameGraphPlugin(cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap);
+                currentTraceStackApp = new TraceStackApp(cascadeTree, idRangeByThreadMap);
+                document.getElementById('mainContent').style.display = 'block';
+                relayoutWithBottomSpace();
             }
         });
     });

@@ -175,6 +175,26 @@ class TraceStackApp {
       return {};
     }
   }
+
+  cleanUp() {
+    this.classvizManager.cleanUp();
+    const llmContainer = document.getElementById('llmExplanation');
+    if (llmContainer) {
+      llmContainer.innerHTML = '';
+      console.log('LLM explanation container cleared');
+    }
+    const flameGraphContainer = document.getElementById('flameGraph');
+    if (flameGraphContainer) {
+      flameGraphContainer.innerHTML = '';
+      console.log('Flame graph container cleared');
+    }
+    const callTreeContainer = document.getElementById('callTree');
+    if (callTreeContainer) {
+      callTreeContainer.innerHTML = '';
+      console.log('Call tree container cleared');
+    }
+  }
+
 }
 
 // Export class

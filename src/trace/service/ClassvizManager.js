@@ -56,8 +56,8 @@ export class ClassvizManager {
             if (this.useNumberedEdges) {
                 this.switchTraceMode(this.data.traceMode, true);
             }
-            if(this.stepByStepMode){
-                this.eventBus.publish('switchStepByStepMode', {flag: true});
+            if (this.stepByStepMode) {
+                this.eventBus.publish('switchStepByStepMode', { flag: true });
             }
 
         });
@@ -79,8 +79,8 @@ export class ClassvizManager {
             if (this.useNumberedEdges) {
                 this.switchTraceMode(this.data.traceMode, true);
             }
-              if(this.stepByStepMode){
-                this.eventBus.publish('switchStepByStepMode', {flag: true});
+            if (this.stepByStepMode) {
+                this.eventBus.publish('switchStepByStepMode', { flag: true });
             }
         });
 
@@ -1485,10 +1485,58 @@ export class ClassvizManager {
             removedLabels.push(nodeLabel);
         }
 
-      
+
         this.switchTraceMode(this.data.traceMode, this.useNumberedEdges);
 
 
         return removedLabels;
+    }
+
+    /**
+ * Clean up all inserted method nodes and edges, and restore parent class nodes
+ */
+    cleanUp() {
+        console.log(`Removing all ${this.insertedNodes.size} nodes and ${this.insertedEdges.size} edges`);
+
+        // Collect all affected class nodes before removing method nodes
+        const affectedClassIds = new Set();
+        this.insertedNodes.forEach((methodNode, nodeLabel) => {
+            // Check if this method node has a parent (class node)
+            if (methodNode.parent().length > 0) {
+                const classId = methodNode.parent().id();
+                affectedClassIds.add(classId);
+            }
+        });
+
+        // Remove all edges
+        this.insertedEdges.forEach((edge, edgeId) => {
+            this.cy.remove(edge);
+        });
+
+        // Remove all method nodes
+        this.insertedNodes.forEach((node, nodeLabel) => {
+            this.cy.remove(node);
+        });
+
+        // Restore all affected class nodes to their original dimensions
+        affectedClassIds.forEach(classId => {
+            this.restoreClassOriginalDimensions(classId);
+        });
+
+        // Clear all the maps and data structures
+        this.insertedNodes.clear();
+        this.insertedEdges.clear();
+        this.classToMethodsMap.clear();
+        this.methodLabelToOriginalIds.clear();
+        this.originalIdToSourceEdges.clear();
+        this.originalIdToTargetEdges.clear();
+
+        // Reset thread-related data structures
+        this.threadToMethodNodesInOrder.forEach((_, threadName) => {
+            this.threadToMethodNodesInOrder.set(threadName, []);
+            this.currentIndexByThread.set(threadName, 0);
+        });
+
+        console.log("All nodes and edges removed, class nodes restored");
     }
 }
