@@ -136,6 +136,8 @@ class Filter {
   setupTraceModeSwitcher() {
     const traceBtn = document.getElementById('trace');
     const graphBtn = document.getElementById('graph');
+    traceBtn.checked = this.data.traceMode;
+    graphBtn.checked = !this.data.traceMode;
     // console.log("FlameChart style filter initialized", logicalBtn, temporalBtn);
 
     traceBtn.addEventListener('change', (event) => {
