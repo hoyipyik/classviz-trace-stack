@@ -71,10 +71,10 @@ export class ClassvizManager {
                 this.insertMultipleMethodByIds(nodeIds);
             } else {
                 // remove single node
-                // nodeIds.forEach((nodeId) => {
-                //     this.removeSingleMethodById(nodeId);
-                // });
-                this.removeMultipleMethodByIds(nodeIds)
+                nodeIds.forEach((nodeId) => {
+                    this.removeSingleMethodById(nodeId);
+                });
+                // this.removeMultipleMethodByIds(nodeIds)
             }
             if (this.useNumberedEdges) {
                 this.switchTraceMode(this.data.traceMode, true);
@@ -283,7 +283,7 @@ export class ClassvizManager {
             this.traverseTreeAndCreateNumberedEdges(rootNode, depthColors);
         });
 
-        console.log(`Recreated numbered call tree edges for all threads`);
+        // console.log(`Recreated numbered call tree edges for all threads`);
     }
 
     /**
@@ -452,7 +452,7 @@ export class ClassvizManager {
         // Add edge to cytoscape
         const edge = this.cy.add(edgeData);
 
-        console.log(`Adding edge ${edgeId} with gradient from ${sourceColour} to ${targetColour}`);
+        // console.log(`Adding edge ${edgeId} with gradient from ${sourceColour} to ${targetColour}`);
 
         // Apply gradient styling - front half source color, back half target color
         edge.style({
@@ -509,7 +509,7 @@ export class ClassvizManager {
     switchTraceMode(traceMode, useNumbering = this.useNumberedEdges) {
         // Update mode settings
         this.data.traceMode = traceMode;
-        console.log(`Switched to ${traceMode ? 'trace' : 'call tree'} mode with ${useNumbering ? 'numbered' : 'standard'} edges`);
+        // console.log(`Switched to ${traceMode ? 'trace' : 'call tree'} mode with ${useNumbering ? 'numbered' : 'standard'} edges`);
 
         // If not enough nodes, no need to process
         if (this.insertedNodes.size <= 1) {
@@ -596,7 +596,7 @@ export class ClassvizManager {
             }
         }
 
-        console.log(`Cleared all ${edgeIds.length} edges`);
+        // console.log(`Cleared all ${edgeIds.length} edges`);
     }
 
     /**
@@ -617,7 +617,7 @@ export class ClassvizManager {
             this.traverseTreeAndCreateEdges(rootNode);
         });
 
-        console.log(`Recreated call tree edges for all threads`);
+        // console.log(`Recreated call tree edges for all threads`);
     }
 
     /**
@@ -972,7 +972,7 @@ export class ClassvizManager {
     // Helper method to find the first selected parent node in the call tree
     findFirstSelectedParent(originalId) {
         let currentId = originalId;
-        console.log("Current Id, looking for parent node", currentId)
+        // console.log("Current Id, looking for parent node", currentId)
 
         while (currentId) {
             const currentNode = this.data.nodes.get(currentId);
@@ -1414,7 +1414,7 @@ export class ClassvizManager {
             return [];
         }
 
-        console.log(`Batch inserting ${ids.length} method nodes`);
+        // console.log(`Batch inserting ${ids.length} method nodes`);
         const insertedLabels = [];
 
         // Process each ID
@@ -1451,7 +1451,7 @@ export class ClassvizManager {
             return [];
         }
 
-        console.log(`Batch removing ${ids.length} method nodes`);
+        // console.log(`Batch removing ${ids.length} method nodes`);
         const removedLabels = [];
 
         for (const id of ids) {
@@ -1463,12 +1463,12 @@ export class ClassvizManager {
             }
 
             // check existence of node and ID mapping
-            if (!this.insertedNodes.has(nodeLabel) ||
-                !this.methodLabelToOriginalIds.has(nodeLabel) ||
-                !this.methodLabelToOriginalIds.get(nodeLabel).has(id)) {
-                console.warn(`Node ${nodeLabel} with ID ${id} not found or not properly mapped`);
-                continue;
-            }
+            // if (!this.insertedNodes.has(nodeLabel) ||
+            //     !this.methodLabelToOriginalIds.has(nodeLabel) ||
+            //     !this.methodLabelToOriginalIds.get(nodeLabel).has(id)) {
+            //     console.warn(`Node ${nodeLabel} with ID ${id} not found or not properly mapped`);
+            //     continue;
+            // }
 
             const methodNode = this.insertedNodes.get(nodeLabel);
             if (!methodNode) continue;
