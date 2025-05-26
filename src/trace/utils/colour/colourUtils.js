@@ -2,43 +2,62 @@
 export const generateFocusedBorderColors = (count) => {
     const colors = [];
 
-    colors.push('#FFCC00'); // add first default bright yellow
-
+    // Predefined bright and vibrant colors (avoiding gray/black completely)
     const vibrantColors = [
-        '#FF3300', // bright red
-        '#FF00FF', // magenta
-        '#00CCFF', // bright blue
-        '#33CC33', // bright green
-        '#FF6600', // orange
-        '#9933FF', // purple
-        '#00FF99', // cyan green
-        '#FF3399', // pink
+        '#FF0080', // Hot Pink/Magenta
+        '#00FF40', // Electric Green
+        '#FF4000', // Electric Red-Orange
+        '#0080FF', // Electric Blue
+        '#FF8000', // Bright Orange
+        '#8000FF', // Electric Purple
+        '#FFFF00', // Pure Yellow
+        '#00FFFF', // Cyan
+        '#FF0040', // Crimson Red
+        '#40FF00', // Lime Green
+        '#FF00FF', // Magenta
+        '#00FF80', // Spring Green
+        '#FF4080', // Pink
+        '#8040FF', // Blue-Purple
+        '#FFBF00', // Amber
+        '#00BFFF', // Deep Sky Blue
+        '#FF6040', // Coral
+        '#80FF40', // Yellow-Green
+        '#FF0000', // Pure Red
+        '#0040FF', // Royal Blue
     ];
 
-    // If more colors are needed, generate additional vibrant colors using HSL
-    if (count > vibrantColors.length + 1) {
-        // High saturation and lightness ensure vibrant colors
-        const saturation = 100; // maximum saturation
-        const lightness = 55;   // moderate but sufficiently vibrant lightness
-
-        // Evenly distributed initial points on the hue wheel
-        const baseHues = [15, 45, 75, 105, 135, 165, 195, 225, 255, 285, 315, 345];
-
-        for (let i = 0; i < count - vibrantColors.length - 1; i++) {
-            const hue = baseHues[i % baseHues.length];
+    // If we need more colors than predefined, generate additional bright ones
+    if (count > vibrantColors.length) {
+        // Generate additional bright colors using HSL with high saturation and lightness
+        const extraCount = count - vibrantColors.length;
+        
+        for (let i = 0; i < extraCount; i++) {
+            // Use golden ratio for better color distribution
+            const hue = (i * 137.508) % 360; // Golden angle approximation
+            const saturation = 90 + (i % 2) * 10; // 90% or 100% saturation
+            const lightness = 50 + (i % 3) * 10;  // 50%, 60%, or 70% lightness
+            
             const color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
             colors.push(color);
         }
     }
 
-    // Add predefined vibrant colors (after yellow)
-    for (let i = 0; i < Math.min(count - 1, vibrantColors.length); i++) {
+    // Add predefined vibrant colors up to the required count
+    const colorsToAdd = Math.min(count, vibrantColors.length);
+    for (let i = 0; i < colorsToAdd; i++) {
         colors.push(vibrantColors[i]);
     }
 
-    return colors;
-}
+    // Shuffle the colors to avoid predictable patterns
+    // Simple Fisher-Yates shuffle
+    for (let i = colors.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [colors[i], colors[j]] = [colors[j], colors[i]];
+    }
 
+    // Ensure we return exactly the requested count
+    return colors.slice(0, count);
+}
 
 /**
   * Generate a color spectrum array
