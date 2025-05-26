@@ -252,10 +252,7 @@
                 >
                   Hide
                 </button>
-                <button
-                  class="diagram-control-btn"
-                  id="relayout-classviz-btn"
-                >
+                <button class="diagram-control-btn" id="relayout-classviz-btn">
                   Relayout
                 </button>
               </div>
@@ -269,12 +266,16 @@
                   Auto-expand to selection
                 </label>
                 <label class="highlight-all-container">
-                  <input type="checkbox" id="highlightAll" />
-                  Highlight all search results
+                  <input
+                    type="checkbox"
+                    id="numberedEdges"
+                    title="Less efficient for large data"
+                  />
+                  Numbered edges in Classviz
                 </label>
                 <label class="highlight-all-container">
-                  <input type="checkbox" id="numberedEdges" title="Less efficient for large data"/>
-                  Numbered edges in Classviz
+                  <input type="checkbox" id="highlightAll" />
+                  Highlight all search results
                 </label>
                 <label class="package-item">
                   <div id="selectAllSearched" class="tri-state-checkbox"></div>
@@ -283,8 +284,13 @@
                   >
                 </label>
                 <label class="package-item">
-                  <div id="selectAllSearchedCurrentThread" class="tri-state-checkbox"></div>
-                  <span style="margin-left: 5px">Select all search results in current thread</span>
+                  <div
+                    id="selectAllSearchedCurrentThread"
+                    class="tri-state-checkbox"
+                  ></div>
+                  <span style="margin-left: 5px"
+                    >Select all search results in current thread</span
+                  >
                 </label>
               </div>
             </div>
@@ -306,9 +312,7 @@
             </details>
 
             <!-- Step by step play  -->
-            <details
-              class="sidebar-section collapsible"
-            >
+            <details class="sidebar-section collapsible">
               <summary
                 class="section-header"
                 data-toggle="packageFilterContent"
@@ -448,14 +452,17 @@
 
                       <div class="method-details-section">
                         <div class="method-details-row">
-                          <span class="method-details-label fan-out-node">Fan Out:</span>
+                          <span class="method-details-label fan-out-node"
+                            >Fan Out:</span
+                          >
                           <span
                             class="method-details-value checkbox-container"
                             id="methodFanOut"
                           ></span>
                         </div>
                         <div class="method-details-row">
-                          <span class="method-details-label implementation-entry-node"
+                          <span
+                            class="method-details-label implementation-entry-node"
                             >Implementation Entry Point:</span
                           >
                           <span
@@ -465,7 +472,8 @@
                         </div>
 
                         <div class="method-details-row">
-                          <span class="method-details-label recursive-entry-node"
+                          <span
+                            class="method-details-label recursive-entry-node"
                             >Recursive Entry Point:</span
                           >
                           <span
@@ -473,8 +481,12 @@
                             id="methodRecursiveEntryPoint"
                           ></span>
                         </div>
-                        <div id="iscompressed-container" class="method-details-row" style="display: none;">
-                          <span class="method-details-label "
+                        <div
+                          id="iscompressed-container"
+                          class="method-details-row"
+                          style="display: none"
+                        >
+                          <span class="method-details-label"
                             >Compress recursive:</span
                           >
                           <span
@@ -482,7 +494,7 @@
                             id="iscompressed"
                           ></span>
                         </div>
-                        <div class="method-details-row" style="display: none;">
+                        <div class="method-details-row" style="display: none">
                           <span class="method-details-label"
                             >Is Summarized:</span
                           >
@@ -653,16 +665,47 @@
       <!-- Action Toolbar -->
       <div class="action-toolbar">
         <div class="selection-buttons compact">
-          <button id="selectAllChildren">Select children</button>
-          <button id="clearAllChildren">Clear children</button>
-          <button id="selectDirectChildren">Select direct</button>
-          <button id="clearDirectChildren">Clear direct</button>
-          <button id="selectParent">Select parent</button>
-          <button id="clearParent">Clear parent</button>
-          <button id="selectAbove">Select ancestors</button>
-          <button id="clearAbove">Clear ancestors</button>
-          <button id="selectAllThread">Select all</button>
-          <button id="clearAllThread">Clear all</button>
+          <div class="button-group select-group">
+            <h4>Select:</h4>
+            <div class="buttons-row">
+              <button id="selectAllChildren">
+                <span class="icon">⤵</span>Children
+              </button>
+              <button id="selectDirectChildren">
+                <span class="icon">↓</span>Direct Children
+              </button>
+              <button id="selectParent">
+                <span class="icon">↑</span>Parent
+              </button>
+              <button id="selectAbove">
+                <span class="icon">⤴</span>Ancestors
+              </button>
+              <button id="selectAllThread">
+                <span class="icon">⊕</span>All
+              </button>
+            </div>
+          </div>
+
+          <div style="margin-left: 2%" class="button-group clear-group">
+            <h4>Clear:</h4>
+            <div class="buttons-row">
+              <button id="clearAllChildren">
+                <span class="icon">⤵</span>Children
+              </button>
+              <button id="clearDirectChildren">
+                <span class="icon">↓</span>Direct Children
+              </button>
+              <button id="clearParent">
+                <span class="icon">↑</span>Parent
+              </button>
+              <button id="clearAbove">
+                <span class="icon">⤴</span>Ancestors
+              </button>
+              <button id="clearAllThread">
+                <span class="icon">⊖</span>All
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -675,10 +718,7 @@
           />
           <span id="currentMethod">No method selected</span>
         </div>
-        <button
-          class="view-method-details-btn"
-          id="viewMethodDetailsBtn"
-        >
+        <button class="view-method-details-btn" id="viewMethodDetailsBtn">
           View Method Details
         </button>
       </div>
