@@ -2,6 +2,8 @@ import { callTreeParser } from "../../../utils/process/callTreeParser.js";
 import { xmlFileReader } from "../../../utils/process/xmlFileReader.js";
 
 import { loadFlameGraphPlugin } from "../../../cmd/index.js"
+// 全局變量來追踪當前的應用實例
+let currentTraceStackApp = null;
 
 export const traceLoader = () => {
     document.addEventListener('DOMContentLoaded', function () {
@@ -19,23 +21,22 @@ export const traceLoader = () => {
         fileInput.addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (file) {
+                if (currentTraceStackApp) {
+                    currentTraceStackApp = null;
+                    const llmContainer = document.getElementById('llmExplanation');
+                    if (llmContainer) {
+                        llmContainer.innerHTML = '';
+                        console.log('LLM explanation container cleared');
+                    }
+
+                    console.log('Previous TraceStackApp instance cleared');
+                }
+
                 const parsedXml = await xmlFileReader(file);
                 console.log("context", window.context);
-                const { cascadeTree, nodeMap, nodes: parsedNodes, rootNode,
-                    edges: parsedEdges, packageColorMap, idRangeByThreadMap } = callTreeParser(parsedXml);
-                // const graph = { nodes: parsedNodes, edges: parsedEdges, style };
-                // renderCallTree(graph);
-                loadFlameGraphPlugin(cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap);
-                // download cascadeTree as json
-                // const cascadeTreeJson = JSON.stringify(cascadeTree, null, 2); // Added null and 2 for pretty printing
-                // const blob = new Blob([cascadeTreeJson], { type: 'application/json' });
-                // const url = URL.createObjectURL(blob);
-                // const a = document.createElement('a');
-                // a.href = url;
-                // a.download = 'cascadeTree.json';
-                // a.click();
-                // URL.revokeObjectURL(url);
+                const { cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap } = callTreeParser(parsedXml);
 
+                currentTraceStackApp = loadFlameGraphPlugin(cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap);
             }
         });
     });
