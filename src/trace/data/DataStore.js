@@ -47,11 +47,11 @@ class DataStore {
     // Flame Chart related settings
     this.showLogical = true; // Default display logical view
     // Trace mode for classviz
-    this.traceMode = false;  // Default trace mode is call graph mode
+    this.traceMode = true;  // Default trace mode is call graph mode
 
     // Application settings
     this.settings = {
-      autoExpand: false
+      autoExpand: true, // Default auto-expand nodes
     };
 
     // Initialize all threads node mappings first
