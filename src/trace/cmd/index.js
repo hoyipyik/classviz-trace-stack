@@ -1,17 +1,19 @@
 
 import { TraceStackApp } from "../TraceStackApp.js";
 import { $ } from "../../shorthands.js";
+import { relayoutWithBottomSpace } from "../ui/components/widgets/ResizeManager.js";
 
 export const loadFlameGraphPlugin = (cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap) => {
     // const service = new FlameGraphService(cascadeTree, nodeMap, rootNode, packageColorMap, idRangeByThreadMap);
     const traceStackApp = new TraceStackApp(cascadeTree, idRangeByThreadMap);
     document.getElementById('mainContent').style.display = 'block'; // Show the main content
-    $("#btn-relayout").click();
+    // $("#btn-relayout").click()
+    relayoutWithBottomSpace();
     // updateTraceNodesOnClassviz();
     // Use 'DOMContentLoaded' for better performance than document.readyState check
     // if (document.readyState === 'loading') {
     //     document.addEventListener("DOMContentLoaded", service.initialize);
-    // } else {
+    // } else {a
     //     // Document already loaded, run immediately
     //     service.initialize();
     // }
