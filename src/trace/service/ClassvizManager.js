@@ -1492,51 +1492,79 @@ export class ClassvizManager {
         return removedLabels;
     }
 
-    /**
- * Clean up all inserted method nodes and edges, and restore parent class nodes
- */
-    cleanUp() {
-        console.log(`Removing all ${this.insertedNodes.size} nodes and ${this.insertedEdges.size} edges`);
+    //     /**
+    //  * Clean up all inserted method nodes and edges, and restore parent class nodes
+    //  */
+    //     cleanUp() {
+    //     console.log(`Cleaning up ${this.insertedNodes.size} nodes and ${this.insertedEdges.size} edges`);
 
-        // Collect all affected class nodes before removing method nodes
-        const affectedClassIds = new Set();
-        this.insertedNodes.forEach((methodNode, nodeLabel) => {
-            // Check if this method node has a parent (class node)
-            if (methodNode.parent().length > 0) {
-                const classId = methodNode.parent().id();
-                affectedClassIds.add(classId);
-            }
-        });
+    //     // Step 1: Collect all affected class nodes before removing method nodes
+    //     const affectedClassIds = new Set();
+    //     this.insertedNodes.forEach((methodNode, nodeLabel) => {
+    //         // Check if this method node has a parent (class node)
+    //         if (methodNode.parent && methodNode.parent().length > 0) {
+    //             const classId = methodNode.parent().id();
+    //             affectedClassIds.add(classId);
+    //         }
+    //     });
 
-        // Remove all edges
-        this.insertedEdges.forEach((edge, edgeId) => {
-            this.cy.remove(edge);
-        });
+    //     // Step 2: Remove all edges first
+    //     this.insertedEdges.forEach((edge, edgeId) => {
+    //         try {
+    //             if (edge && this.cy.getElementById(edgeId).length > 0) {
+    //                 this.cy.remove(edge);
+    //             }
+    //         } catch (e) {
+    //             console.warn(`Failed to remove edge ${edgeId}:`, e);
+    //         }
+    //     });
 
-        // Remove all method nodes
-        this.insertedNodes.forEach((node, nodeLabel) => {
-            this.cy.remove(node);
-        });
+    //     // Step 3: Remove all method nodes
+    //     this.insertedNodes.forEach((node, nodeLabel) => {
+    //         try {
+    //             if (node && this.cy.getElementById(nodeLabel).length > 0) {
+    //                 this.cy.remove(node);
+    //             }
+    //         } catch (e) {
+    //             console.warn(`Failed to remove node ${nodeLabel}:`, e);
+    //         }
+    //     });
 
-        // Restore all affected class nodes to their original dimensions
-        affectedClassIds.forEach(classId => {
-            this.restoreClassOriginalDimensions(classId);
-        });
+    //     // Step 4: Restore all affected class nodes to their original dimensions
+    //     affectedClassIds.forEach(classId => {
+    //         try {
+    //             this.restoreClassOriginalDimensions(classId);
+    //         } catch (e) {
+    //             console.warn(`Failed to restore class ${classId}:`, e);
+    //         }
+    //     });
 
-        // Clear all the maps and data structures
-        this.insertedNodes.clear();
-        this.insertedEdges.clear();
-        this.classToMethodsMap.clear();
-        this.methodLabelToOriginalIds.clear();
-        this.originalIdToSourceEdges.clear();
-        this.originalIdToTargetEdges.clear();
+    //     // Step 5: Clear all the maps and data structures
+    //     this.insertedNodes.clear();
+    //     this.insertedEdges.clear();
+    //     this.classToMethodsMap.clear();
+    //     this.methodLabelToOriginalIds.clear();
+    //     this.originalIdToSourceEdges.clear();
+    //     this.originalIdToTargetEdges.clear();
 
-        // Reset thread-related data structures
-        this.threadToMethodNodesInOrder.forEach((_, threadName) => {
-            this.threadToMethodNodesInOrder.set(threadName, []);
-            this.currentIndexByThread.set(threadName, 0);
-        });
+    //     // Step 6: Reset thread-related data structures
+    //     this.threadToMethodNodesInOrder.forEach((_, threadName) => {
+    //         this.threadToMethodNodesInOrder.set(threadName, []);
+    //         this.currentIndexByThread.set(threadName, 0);
+    //     });
 
-        console.log("All nodes and edges removed, class nodes restored");
-    }
+    //     // Step 7: Clear original dimensions cache
+    //     this.originalDimensions = {};
+
+    //     // Step 8: Force garbage collection if available (optional)
+    //     if (window.gc && typeof window.gc === 'function') {
+    //         try {
+    //             window.gc();
+    //         } catch (e) {
+    //             // Ignore if gc is not available
+    //         }
+    //     }
+
+    //     console.log("ClassvizManager cleanup completed");
+    // }
 }
