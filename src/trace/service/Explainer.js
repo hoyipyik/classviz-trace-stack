@@ -1,6 +1,6 @@
 class Explainer {
     constructor(dataStore, eventBus, aiService) {
-        this.quickMode = true;
+        this.quickMode = false;
         this.parallel = true;
 
         this.data = dataStore;
