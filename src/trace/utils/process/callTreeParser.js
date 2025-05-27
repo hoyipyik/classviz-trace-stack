@@ -9,7 +9,8 @@ import { PACKAGE_COLORS } from '../colour/colourConstant.js';
 // We have filtered native java libs, we preserve these below as they are entries of a thread
 export const ALLOWED_LIB_METHODS = [
   'java.awt.EventDispatchThread.run()',
-  'java.util.concurrent.ThreadPoolExecutor$Worker.run()'
+  'java.util.concurrent.ThreadPoolExecutor$Worker.run()',
+  'java.awt.EventDispatchThread'
 ];
 
 export const callTreeParser = (xmlDoc, options = {}) => {
@@ -18,7 +19,7 @@ export const callTreeParser = (xmlDoc, options = {}) => {
     methodExclusions: ['<init>', '<clinit>'],
     allowExcludedMethodsAtRoot: false,
     filterNativeLibs: true,
-    includedPackages: ['nl.tudelft.jpacman'],
+    includedPackages: ['nl.tudelft.jpacman', 'CH.ifa.draw'],
     allowedLibMethods: ALLOWED_LIB_METHODS,
     skipAllFilters: false,
     ...options
