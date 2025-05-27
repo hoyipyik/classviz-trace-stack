@@ -89,7 +89,9 @@
             <a class="tabs tablink" data-tab="tab-features"> Features </a>
           </li>
           <li>
-            <a class="tabs tablink" data-tab="tab-traces"> Trace </a>
+            <a id="trace-tab" class="tabs tablink" data-tab="tab-traces">
+              Trace
+            </a>
           </li>
         </ul>
       </div>
@@ -237,22 +239,29 @@
 
             <div class="sidebar-section">
               <div class="section-header">
-                <h4>Show or Hide Trace Diagram</h4>
+                <h4>Control Trace & Structure Diagram</h4>
               </div>
               <div class="diagram-control-button-container">
                 <button
                   class="diagram-control-btn"
                   id="show-diagram-contianer-btn"
+                  title="Show call tree/flame graph container"
                 >
                   Show
                 </button>
                 <button
                   class="diagram-control-btn"
                   id="hide-diagram-contianer-btn"
+                  title="Hide call tree/flame graph container"
                 >
                   Hide
                 </button>
-                <button class="diagram-control-btn" id="relayout-classviz-btn">
+                <div>|</div>
+                <button
+                  title="Relayout the Structure diagram"
+                  class="diagram-control-btn"
+                  id="relayout-classviz-btn"
+                >
                   Relayout
                 </button>
               </div>
@@ -261,17 +270,18 @@
             <!-- Options -->
             <div class="sidebar-section options-section">
               <div class="options">
-                <label>
+                <label
+                  title="If enabled, expand the diagram will automatically selected node and its children"
+                >
                   <input type="checkbox" id="autoExpandToSelect" />
-                  Auto-expand to selection
+                  Auto Expand Selection
                 </label>
-                <label class="highlight-all-container">
-                  <input
-                    type="checkbox"
-                    id="numberedEdges"
-                    title="Less efficient for large data"
-                  />
-                  Numbered edges in Classviz
+                <label
+                  title="Edge annotations showing the temporal order of function invocations (Less efficient for large data)"
+                  class="highlight-all-container"
+                >
+                  <input type="checkbox" id="numberedEdges" />
+                  Display Call Order on Edges
                 </label>
                 <label class="highlight-all-container">
                   <input type="checkbox" id="highlightAll" />
@@ -450,10 +460,41 @@
                         </div>
                       </div>
 
-                      <div class="method-details-section">
+                       <div class="method-details-section">
                         <div class="method-details-row">
-                          <span class="method-details-label fan-out-node"
-                            >Fan Out:</span
+                          <span class="method-details-label">Description:</span>
+                          <span
+                            class="method-details-value"
+                            id="methodDescription"
+                            >-</span
+                          >
+                        </div>
+                        <!-- <div class="method-details-row">
+                          <span class="method-details-label"
+                            >Brief Summary:</span
+                          >
+                          <span
+                            class="method-details-value"
+                            id="methodBriefSummary"
+                            >-</span
+                          >
+                        </div> -->
+                      </div>
+
+                      <div class="method-details-section">
+                        <div
+                          style="font-size: small; font-weight: bold;"
+                          title="You can mark this method as special node. It will work as the entrypoint of a subtree region during LLM expalnation"
+                        >
+                          Special nodes configuration
+                      </div>
+                        <div style="margin: 1% 0;">The special nodes are detacted automactically by the sytem, which work as the root of a region. 
+                          <br/> Please configure only if you are not satisfield with the result</div>
+                        <div class="method-details-row">
+                          <span 
+                            title="Coordinate method orchestrates multiple operations across different components of the system"
+                            class="method-details-label fan-out-node"
+                            >Fan Out (Coordinate method):</span
                           >
                           <span
                             class="method-details-value checkbox-container"
@@ -462,6 +503,7 @@
                         </div>
                         <div class="method-details-row">
                           <span
+                            title="Method represents the beginning of concrete implementation logic for one or more specific functionalities"
                             class="method-details-label implementation-entry-node"
                             >Implementation Entry Point:</span
                           >
@@ -473,6 +515,7 @@
 
                         <div class="method-details-row">
                           <span
+                            title="Method is a recursive entry point, meaning it can call itself directly"
                             class="method-details-label recursive-entry-node"
                             >Recursive Entry Point:</span
                           >
@@ -506,26 +549,7 @@
                         </div>
                       </div>
 
-                      <div class="method-details-section">
-                        <div class="method-details-row">
-                          <span class="method-details-label">Description:</span>
-                          <span
-                            class="method-details-value"
-                            id="methodDescription"
-                            >-</span
-                          >
-                        </div>
-                        <!-- <div class="method-details-row">
-                          <span class="method-details-label"
-                            >Brief Summary:</span
-                          >
-                          <span
-                            class="method-details-value"
-                            id="methodBriefSummary"
-                            >-</span
-                          >
-                        </div> -->
-                      </div>
+                     
                     </div>
 
                     <div class="method-details-tab-content" id="metricsTab">
@@ -619,7 +643,7 @@
             <!-- Trace mode switcher on Classviz -->
             <details class="sidebar-section">
               <summary class="section-header">
-                <h4>Trace Mode</h4>
+                <h4>Trace Mode for Structure Diagram</h4>
                 <span class="toggle-icon">▲</span>
               </summary>
               <div>
@@ -668,19 +692,19 @@
           <div class="button-group select-group">
             <h4>Select:</h4>
             <div class="buttons-row">
-              <button id="selectAllChildren">
+              <button id="selectAllChildren" title="Select all children of the current node">
                 <span class="icon">⤵</span>Children
               </button>
-              <button id="selectDirectChildren">
+              <button id="selectDirectChildren" title="Select direct children of the current node">
                 <span class="icon">↓</span>Direct Children
               </button>
-              <button id="selectParent">
+              <button id="selectParent" title="Select parent of the current node">
                 <span class="icon">↑</span>Parent
               </button>
-              <button id="selectAbove">
+              <button id="selectAbove" title="Select all ancestors of the current node">
                 <span class="icon">⤴</span>Ancestors
               </button>
-              <button id="selectAllThread">
+              <button id="selectAllThread" title="Select all nodes in the current thread">
                 <span class="icon">⊕</span>All
               </button>
             </div>
@@ -689,19 +713,19 @@
           <div style="margin-left: 2%" class="button-group clear-group">
             <h4>Clear:</h4>
             <div class="buttons-row">
-              <button id="clearAllChildren">
+              <button id="clearAllChildren" title="Clear all children selections of the current node">
                 <span class="icon">⤵</span>Children
               </button>
-              <button id="clearDirectChildren">
+              <button id="clearDirectChildren" title="Clear direct children selections of the current node">
                 <span class="icon">↓</span>Direct Children
               </button>
-              <button id="clearParent">
+              <button id="clearParent" title="Clear parent selection of the current node">
                 <span class="icon">↑</span>Parent
               </button>
-              <button id="clearAbove">
+              <button id="clearAbove" title="Clear all ancestors selections of the current node">
                 <span class="icon">⤴</span>Ancestors
               </button>
-              <button id="clearAllThread">
+              <button id="clearAllThread" title="Clear all selections in the current thread">
                 <span class="icon">⊖</span>All
               </button>
             </div>
@@ -710,7 +734,7 @@
       </div>
 
       <div class="footer-bar">
-        <div class="focused-method">
+        <div title="Current Focused Method" class="focused-method">
           <input
             type="checkbox"
             id="currentNodeCheckbox"
@@ -718,7 +742,7 @@
           />
           <span id="currentMethod">No method selected</span>
         </div>
-        <button class="view-method-details-btn" id="viewMethodDetailsBtn">
+        <button title="Click to see details of current focused method" class="view-method-details-btn" id="viewMethodDetailsBtn">
           View Method Details
         </button>
       </div>
