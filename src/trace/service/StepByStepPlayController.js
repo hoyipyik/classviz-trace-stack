@@ -12,10 +12,9 @@ export class StepByStepPlayController {
             console.error(`Container element not found: ${containerSelector}`);
             return;
         }
-        this.players = [];
-        this.playIntervals = new Map(); // Store play intervals for each thread
-        this.autoPlayStates = new Map(); // Store autoplay states for each thread
+        
         this.currentPlayingThread = null; // Track which thread is currently playing
+        this.playInterval = null; // Single interval for the currently playing thread
 
         // Set fixed width for the container to match sidebar
         this.container.style.width = '270px';
@@ -26,17 +25,14 @@ export class StepByStepPlayController {
 
         this.eventBus.subscribe('changeClassvizFocus', () => {
             this.refresh();
-            this.onModeToggle(this.classvizManager.stepByStepMode);
         });
 
         this.eventBus.subscribe('changeSingleMethodByIdToClassviz', () => {
             this.refresh();
-            this.onModeToggle(this.classvizManager.stepByStepMode);
         });
 
         this.eventBus.subscribe('changeMultiMethodByIdsToClassviz', () => {
             this.refresh();
-            this.onModeToggle(this.classvizManager.stepByStepMode);
         });
 
         this.eventBus.subscribe('switchStepByStepMode', ({ flag }) => {
@@ -49,11 +45,11 @@ export class StepByStepPlayController {
         // Store current playing thread before clearing
         const wasPlaying = this.currentPlayingThread;
         
-        // Clear container and stop all intervals
-        this.stopAllPlayback();
+        // Stop current playback
+        this.stopPlayback();
         this.container.innerHTML = '';
 
-        // Create mode toggle button at the top - even more compact
+        // Create mode toggle button at the top
         this.createModeToggle();
 
         const threadNames = Array.from(this.classvizManager.threadToMethodNodesInOrder.keys());
@@ -69,7 +65,6 @@ export class StepByStepPlayController {
         
         // Restore playing thread if it was playing
         if (wasPlaying) {
-            console.log(`Restoring autoplay for thread: ${wasPlaying}`);
             this.startPlayback(wasPlaying);
         }
     }
@@ -177,18 +172,18 @@ export class StepByStepPlayController {
         colorDot.style.width = '10px';
         colorDot.style.height = '10px';
         colorDot.style.borderRadius = '50%';
-        colorDot.style.backgroundColor = borderColour || '#ccc'; // Use thread color or fallback to gray
+        colorDot.style.backgroundColor = borderColour || '#ccc';
         colorDot.style.marginRight = '8px';
-        colorDot.style.flexShrink = '0'; // Prevent the dot from shrinking
+        colorDot.style.flexShrink = '0';
         threadTitleContainer.appendChild(colorDot);
 
         // Thread title text
         const threadTitle = document.createElement('div');
         threadTitle.textContent = threadName;
-        threadTitle.title = threadName; // Show full name on hover
+        threadTitle.title = threadName;
         threadTitle.style.fontWeight = 'normal';
         threadTitle.style.fontSize = '13px';
-        threadTitle.style.width = '210px'; // Slightly reduced to accommodate the dot
+        threadTitle.style.width = '210px';
         threadTitle.style.overflow = 'hidden';
         threadTitle.style.textOverflow = 'ellipsis';
         threadTitle.style.whiteSpace = 'nowrap';
@@ -204,24 +199,15 @@ export class StepByStepPlayController {
         controlsRow.style.marginBottom = '6px';
 
         // Skip to start button
-        const skipStartBtn = this.createButton('⏮', () => this.skipToStart(threadName));
-        skipStartBtn.style.width = '24px';
-        skipStartBtn.style.height = '24px';
-        skipStartBtn.style.fontSize = '10px';
+        const skipStartBtn = this.createButton('⏮', 'Jump to the first method in this trace', () => this.skipToStart(threadName));
         controlsRow.appendChild(skipStartBtn);
 
         // Step back button
-        const stepBackBtn = this.createButton('◀◀', () => this.stepBack(threadName));
-        stepBackBtn.style.width = '24px';
-        stepBackBtn.style.height = '24px';
-        stepBackBtn.style.fontSize = '8px';
+        const stepBackBtn = this.createButton('◀◀', 'Jump to the previous method', () => this.stepBack(threadName));
         controlsRow.appendChild(stepBackBtn);
 
         // Play/Pause button
-        const playPauseBtn = this.createButton('▶', () => this.togglePlayback(threadName));
-        playPauseBtn.style.width = '24px';
-        playPauseBtn.style.height = '24px';
-        playPauseBtn.style.fontSize = '10px';
+        const playPauseBtn = this.createButton('▶', 'Auto play/pause, it will stop other playing trace', () => this.togglePlayback(threadName));
         playPauseBtn.style.backgroundColor = '#e8f4f8';
         playPauseBtn.id = `play-btn-${threadName.replace(/[^a-zA-Z0-9]/g, '-')}`;
         controlsRow.appendChild(playPauseBtn);
@@ -235,7 +221,7 @@ export class StepByStepPlayController {
         methodDisplay.style.backgroundColor = '#f0f0f0';
         methodDisplay.style.borderRadius = '4px';
         methodDisplay.style.textAlign = 'center';
-        methodDisplay.style.maxWidth = '90px'; // Reduced width to accommodate play button
+        methodDisplay.style.maxWidth = '90px';
         methodDisplay.style.overflow = 'hidden';
         methodDisplay.style.whiteSpace = 'nowrap';
         methodDisplay.style.textOverflow = 'ellipsis';
@@ -243,23 +229,16 @@ export class StepByStepPlayController {
 
         const currentMethod = methodNodes[currentIndex] || { label: 'None' };
         methodDisplay.textContent = this.extractClassAndMethod(currentMethod.label);
-        methodDisplay.title = currentMethod.label; // Show full name on hover
-        methodDisplay.dataset.threadName = threadName;
+        methodDisplay.title = currentMethod.label;
 
         controlsRow.appendChild(methodDisplay);
 
         // Step forward button
-        const stepForwardBtn = this.createButton('▶▶', () => this.stepForward(threadName));
-        stepForwardBtn.style.width = '24px';
-        stepForwardBtn.style.height = '24px';
-        stepForwardBtn.style.fontSize = '8px';
+        const stepForwardBtn = this.createButton('▶▶', 'Jumpt to next method',  () => this.stepForward(threadName));
         controlsRow.appendChild(stepForwardBtn);
 
         // Skip to end button
-        const skipEndBtn = this.createButton('⏭', () => this.skipToEnd(threadName, maxIndex));
-        skipEndBtn.style.width = '24px';
-        skipEndBtn.style.height = '24px';
-        skipEndBtn.style.fontSize = '10px';
+        const skipEndBtn = this.createButton('⏭', 'Jump to the last method of this trace', () => this.skipToEnd(threadName, maxIndex));
         controlsRow.appendChild(skipEndBtn);
 
         threadPlayer.appendChild(controlsRow);
@@ -283,8 +262,7 @@ export class StepByStepPlayController {
         slider.max = maxIndex;
         slider.value = currentIndex;
         slider.style.flex = '1';
-        slider.style.height = '4px'; // Smaller slider
-        slider.dataset.threadName = threadName;
+        slider.style.height = '4px';
 
         slider.addEventListener('input', (event) => {
             const newIndex = parseInt(event.target.value);
@@ -302,35 +280,21 @@ export class StepByStepPlayController {
 
         threadPlayer.appendChild(sliderRow);
 
-        // Counter display - made smaller
+        // Counter display
         const counterDisplay = document.createElement('div');
         counterDisplay.textContent = `${currentIndex + 1} / ${maxIndex + 1}`;
         counterDisplay.style.textAlign = 'right';
         counterDisplay.style.fontSize = '10px';
         counterDisplay.style.color = '#6b7280';
         counterDisplay.style.marginTop = '2px';
-        counterDisplay.dataset.threadName = threadName;
 
         threadPlayer.appendChild(counterDisplay);
 
         // Add to container
         this.container.appendChild(threadPlayer);
-
-        // Store references to update later
-        this.players.push({
-            threadName,
-            elements: {
-                methodDisplay,
-                colorDot,        // Store reference to the color dot
-                threadTitle,     // Store reference to thread title
-                slider,
-                counterDisplay,
-                playPauseBtn     // Store reference to play/pause button
-            }
-        });
     }
 
-    createButton(text, onClick) {
+    createButton(text, title, onClick) {
         const button = document.createElement('button');
         button.textContent = text;
         button.style.padding = '2px';
@@ -343,6 +307,7 @@ export class StepByStepPlayController {
         button.style.display = 'flex';
         button.style.alignItems = 'center';
         button.style.justifyContent = 'center';
+        button.title = title;
         button.style.fontSize = '10px';
 
         button.addEventListener('click', onClick);
@@ -363,78 +328,47 @@ export class StepByStepPlayController {
 
     // Playback control methods
     togglePlayback(threadName) {
-        console.log(`Toggle playback for ${threadName}`);
-        console.log(`Current playing thread: ${this.currentPlayingThread}`);
-        console.log(`Is ${threadName} playing: ${this.isPlaying(threadName)}`);
-        
-        if (this.isPlaying(threadName)) {
+        if (this.currentPlayingThread === threadName) {
             // If this thread is playing, stop it
-            this.stopPlayback(threadName);
+            this.stopPlayback();
         } else {
-            // Stop any other playing thread first
-            if (this.currentPlayingThread && this.currentPlayingThread !== threadName) {
-                console.log(`Stopping current playing thread: ${this.currentPlayingThread}`);
-                this.stopPlayback(this.currentPlayingThread);
-            }
-            // Start this thread
+            // Stop any current playback and start this thread
+            this.stopPlayback();
             this.startPlayback(threadName);
         }
     }
 
     startPlayback(threadName) {
-        // Stop any existing playback for this thread
-        this.stopPlayback(threadName);
-
         console.log(`Starting playback for thread: ${threadName}`);
 
-        const intervalId = setInterval(() => {
+        this.playInterval = setInterval(() => {
             const methodNodes = this.classvizManager.threadToMethodNodesInOrder.get(threadName) || [];
             const currentIndex = this.classvizManager.currentIndexByThread.get(threadName) || 0;
             const maxIndex = methodNodes.length - 1;
-            
-            console.log(`Auto-step: ${threadName} [${currentIndex}/${maxIndex}]`);
             
             if (currentIndex < maxIndex) {
                 this.stepForward(threadName);
             } else {
                 // Reached the end, stop playback
                 console.log(`Reached end for thread: ${threadName}`);
-                this.stopPlayback(threadName);
+                this.stopPlayback();
             }
         }, 500);
 
-        this.playIntervals.set(threadName, intervalId);
-        this.autoPlayStates.set(threadName, true);
         this.currentPlayingThread = threadName;
         this.updatePlayPauseButton(threadName, true);
     }
 
-    stopPlayback(threadName) {
-        const intervalId = this.playIntervals.get(threadName);
-        if (intervalId) {
-            console.log(`Stopping playback for thread: ${threadName}`);
-            clearInterval(intervalId);
-            this.playIntervals.delete(threadName);
+    stopPlayback() {
+        if (this.playInterval) {
+            clearInterval(this.playInterval);
+            this.playInterval = null;
         }
-        this.autoPlayStates.set(threadName, false);
         
-        // Clear current playing thread if it's this one
-        if (this.currentPlayingThread === threadName) {
+        if (this.currentPlayingThread) {
+            this.updatePlayPauseButton(this.currentPlayingThread, false);
             this.currentPlayingThread = null;
         }
-        
-        this.updatePlayPauseButton(threadName, false);
-    }
-
-    stopAllPlayback() {
-        for (const [threadName] of this.playIntervals) {
-            this.stopPlayback(threadName);
-        }
-        this.currentPlayingThread = null;
-    }
-
-    isPlaying(threadName) {
-        return this.playIntervals.has(threadName);
     }
 
     updatePlayPauseButton(threadName, isPlaying) {
@@ -443,7 +377,6 @@ export class StepByStepPlayController {
         
         if (button) {
             button.textContent = isPlaying ? '⏸' : '▶';
-            // Always keep blue background
             button.style.backgroundColor = '#e8f4f8';
         }
     }
@@ -467,12 +400,12 @@ export class StepByStepPlayController {
     }
 
     skipToStart(threadName) {
-        this.stopPlayback(threadName); // Stop playback when jumping
+        this.stopPlayback(); // Stop playback when jumping
         this.updateIndex(threadName, 0);
     }
 
     skipToEnd(threadName, maxIndex) {
-        this.stopPlayback(threadName); // Stop playback when jumping
+        this.stopPlayback(); // Stop playback when jumping
         this.updateIndex(threadName, maxIndex);
     }
 
@@ -488,22 +421,21 @@ export class StepByStepPlayController {
             threadNodes.forEach((node, index) => {
                 const nodeId = node.originalId;
 
-                // Use global node mapping to get node data, not affected by current active thread
+                // Use global node mapping to get node data
                 const nodeData = this.data.getNodeDataByThreadAndId(threadName, nodeId);
-                // Update
                 if (nodeData) {
                     // Set color based on index relative to newIndex
                     if (index < newIndex) {
                         // For nodes before current position, set slightly dark gray
-                        this.classvizManager.changeColorOfNodeById(nodeId, '#999999', false); // Slightly darker gray
+                        this.classvizManager.changeColorOfNodeById(nodeId, '#999999', true, nodeData.originalColor);
                     } else if (index > newIndex) {
                         if (threadNodes[newIndex] && threadNodes[newIndex].label === node.label)
                             return;
                         // For nodes after current position, set light gray
-                        this.classvizManager.changeColorOfNodeById(nodeId, '#DDDDDD', false); // Light gray
+                        this.classvizManager.changeColorOfNodeById(nodeId, '#DDDDDD', true, nodeData.originalColor);
                     } else {
                         // For the current node, use original color
-                        this.classvizManager.changeColorOfNodeById(nodeId, nodeData.originalColor || nodeData.color, true, borderColour);
+                        this.classvizManager.changeColorOfNodeById(nodeId, borderColour, true, nodeData.originalColor);
                     }
                 } else {
                     console.log("[Error no data]")
@@ -516,12 +448,12 @@ export class StepByStepPlayController {
             this.classvizManager.currentIndexByThread.set(threadName, threadNodes.length === 0 ? 0 : threadNodes.length - 1);
             return;
         }
-        // Set current node with bounds check
         if (newIndex < 0) {
             console.error("Invalid index for thread nodes: ", newIndex);
             this.classvizManager.currentIndexByThread.set(threadName, 0);
             return;
         }
+        
         const currentNodeId = threadNodes[newIndex].originalId;
         this.data.current = currentNodeId;
 
@@ -534,18 +466,15 @@ export class StepByStepPlayController {
         this.classvizManager.stepByStepMode = on;
         if (!on) {
             // Stop all playback when step-by-step mode is turned off
-            this.stopAllPlayback();
+            this.stopPlayback();
             
-            // When step-by-step mode is turned off, reset all thread nodes to their original colors
+            // Reset all thread nodes to their original colors
             for (const [threadName, nodes] of this.classvizManager.threadToMethodNodesInOrder.entries()) {
                 nodes.forEach(node => {
                     const nodeId = node.originalId;
-
-                    // Use global node mapping to get node data, not affected by current active thread
                     const nodeData = this.data.getNodeDataByThreadAndId(threadName, nodeId);
 
                     if (nodeData) {
-                        // Always restore using the originalColor property
                         this.classvizManager.changeColorOfNodeById(
                             nodeId,
                             nodeData.originalColor || nodeData.color,
@@ -555,23 +484,17 @@ export class StepByStepPlayController {
                 });
             }
         } else {
-            // When turned on, immediately apply the step-by-step coloring to the current thread
-            // First, get all thread entries
+            // When turned on, apply step-by-step coloring
             const threadEntries = Array.from(this.classvizManager.currentIndexByThread.entries());
-
-            // Get the current thread name
             const currentThreadName = this.data.currentThreadName;
 
-            // Reorder the thread entries so the current thread is processed last
+            // Process current thread last
             let reorderedThreadEntries = threadEntries.filter(([threadName]) => threadName !== currentThreadName);
-
-            // Find the current thread entry and add it to the end if it exists
             const currentThreadEntry = threadEntries.find(([threadName]) => threadName === currentThreadName);
             if (currentThreadEntry) {
                 reorderedThreadEntries.push(currentThreadEntry);
             }
 
-            // Process each thread, with the current thread at the end
             for (const [threadName, currentIndex] of reorderedThreadEntries) {
                 if (currentIndex !== undefined) {
                     this.updateIndex(threadName, currentIndex);
@@ -589,8 +512,6 @@ export class StepByStepPlayController {
     enableStepByStepMode() {
         if (this.modeToggleInput && !this.modeToggleInput.checked) {
             this.modeToggleInput.checked = true;
-
-            // Trigger the change event manually
             const event = new Event('change');
             this.modeToggleInput.dispatchEvent(event);
         }
@@ -599,8 +520,6 @@ export class StepByStepPlayController {
     disableStepByStepMode() {
         if (this.modeToggleInput && this.modeToggleInput.checked) {
             this.modeToggleInput.checked = false;
-
-            // Trigger the change event manually
             const event = new Event('change');
             this.modeToggleInput.dispatchEvent(event);
         }
