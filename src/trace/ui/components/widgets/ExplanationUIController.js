@@ -113,7 +113,7 @@ export class ExplanationUIController {
         return element;
     }
 
-    createCheckboxOption(id, label, checked, changeHandler) {
+    createCheckboxOption(id, label, checked, title, changeHandler) {
         const container = this.createElement('div', 'option-item', {
             marginBottom: '8px'
         });
@@ -128,6 +128,7 @@ export class ExplanationUIController {
             marginLeft: '8px'
         }, label);
         labelElement.htmlFor = id;
+        labelElement.title = title;
 
         container.appendChild(checkbox);
         container.appendChild(labelElement);
@@ -389,20 +390,21 @@ export class ExplanationUIController {
             'quickMode',
             'Quick Mode',
             this.explainer.quickMode,
+            'Enable Quick Mode for faster explanations with less detail',
             (e) => { this.explainer.quickMode = e.target.checked; }
         );
 
         // Parallel checkbox
-        const parallelContainer = this.createCheckboxOption(
-            'parallel',
-            'Parallel Processing',
-            this.explainer.parallel,
-            (e) => { this.explainer.parallel = e.target.checked; }
-        );
-        this.applyStyles(parallelContainer, { marginBottom: '15px' });
+        // const parallelContainer = this.createCheckboxOption(
+        //     'parallel',
+        //     'Parallel Processing',
+        //     this.explainer.parallel,
+        //     (e) => { this.explainer.parallel = e.target.checked; }
+        // );
+        // this.applyStyles(parallelContainer, { marginBottom: '15px' });
 
         optionsContainer.appendChild(quickModeContainer);
-        optionsContainer.appendChild(parallelContainer);
+        // optionsContainer.appendChild(parallelContainer);
 
         // Explain button
         const explainButton = this.createElement('button', 'explain-button', {
