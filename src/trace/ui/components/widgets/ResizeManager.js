@@ -1,4 +1,3 @@
-// Simple ResizeManager.js - Handles panel resizing with minimal code
 
 export const relayoutWithBottomSpace = function (pCy=window.cy, layout="klay") {
 	if (!pCy) {
@@ -8,8 +7,7 @@ export const relayoutWithBottomSpace = function (pCy=window.cy, layout="klay") {
 
 	const windowHeight = window.innerHeight;
 	const windowWidth = window.innerWidth;
-	
-	// 使用window高度的65%作为布局区域，底部保留35%
+
 	const boundingBox = {
 		x1: 0,
 		y1: 0.35,
@@ -62,10 +60,14 @@ export class ResizeManager {
     // Define the minimum height
     this.minHeight = 11;
     
-    // Set initial state to minimized
+    // Set initial state to minimized with delayed execution
     requestAnimationFrame(() => {
-      this.mainContent.style.height = `${this.minHeight}px`;
-      this.mainContent.style.marginTop = `${this.maxHeight - this.minHeight}px`;
+      setTimeout(() => {
+        this.mainContent.style.height = `${this.minHeight}px`;
+        this.mainContent.style.marginTop = `${this.maxHeight - this.minHeight}px`;
+      
+        this.updateFlexState();
+      }, 50);
     });
     
     // Variables to track dragging state
@@ -91,6 +93,23 @@ export class ResizeManager {
     this.bindSidebarControlButtons();
   }
 
+  updateFlexState() {
+    if (!this.mainContent) return;
+    
+    const currentHeight = parseInt(window.getComputedStyle(this.mainContent).height, 10);
+    const currentHeightPercent = (currentHeight / this.maxHeight) * 100;
+    
+    if (currentHeightPercent > 30) {
+      this.mainContent.classList.add('expanded');
+      this.mainContent.setAttribute('data-state', 'expanded');
+      console.log('Flex layout enabled - panel expanded');
+    } else {
+      this.mainContent.classList.remove('expanded');
+      this.mainContent.setAttribute('data-state', 'collapsed');
+      console.log('Flex layout disabled - panel collapsed');
+    }
+  }
+
   resetContainer() {
     if (!this.mainContent) return;
     
@@ -104,6 +123,10 @@ export class ResizeManager {
     if (this.handlerBar) {
       this.handlerBar.classList.remove('is-resizing');
     }
+    
+    // Remove flex control classes
+    this.mainContent.classList.remove('expanded');
+    this.mainContent.removeAttribute('data-state');
     
     console.log('Container styles reset');
   }
@@ -179,6 +202,9 @@ export class ResizeManager {
     
     this.mainContent.style.height = `${newHeight}px`;
     this.mainContent.style.marginTop = `${newMarginTop}px`;
+    
+  
+    this.updateFlexState();
   }
   
   onMouseUp() {
@@ -186,6 +212,10 @@ export class ResizeManager {
       this.isResizing = false;
       document.body.classList.remove('is-resizing');
       this.handlerBar.classList.remove('is-resizing');
+      
+      setTimeout(() => {
+        this.updateFlexState();
+      }, 50);
     }
   }
   
@@ -194,9 +224,9 @@ export class ResizeManager {
     const currentHeightPercent = (currentHeight / this.maxHeight) * 100;
     
     if (currentHeightPercent < 30) {
-      this.minimize();
-    } else {
       this.maximize();
+    } else {
+      this.minimize();
     }
   }
   
@@ -207,8 +237,10 @@ export class ResizeManager {
     this.mainContent.style.transition = 'height 0.3s, margin-top 0.3s';
     this.mainContent.style.height = `${targetHeight}px`;
     this.mainContent.style.marginTop = `${targetMarginTop}px`;
+    
     setTimeout(() => {
       this.mainContent.style.transition = '';
+      this.updateFlexState(); // 更新flex状态
     }, 300);
   }
   
@@ -227,14 +259,21 @@ export class ResizeManager {
       // If minimized, just update the margin
       this.mainContent.style.marginTop = `${this.maxHeight - this.minHeight}px`;
     }
+    
+    // 窗口大小改变后更新flex状态
+    setTimeout(() => {
+      this.updateFlexState();
+    }, 100);
   }
   
   maximize() {
     this.mainContent.style.transition = 'height 0.3s, margin-top 0.3s';
     this.mainContent.style.height = `${this.maxHeight}px`;
     this.mainContent.style.marginTop = '0px';
+    
     setTimeout(() => {
       this.mainContent.style.transition = '';
+      this.updateFlexState(); // 更新flex状态
     }, 300);
   }
   
@@ -242,8 +281,10 @@ export class ResizeManager {
     this.mainContent.style.transition = 'height 0.3s, margin-top 0.3s';
     this.mainContent.style.height = `${this.minHeight}px`;
     this.mainContent.style.marginTop = `${this.maxHeight - this.minHeight}px`;
+    
     setTimeout(() => {
       this.mainContent.style.transition = '';
+      this.updateFlexState(); // 更新flex状态
     }, 300);
   }
 

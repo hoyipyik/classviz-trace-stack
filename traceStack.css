@@ -320,14 +320,19 @@ details[open] .toggle-icon {
 
 /* MAIN CONTENT
   ---------------------------------------------- */
+/* 默认状态，不使用flex */
 .main-content {
   z-index: 9996;
   margin-left: 273px;
   flex: 1;
-  display: flex;
   flex-direction: column;
   overflow: hidden;
   background-color: #fafafa;
+}
+
+/* 当面板展开时，才应用flex布局 */
+.main-content.expanded {
+  display: flex !important;
 }
 
 /* Action Toolbar */
@@ -407,6 +412,8 @@ details[open] .toggle-icon {
 .call-tree {
   font-family: monospace;
   list-style-type: none;
+  width: fit-content;
+  min-width: 100%;
   padding-left: 0;
 }
 
