@@ -95,7 +95,7 @@ class TraceStackApp {
     this.sidebar = new SidebarController(this.eventBus);
 
     // Initialize renderer
-    this.view = new Renderer(this.data, container, this.eventBus, this.explainer);
+    this.view = new Renderer(this.data, container, this.eventBus, this.explainer, this.classvizManager);
 
     // Initialize flame graph renderer
     this.flameGraph = new FlameGraphRenderer(this.data, container, this.eventBus, this.explainer);
