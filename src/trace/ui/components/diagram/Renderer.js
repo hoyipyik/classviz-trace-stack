@@ -5,85 +5,118 @@
  */
 class Renderer {
   constructor(dataStore, container, eventBus, explainer) {
-    // Data source manager
     this.data = dataStore;
-
-    // DOM container
     this.container = container;
-
     this.eventBus = eventBus;
-
     this.explainer = explainer;
 
     // Batch update mode
     this.batchMode = false;
     this.pendingUpdates = new Set();
 
-    // Event listeners
-    if (this.eventBus) {
-      this.eventBus.subscribe('scrollToFocusedNode', () => {
-        const currentNodeId = this.data.current;
-        if (currentNodeId) {
-          setTimeout(() => {
-            this.ensureNodeVisible(currentNodeId);
-            this.updateCurrentNodeFocusUI(currentNodeId);
-            this.data.expand(currentNodeId);
-            this.updateNodeExpansion(currentNodeId);
-            this.scrollToNode(currentNodeId);
-          }, 100);
-        }
-      });
+    this._initializeEventListeners();
+    this._initializeCurrentNodeCheckbox();
+  }
 
-      this.eventBus.subscribe('changeCurrentFocusedNode', (data) => {
-        if (data && data.nodeId) {
-          const label = this.data.getNodeDataById(data.nodeId).label;
-          this.ensureNodeVisible(data.nodeId);
-          this.updateCurrentMethodDisplay(label);
-          this.updateCurrentNodeFocusUI(data.nodeId);
-          this.scrollToNode(data.nodeId);
-        }
-      });
+  // ========== Initialization Methods ==========
+  _initializeEventListeners() {
+    if (!this.eventBus) return;
 
-      this.eventBus.subscribe('nodeStructureChanged', ({ nodeId, compressed }) => {
-        if (nodeId) {
-          this.renderTree();
+    this.eventBus.subscribe('scrollToNodeClickedInFlameChart', this._handleScrollToNodeClickedInFlameChart.bind(this));
+    this.eventBus.subscribe('changeCurrentFocusedNode', this._handleCurrentFocusChange.bind(this));
+    this.eventBus.subscribe('nodeCompressionTriggered', this._handleCompressionChange.bind(this));
+    this.eventBus.subscribe('specialNodeConfigChanged', this._handleSpecialStatusChange.bind(this));
+    this.eventBus.subscribe('nodeSelectionChanged', this._handleSelectionChange.bind(this));
+  }
 
-          // restore current nodes
-          if (this.data.current) {
-            this.ensureNodeVisible(this.data.current);
-            this.updateCurrentNodeFocusUI(this.data.current);
-            this.scrollToNode(this.data.current);
-          }
-        }
-      })
-
-      this.eventBus.subscribe('nodeDataChanged', (data) => {
-        this.nodeDataChangedEventHandler(data);
-      });
-
-      this.eventBus.subscribe('nodeSelectionChanged', (data) => {
-        if (data && data.nodeId) {
-          // Update current node selection
-          const label = this.data.nodes.get(data.nodeId).data.label;
-          if (data.nodeId === this.data.current) {
-            this.updateCurrentMethodDisplay(label);
-          }
+  _initializeCurrentNodeCheckbox() {
+    const currentNodeCheckbox = document.getElementById('currentNodeCheckbox');
+    if (currentNodeCheckbox) {
+      currentNodeCheckbox.addEventListener('change', (e) => {
+        if (this.data.current) {
+          this.data.select(this.data.current, e.target.checked);
+          this.updateNodeUI(this.data.current);
+          this.eventBus.publish('refreshFlame', {});
         }
       });
     }
-
-    this.listenToCurrentNodeSelectionCheckBox();
   }
 
-  // Render the tree
+  // ========== Event Handlers ==========
+  _handleScrollToNodeClickedInFlameChart() {
+    const currentNodeId = this.data.current;
+    if (currentNodeId) {
+      setTimeout(() => {
+        this.ensureNodeVisible(currentNodeId);
+        this.updateCurrentNodeFocusUI(currentNodeId);
+        this.updateNodeExpansion(currentNodeId);
+        this.scrollToNode(currentNodeId);
+      }, 100);
+    }
+  }
+
+  _handleCurrentFocusChange(data) {
+    if (data && data.nodeId) {
+      const label = this.data.getNodeDataById(data.nodeId).label;
+      this.ensureNodeVisible(data.nodeId);
+      this.updateCurrentMethodDisplay(label);
+      this.updateCurrentNodeFocusUI(data.nodeId);
+      this.scrollToNode(data.nodeId);
+    }
+  }
+
+  _handleCompressionChange({ nodeId }) {
+    if (nodeId) {
+      this.renderTree();
+      if (this.data.current) {
+        this.ensureNodeVisible(this.data.current);
+        this.updateCurrentNodeFocusUI(this.data.current);
+        this.scrollToNode(this.data.current);
+      }
+    }
+  }
+
+  _handleSpecialStatusChange(data) {
+    if (data && data.nodeId) {
+      this.updateNodeUI(data.nodeId);
+      this._updateNodeStatusStyle(data);
+    }
+  }
+
+  _updateNodeStatusStyle(data) {
+    const nodeElement = this.data.getNodeElement(data.nodeId);
+    if (!nodeElement) return;
+
+    // Remove all status classes
+    nodeElement.classList.remove('recursive-entry-node', 'fan-out-node', 'implementation-entry-node');
+
+    // Add appropriate class based on field
+    const classMap = {
+      'recursiveEntryPoint': 'recursive-entry-node',
+      'fanOut': 'fan-out-node',
+      'implementationEntryPoint': 'implementation-entry-node'
+    };
+
+    if (data.value && classMap[data.field]) {
+      nodeElement.classList.add(classMap[data.field]);
+    }
+  }
+
+  _handleSelectionChange(data) {
+    if (data && data.nodeId) {
+      const label = this.data.nodes.get(data.nodeId).data.label;
+      if (data.nodeId === this.data.current) {
+        this.updateCurrentMethodDisplay(label);
+      }
+    }
+  }
+
+  // ========== Main Rendering Methods ==========
   renderTree() {
     this.container.innerHTML = '';
-
-    // Get root node
     const rootNode = this.data.tree;
 
     if (rootNode) {
-      // Create root element
       const rootElement = this.createNodeElement(rootNode.id);
       this.container.appendChild(rootElement);
     } else {
@@ -91,127 +124,108 @@ class Renderer {
     }
   }
 
-  nodeDataChangedEventHandler(data) {
-    if (data && data.nodeId) {
-      // Update node data
-      this.updateNode(data.nodeId);
-
-      const nodeElement = this.data.getNodeElement(data.nodeId);
-      if (nodeElement) {
-        // First remove all classes
-        nodeElement.classList.remove('recursive-entry-node');
-        nodeElement.classList.remove('fan-out-node');
-        nodeElement.classList.remove('implementation-entry-node');
-
-        // Then add classes as needed
-        if (data.field === 'recursiveEntryPoint' && data.value) {
-          nodeElement.classList.add('recursive-entry-node');
-          return
-        }
-
-        if (data.field === 'fanOut' && data.value) {
-          nodeElement.classList.add('fan-out-node');
-          return
-        }
-
-        if (data.field === 'implementationEntryPoint' && data.value) {
-          nodeElement.classList.add('implementation-entry-node');
-        }
-      }
-    }
-  }
-
-  listenToCurrentNodeSelectionCheckBox() {
-    const currentNodeCheckbox = document.getElementById('currentNodeCheckbox');
-    if (currentNodeCheckbox) {
-      currentNodeCheckbox.addEventListener('change', (e) => {
-        if (this.data.current) {
-          this.data.select(this.data.current, e.target.checked);
-          this.updateNode(this.data.current);
-          this.eventBus.publish('refreshFlame', {});
-        }
-      });
-    }
-  }
-
-  // Create a node element
   createNodeElement(nodeId) {
     const nodeData = this.data.getNodeDataById(nodeId);
     const nodeState = this.data.getNodeState(nodeId);
 
     if (!nodeData) return null;
 
-    // Create list item
     const li = document.createElement('li');
     li.dataset.nodeId = nodeId;
 
-    // Create call item div
+    const itemDiv = this._createItemDiv(nodeId, nodeData, nodeState);
+    this._attachNodeComponents(itemDiv, nodeId, nodeData, nodeState);
+    this._attachEventListeners(itemDiv, nodeId, nodeData);
+
+    li.appendChild(itemDiv);
+
+    // Create children if expanded
+    if (nodeState.expanded && this.data.getChildrenIds(nodeId).length > 0) {
+      const childUl = this._createChildrenContainer(nodeId);
+      li.appendChild(childUl);
+    }
+
+    return li;
+  }
+
+  // ========== Node Creation Helper Methods ==========
+  _createItemDiv(nodeId, nodeData, nodeState) {
     const itemDiv = document.createElement('div');
     itemDiv.className = 'call-item';
     itemDiv.dataset.nodeId = nodeId;
 
+    this._applyNodeStyling(itemDiv, nodeData, nodeState);
+    this.data.setNodeElement(nodeId, itemDiv);
+
+    return itemDiv;
+  }
+
+  _applyNodeStyling(itemDiv, nodeData, nodeState) {
     // Apply color
     if (nodeData.color) {
       itemDiv.style.borderLeft = `4px solid ${nodeData.color}`;
-      itemDiv.style.backgroundColor = `${nodeData.color}20`; // Add transparency
+      itemDiv.style.backgroundColor = `${nodeData.color}20`;
     }
 
-    // Apply selected state (checkbox selection)
-    if (nodeState.selected) {
-      itemDiv.classList.add('selected');
-    }
+    // Apply states
+    if (nodeState.selected) itemDiv.classList.add('selected');
+    if (nodeState.highlight) itemDiv.classList.add('search-highlight');
+    if (nodeData.isRoot) itemDiv.classList.add('root-node');
 
-    // Apply status of special nodes
+    // Apply status classes
     if (nodeData.status) {
-      if (nodeData.status.implementationEntryPoint) {
-        itemDiv.classList.add('implementation-entry-node');
-      }
+      const statusMap = {
+        implementationEntryPoint: 'implementation-entry-node',
+        fanOut: 'fan-out-node',
+        recursiveEntryPoint: 'recursive-entry-node'
+      };
 
-      if (nodeData.status.fanOut) {
-        itemDiv.classList.add('fan-out-node');
-      }
-
-      if (nodeData.status.recursiveEntryPoint) {
-        itemDiv.classList.add('recursive-entry-node');
-      }
+      Object.entries(statusMap).forEach(([status, className]) => {
+        if (nodeData.status[status]) {
+          itemDiv.classList.add(className);
+        }
+      });
     }
+  }
 
-    // Apply highlight state
-    if (nodeState.highlight) {
-      itemDiv.classList.add('search-highlight');
-    }
+  _attachNodeComponents(itemDiv, nodeId, nodeData, nodeState) {
+    // Add checkbox
+    const checkbox = this._createCheckbox(nodeId, nodeData, nodeState);
+    itemDiv.appendChild(checkbox);
 
-    // Save node element to data store
-    this.data.setNodeElement(nodeId, itemDiv);
+    // Add toggle button
+    const toggleBtn = this._createToggleButton(nodeId, nodeData, nodeState);
+    itemDiv.appendChild(toggleBtn);
 
-    // Create checkbox
+    // Add percentage
+    const percentage = this._createPercentageElement(nodeData);
+    itemDiv.appendChild(percentage);
+
+    // Add method name
+    this._renderMethodName(itemDiv, nodeData.label);
+
+    // Add execution time
+    const executionTime = this._createExecutionTimeElement(nodeData);
+    itemDiv.appendChild(executionTime);
+  }
+
+  _createCheckbox(nodeId, nodeData, nodeState) {
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.className = 'checkbox';
     checkbox.checked = nodeState.selected;
+
     checkbox.addEventListener('change', () => {
-      // Update selected state
       this.data.select(nodeId, checkbox.checked);
-
-      // If checkbox is checked, set current node
-      // Trigger current node focus
       if (checkbox.checked) {
-        this.data.setCurrent(nodeId);
-        this.updateCurrentMethodDisplay(nodeData.label);
-        if (this.eventBus) {
-          this.eventBus.publish('changeCurrentFocusedNodeForStepByStep', {
-            nodeId: nodeId
-          });
-          this.eventBus.publish('changeClassvizFocus', {
-            nodeId: nodeId
-          });
-        }
-
+        this._setCurrentNode(nodeId, nodeData.label);
       }
     });
-    itemDiv.appendChild(checkbox);
 
-    // Create toggle button
+    return checkbox;
+  }
+
+  _createToggleButton(nodeId, nodeData, nodeState) {
     const toggleBtn = document.createElement('span');
     toggleBtn.className = 'toggle-btn';
 
@@ -219,355 +233,304 @@ class Renderer {
 
     if (hasChildren) {
       toggleBtn.textContent = nodeState.expanded ? '▼' : '▶';
-
-      // Add click event
-      // Inside the toggleBtn click event listener in the createNodeElement method
       toggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-
-        // Store the current expansion state before changing it
-        const wasExpanded = nodeState.expanded;
-        console.log(nodeState, "node state info")
-
-        // Set current node
-        this.data.setCurrent(nodeId);
-
-        // Update method selection checkbox UI in diagram
-        this.updateCurrentNodeFocusUI(nodeId);
-
-        // Update current method display in bottom bar
-        this.updateCurrentMethodDisplay(nodeData.label);
-
-        // Toggle node expansion (moved here from below)
-        this.data.toggleExpand(nodeId);
-
-        // Update node expansion state right away (moved from below)
-        this.toggleNodeExpansion(li, nodeId);
-
-        // If click and auto selection is enabled, select children
-        if (!wasExpanded && this.data.settings.autoExpand) {
-          setTimeout(() => {
-            const changedIds = this.data.selectChildren(nodeId);
-            this.batchUpdateNodes(changedIds);
-            console.log("auto expand and create finished")
-          }, 100);
-        } else {
-          console.log("auto expand and create not triggered")
-        }
-
-        if (this.eventBus) {
-          this.eventBus.publish('changeCurrentFocusedNodeForStepByStep', {
-            nodeId: nodeId
-          });
-
-        }
+        this._handleToggleClick(e, nodeId, nodeData, nodeState);
       });
     } else {
-      // No children, hide toggle button
-      toggleBtn.textContent = '';
       toggleBtn.style.display = 'none';
     }
-    itemDiv.appendChild(toggleBtn);
 
-    // Create node percentage
+    return toggleBtn;
+  }
+
+  _handleToggleClick(e, nodeId, nodeData, nodeState) {
+    e.stopPropagation();
+
+    const wasExpanded = nodeState.expanded;
+
+    this._setCurrentNode(nodeId, nodeData.label);
+    this.data.toggleExpand(nodeId);
+
+    const li = e.target.closest('li');
+    this.toggleNodeExpansion(li, nodeId);
+
+    // Auto-expand children if enabled
+    if (!wasExpanded && this.data.settings.autoExpand) {
+      setTimeout(() => {
+        const changedIds = this.data.selectChildren(nodeId);
+        this.batchUpdateNodes(changedIds);
+      }, 100);
+    }
+
+    this._publishFocusEvents(nodeId);
+  }
+
+  _createPercentageElement(nodeData) {
     const percentage = document.createElement('span');
     percentage.className = 'percentage';
     percentage.textContent = (nodeData.percent || '') + '%';
-    itemDiv.appendChild(percentage);
+    return percentage;
+  }
 
-    // Create method name
-    this.renderMethodName(itemDiv, nodeData.label);
-
-    // Create execution time
+  _createExecutionTimeElement(nodeData) {
     const executionTime = document.createElement('span');
     executionTime.className = 'execution-time';
     executionTime.textContent = this.data.formatTime(nodeData.time);
-    itemDiv.appendChild(executionTime);
-
-    // Set node style
-    if (nodeData.isRoot) {
-      itemDiv.classList.add('root-node');
-    }
-
-    // Click method to select event listener
-    itemDiv.addEventListener('click', (e) => {
-      if (e.target !== checkbox && e.target !== toggleBtn) {
-        // Set current node as currentNode
-        this.data.setCurrent(nodeId);
-
-        // Update focus node UI
-        this.updateCurrentNodeFocusUI(nodeId);
-
-        // Update current method display UI
-        this.updateCurrentMethodDisplay(nodeData.label);
-
-        if (this.eventBus) {
-          this.eventBus.publish('changeCurrentFocusedNodeForStepByStep', {
-            nodeId: nodeId
-          });
-          this.eventBus.publish('changeClassvizFocus', {
-            nodeId: nodeId
-          });
-        }
-        this.eventBus.publish('changeRegionFocus', { focusedRegionId: nodeId });
-      }
-    });
-
-    const createHoverCard = (nodeId) => {
-      const itemData = this.data.nodes.get(nodeId).data;
-
-      const hoverCard = document.createElement('div');
-      hoverCard.className = 'hover-card';
-      hoverCard.style.display = 'none';
-      hoverCard.style.position = 'fixed';
-      hoverCard.style.backgroundColor = 'white';
-      hoverCard.style.border = '1px solid #ccc';
-      hoverCard.style.borderRadius = '4px';
-      hoverCard.style.padding = '8px';
-      hoverCard.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
-      hoverCard.style.width = '450px';
-      hoverCard.style.zIndex = '10000';
-
-      const handleMouseOver = (e) => {
-        if (e.target !== checkbox && e.target !== toggleBtn) {
-          const isSpecialNode = itemData.status.fanOut ||
-            itemData.status.implementationEntryPoint ||
-            itemData.status.recursiveEntryPoint;
-          const regionText = this.explainer.regions.get(nodeId)?.briefSummary;
-          // console.log("check for hover");
-
-          // display only for special node 
-          if (isSpecialNode && regionText) {
-            // console.log("hover - should display card");
-
-            hoverCard.innerHTML = ''; // clear old data
-
-            // add data rows
-            const labelRow = document.createElement('div');
-            labelRow.innerHTML = `<strong>${itemData.label}</strong>`;
-            hoverCard.appendChild(labelRow);
-
-            const regionRow = document.createElement('div');
-            regionRow.innerHTML = `${regionText}`;
-            hoverCard.appendChild(regionRow);
-
-            // get position from pointer
-            const mouseX = e.clientX;
-            const mouseY = e.clientY;
-
-            // console.log(`Card position: left=${mouseX + 10}px, top=${mouseY}px`);
-
-            // avoid overflow from the viewport
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
-            const cardWidth = 250;
-            const cardHeight = 100;
-
-            let leftPos = mouseX + 10;
-            let topPos = mouseY;
-
-            // if overflow
-            if (leftPos + cardWidth > viewportWidth) {
-              leftPos = Math.max(0, mouseX - cardWidth - 10);
-            }
-
-
-            if (topPos + cardHeight > viewportHeight) {
-              topPos = Math.max(0, mouseY - cardHeight);
-            }
-
-            hoverCard.style.left = `${leftPos}px`;
-            hoverCard.style.top = `${topPos}px`;
-
-            // add on body to avoid overflow
-            if (!document.body.contains(hoverCard)) {
-              // console.log("Adding hover card to DOM");
-              document.body.appendChild(hoverCard);
-            } 
-
-            hoverCard.style.display = 'block';
-            
-            document.body.appendChild(hoverCard);
-          }
-        }
-      };
-
-      const handleMouseOut = () => {
-        hoverCard.style.display = 'none';
-      };
-
-      itemDiv.addEventListener('mouseover', handleMouseOver);
-      itemDiv.addEventListener('mouseout', handleMouseOut);
-
-      document.body.appendChild(hoverCard);
-
-      return () => {
-        itemDiv.removeEventListener('mouseover', handleMouseOver);
-        itemDiv.removeEventListener('mouseout', handleMouseOut);
-        if (document.body.contains(hoverCard)) {
-          document.body.removeChild(hoverCard);
-        }
-      };
-    };
-
-    createHoverCard(nodeId);
-
-    li.appendChild(itemDiv);
-
-    // If node is expanded and has children, create child nodes
-    if (nodeState.expanded && hasChildren) {
-      const childUl = document.createElement('ul');
-
-      // Get all child node IDs
-      const childrenIds = this.data.getChildrenIds(nodeId);
-
-      // Create child node elements
-      childrenIds.forEach(childId => {
-        const childElement = this.createNodeElement(childId);
-        childUl.appendChild(childElement);
-      });
-
-      li.appendChild(childUl);
-    }
-
-    return li;
+    return executionTime;
   }
 
-  // Add method name to container
-  renderMethodName(container, fullName) {
+  _createChildrenContainer(nodeId) {
+    const childUl = document.createElement('ul');
+    const childrenIds = this.data.getChildrenIds(nodeId);
+
+    childrenIds.forEach(childId => {
+      const childElement = this.createNodeElement(childId);
+      childUl.appendChild(childElement);
+    });
+
+    return childUl;
+  }
+
+  // ========== Event Listeners ==========
+  _attachEventListeners(itemDiv, nodeId, nodeData) {
+    itemDiv.addEventListener('click', (e) => {
+      if (this._shouldIgnoreClick(e)) return;
+
+      this._setCurrentNode(nodeId, nodeData.label);
+      this._publishFocusEvents(nodeId);
+      this.eventBus.publish('changeRegionFocus', { focusedRegionId: nodeId });
+    });
+
+    this._attachHoverEvents(itemDiv, nodeId);
+  }
+
+  _shouldIgnoreClick(e) {
+    return e.target.matches('.checkbox') || e.target.matches('.toggle-btn');
+  }
+
+  _setCurrentNode(nodeId, label) {
+    this.data.setCurrent(nodeId);
+    this.updateCurrentNodeFocusUI(nodeId);
+    this.updateCurrentMethodDisplay(label);
+  }
+
+  _publishFocusEvents(nodeId) {
+    if (this.eventBus) {
+      this.eventBus.publish('changeCurrentFocusedNodeForStepByStep', { nodeId });
+      this.eventBus.publish('changeClassvizFocus', { nodeId });
+    }
+  }
+
+  _attachHoverEvents(itemDiv, nodeId) {
+    const cleanup = this._createHoverCard(itemDiv, nodeId);
+    // Store cleanup function if needed for memory management
+  }
+
+  _createHoverCard(itemDiv, nodeId) {
+    const itemData = this.data.nodes.get(nodeId).data;
+    const hoverCard = this._createHoverCardElement();
+
+    const handleMouseOver = (e) => {
+      if (this._shouldIgnoreClick(e)) return;
+
+      const isSpecialNode = this._isSpecialNode(itemData);
+      const regionText = this.explainer.regions.get(nodeId)?.briefSummary;
+
+      if (isSpecialNode && regionText) {
+        this._showHoverCard(hoverCard, itemData, regionText, e);
+      }
+    };
+
+    const handleMouseOut = () => {
+      hoverCard.style.display = 'none';
+    };
+
+    itemDiv.addEventListener('mouseover', handleMouseOver);
+    itemDiv.addEventListener('mouseout', handleMouseOut);
+
+    return () => {
+      itemDiv.removeEventListener('mouseover', handleMouseOver);
+      itemDiv.removeEventListener('mouseout', handleMouseOut);
+      if (document.body.contains(hoverCard)) {
+        document.body.removeChild(hoverCard);
+      }
+    };
+  }
+
+  _createHoverCardElement() {
+    const hoverCard = document.createElement('div');
+    Object.assign(hoverCard.style, {
+      display: 'none',
+      position: 'fixed',
+      backgroundColor: 'white',
+      border: '1px solid #ccc',
+      borderRadius: '4px',
+      padding: '8px',
+      boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+      width: '450px',
+      zIndex: '10000'
+    });
+    hoverCard.className = 'hover-card';
+    document.body.appendChild(hoverCard);
+    return hoverCard;
+  }
+
+  _isSpecialNode(itemData) {
+    return itemData.status.fanOut ||
+      itemData.status.implementationEntryPoint ||
+      itemData.status.recursiveEntryPoint;
+  }
+
+  _showHoverCard(hoverCard, itemData, regionText, e) {
+    hoverCard.innerHTML = '';
+
+    const labelRow = document.createElement('div');
+    labelRow.innerHTML = `<strong>${itemData.label}</strong>`;
+    hoverCard.appendChild(labelRow);
+
+    const regionRow = document.createElement('div');
+    regionRow.innerHTML = regionText;
+    hoverCard.appendChild(regionRow);
+
+    const position = this._calculateHoverPosition(e.clientX, e.clientY);
+    hoverCard.style.left = `${position.left}px`;
+    hoverCard.style.top = `${position.top}px`;
+    hoverCard.style.display = 'block';
+  }
+
+  _calculateHoverPosition(mouseX, mouseY) {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const cardWidth = 450;
+    const cardHeight = 100;
+
+    let left = mouseX + 10;
+    let top = mouseY;
+
+    if (left + cardWidth > viewportWidth) {
+      left = Math.max(0, mouseX - cardWidth - 10);
+    }
+
+    if (top + cardHeight > viewportHeight) {
+      top = Math.max(0, mouseY - cardHeight);
+    }
+
+    return { left, top };
+  }
+
+  // ========== Method Name Rendering ==========
+  _renderMethodName(container, fullName) {
     if (!fullName) {
-      const methodNameSpan = document.createElement('span');
-      methodNameSpan.className = 'method-name';
-      methodNameSpan.textContent = 'Unknown';
-      container.appendChild(methodNameSpan);
+      this._appendMethodNameSpan(container, 'Unknown');
       return;
     }
 
     const methodMatch = fullName.match(/(.+)\.([^.]+)(\(.*\))/);
 
     if (methodMatch) {
-      const className = methodMatch[1];
-      const methodName = methodMatch[2];
-      const params = methodMatch[3];
-
-      const methodNameSpan = document.createElement('span');
-      methodNameSpan.className = 'method-name';
-      methodNameSpan.textContent = `${className}.${methodName}`;
-      container.appendChild(methodNameSpan);
-
-      const paramsSpan = document.createElement('span');
-      paramsSpan.className = 'params';
-      paramsSpan.textContent = params;
-      container.appendChild(paramsSpan);
+      const [, className, methodName, params] = methodMatch;
+      this._appendMethodNameSpan(container, `${className}.${methodName}`);
+      this._appendParamsSpan(container, params);
     } else {
-      const methodNameSpan = document.createElement('span');
-      methodNameSpan.className = 'method-name';
-      methodNameSpan.textContent = fullName;
-      container.appendChild(methodNameSpan);
+      this._appendMethodNameSpan(container, fullName);
     }
   }
 
-  // Toggle node expansion
+  _appendMethodNameSpan(container, text) {
+    const span = document.createElement('span');
+    span.className = 'method-name';
+    span.textContent = text;
+    container.appendChild(span);
+  }
+
+  _appendParamsSpan(container, params) {
+    const span = document.createElement('span');
+    span.className = 'params';
+    span.textContent = params;
+    container.appendChild(span);
+  }
+
+  // Legacy method for backward compatibility
+  renderMethodName(container, fullName) {
+    this._renderMethodName(container, fullName);
+  }
+
+  // ========== Node Update Methods ==========
   toggleNodeExpansion(li, nodeId) {
     const nodeState = this.data.getNodeState(nodeId);
-    const nodeElement = li.querySelector('.call-item');
-    const toggleBtn = nodeElement.querySelector('.toggle-btn');
+    const toggleBtn = li.querySelector('.toggle-btn');
 
     if (!nodeState.expanded) {
-      // Folding operation
-      const childUl = li.querySelector('ul');
-      if (childUl) {
-        childUl.style.display = 'none';
-      }
-      toggleBtn.textContent = '▶';
+      this._collapseNode(li, toggleBtn);
     } else {
-      // Expanding operation
-      let childUl = li.querySelector('ul');
-
-      if (!childUl) {
-        // First time expanding, create child nodes
-        childUl = document.createElement('ul');
-
-        // Get all child node IDs
-        const childrenIds = this.data.getChildrenIds(nodeId);
-
-        // Create child node elements
-        childrenIds.forEach(childId => {
-          const childElement = this.createNodeElement(childId);
-          childUl.appendChild(childElement);
-        });
-
-        li.appendChild(childUl);
-      } else {
-        // Already exists, just show it
-        childUl.style.display = '';
-      }
-      // Update toggle button text
-      toggleBtn.textContent = '▼';
+      this._expandNode(li, nodeId, toggleBtn);
     }
   }
 
-  // Update node UI
-  updateNode(nodeId) {
-    // In batch update mode, only collect node IDs
-    if (this.batchMode) {
-      this.pendingUpdates.add(nodeId);
-      return;
+  _collapseNode(li, toggleBtn) {
+    const childUl = li.querySelector('ul');
+    if (childUl) {
+      childUl.style.display = 'none';
+    }
+    toggleBtn.textContent = '▶';
+  }
+
+  _expandNode(li, nodeId, toggleBtn) {
+    let childUl = li.querySelector('ul');
+
+    if (!childUl) {
+      childUl = this._createChildrenContainer(nodeId);
+      li.appendChild(childUl);
+    } else {
+      childUl.style.display = '';
     }
 
+    toggleBtn.textContent = '▼';
+  }
+
+  updateNodeUI(nodeId) {
     const nodeData = this.data.getNodeDataById(nodeId);
     const nodeState = this.data.getNodeState(nodeId);
     const nodeElement = this.data.getNodeElement(nodeId);
 
     if (!nodeData || !nodeState || !nodeElement) return;
 
-    // Update selected state
+    this._updateNodeCheckboxUI(nodeElement, nodeState);
+    this._updateNodeHighlightUI(nodeElement, nodeState);
+    this._updateNodeFocusUI(nodeElement, nodeId);
+  }
+
+  _updateNodeCheckboxUI(nodeElement, nodeState) {
     const checkbox = nodeElement.querySelector('.checkbox');
     if (checkbox) {
       checkbox.checked = nodeState.selected;
     }
-
-    // Update highlight state
-    if (nodeState.highlight) {
-      nodeElement.classList.add('search-highlight');
-    } else {
-      nodeElement.classList.remove('search-highlight');
-    }
-
-    // Update focused node state
-    if (this.data.current === nodeId) {
-      nodeElement.classList.add('focused');
-    } else {
-      nodeElement.classList.remove('focused');
-    }
   }
 
-  // Batch update nodes
+  _updateNodeHighlightUI(nodeElement, nodeState) {
+    nodeElement.classList.toggle('search-highlight', nodeState.highlight);
+  }
+
+  _updateNodeFocusUI(nodeElement, nodeId) {
+    nodeElement.classList.toggle('focused', this.data.current === nodeId);
+  }
+
   batchUpdateNodes(nodeIds) {
-    // Enter batch update mode
     this.batchMode = true;
 
     try {
-      // Execute updates
-      nodeIds.forEach(id => this.updateNode(id));
-
-      // Process pending updates
+      nodeIds.forEach(id => this.updateNodeUI(id));
       const pendingIds = [...this.pendingUpdates];
       this.pendingUpdates.clear();
-
-      // Exit batch update mode
       this.batchMode = false;
-
-      // Actually update all nodes
-      pendingIds.forEach(id => this.updateNode(id));
+      pendingIds.forEach(id => this.updateNodeUI(id));
     } catch (error) {
-      // Ensure exit from batch update mode
       this.batchMode = false;
       console.error("Error during batch update:", error);
     }
   }
 
-  // Update current node focus UI
+  // ========== Focus and Display Methods ==========
   updateCurrentNodeFocusUI(nodeId) {
     // Remove previous focus
     document.querySelectorAll('.call-item.focused').forEach(el => {
@@ -576,24 +539,28 @@ class Renderer {
       }
     });
 
-    // // Find the node element in the DOM (in case the reference is stale)
+    let nodeElement = this._findNodeElement(nodeId);
+    if (nodeElement) {
+      nodeElement.classList.add('focused');
+    }
+
+    this._updateCurrentNodeCheckbox(nodeId);
+  }
+
+  _findNodeElement(nodeId) {
     let nodeElement = this.data.getNodeElement(nodeId);
 
-    // If the stored reference is stale, try to find the element in the DOM directly
     if (!nodeElement || !document.contains(nodeElement)) {
       nodeElement = document.querySelector(`.call-item[data-node-id="${nodeId}"]`);
-
-      // If found, update the reference in the data store
       if (nodeElement) {
         this.data.setNodeElement(nodeId, nodeElement);
       }
     }
 
-    if (nodeElement) {
-      nodeElement.classList.add('focused');
-    }
+    return nodeElement;
+  }
 
-    // Update current node checkbox
+  _updateCurrentNodeCheckbox(nodeId) {
     const currentNodeCheckbox = document.getElementById('currentNodeCheckbox');
     if (currentNodeCheckbox && nodeId) {
       const nodeState = this.data.getNodeState(nodeId);
@@ -602,7 +569,6 @@ class Renderer {
     }
   }
 
-  // Update current method display
   updateCurrentMethodDisplay(methodName) {
     const currentMethodElement = document.getElementById('currentMethod');
     const currentNodeCheckbox = document.getElementById('currentNodeCheckbox');
@@ -611,7 +577,6 @@ class Renderer {
       currentMethodElement.textContent = methodName || 'No method selected';
     }
 
-    // Update checkbox state based on current node
     if (currentNodeCheckbox) {
       if (this.data.current) {
         const nodeState = this.data.getNodeState(this.data.current);
@@ -624,59 +589,45 @@ class Renderer {
     }
   }
 
-  // Scroll to node
+  // ========== Navigation Methods ==========
   scrollToNode(nodeId) {
     const nodeElement = this.data.getNodeElement(nodeId);
-    if (nodeElement) {
-      // Get the visualization container
-      const container = document.querySelector('.visualization-container');
-
-      if (container) {
-        // Calculate the scroll position within the container
-        const nodeRect = nodeElement.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-
-        // Scroll the container, not the whole page
-        container.scrollTo({
-          top: container.scrollTop + (nodeRect.top - containerRect.top) - (container.clientHeight / 2) + (nodeRect.height / 2),
-          behavior: 'smooth'
-        });
-      }
-    }
-  }
-  // Update node expansion state (for external API compatibility)
-  updateNodeExpansion(nodeId) {
-    const nodeState = this.data.getNodeState(nodeId);
-    const nodeElement = document.querySelector(`li[data-node-id="${nodeId}"]`);
-
     if (!nodeElement) return;
 
-    // Use the existing toggleNodeExpansion method with the found element
-    this.toggleNodeExpansion(nodeElement, nodeId);
+    const container = document.querySelector('.visualization-container');
+    if (container) {
+      const nodeRect = nodeElement.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+
+      container.scrollTo({
+        top: container.scrollTop + (nodeRect.top - containerRect.top) -
+          (container.clientHeight / 2) + (nodeRect.height / 2),
+        behavior: 'smooth'
+      });
+    }
   }
 
-  // Ensure node is visible (expand all parent nodes)
+  updateNodeExpansion(nodeId) {
+    this.data.expand(nodeId);
+    this.updateNodeUIExpansion(nodeId);
+  }
+
+  updateNodeUIExpansion(nodeId) {
+    const nodeElement = document.querySelector(`li[data-node-id="${nodeId}"]`);
+    if (nodeElement) {
+      this.toggleNodeExpansion(nodeElement, nodeId);
+    }
+  }
+
   ensureNodeVisible(nodeId) {
-    // Get all parent nodes
     const ancestors = this.data.getAncestorIds(nodeId);
 
-    // Expand all parent nodes
     ancestors.forEach(ancestorId => {
       const state = this.data.getNodeState(ancestorId);
       if (!state.expanded) {
-        // Update data state
-        this.data.expand(ancestorId);
-
-        // Update UI
-        const ancestorElement = document.querySelector(`li[data-node-id="${ancestorId}"]`);
-        if (ancestorElement) {
-          this.toggleNodeExpansion(ancestorElement, ancestorId);
-        }
+        this.updateNodeExpansion(ancestorId);
       }
     });
-
-    // Scroll to node
-    this.scrollToNode(nodeId);
   }
 }
 
