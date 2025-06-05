@@ -76,7 +76,7 @@ class Actions {
       this.setupButton('clearParent', () => {
         const currentNodeId = this.data.current;
         if (currentNodeId) {
-          const changedIds = this.data.clearParent(currentNodeId);
+          const changedIds = this.data.deselectParent(currentNodeId);
           this.view.batchUpdateNodes(changedIds);
           this.eventBus.publish('refreshFlame', {});
         }
