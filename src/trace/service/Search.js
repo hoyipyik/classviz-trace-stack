@@ -28,7 +28,7 @@ class Search {
     // Flag to track if event listeners have been initialized
     this.eventListenersInitialized = false;
 
-    this.eventBus.subscribe('nodeStructureChanged', () => {
+    this.eventBus.subscribe('nodeCompressionTriggered', () => {
       const searchInput = document.getElementById('searchInput');
       if (searchInput && searchInput.value && searchInput.value.trim() !== '') {
         this.find(searchInput.value)
@@ -505,7 +505,7 @@ class Search {
 
     // Highlight current result
     this.data.highlight(nodeId, true);
-    this.view.updateNode(nodeId);
+    this.view.updateNodeUI(nodeId);
 
     // Add highlight class
     const nodeElement = this.data.getNodeElement(nodeId);

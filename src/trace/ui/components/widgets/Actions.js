@@ -24,7 +24,7 @@ class Actions {
               const expandedIds = this.data.expandAllDescendants(currentNodeId);
               const changedIds = [...new Set([...selectedIds, ...expandedIds])];
               expandedIds.forEach(nodeId => {
-                this.view.updateNodeExpansion(nodeId);
+                this.view.updateNodeUIExpansion(nodeId);
               });
               this.view.batchUpdateNodes(changedIds);
               this.eventBus.publish('refreshFlame', {});
@@ -47,7 +47,7 @@ class Actions {
         if (currentNodeId) {
           const changedIds = this.data.selectChildren(currentNodeId);
           this.data.expand(currentNodeId);
-          this.view.updateNodeExpansion(currentNodeId);
+          this.view.updateNodeUIExpansion(currentNodeId);
           this.view.batchUpdateNodes(changedIds);
           this.eventBus.publish('refreshFlame', {});
         }

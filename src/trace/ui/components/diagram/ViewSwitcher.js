@@ -88,7 +88,7 @@ export class ViewSwitcher {
       });
 
       if(mode !== 'flameGraph'){
-        this.eventBus.publish('scrollToFocusedNode', {});
+        this.eventBus.publish('scrollToNodeClickedInFlameChart', {});
       }
     }
   }

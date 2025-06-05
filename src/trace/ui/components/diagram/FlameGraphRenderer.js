@@ -92,7 +92,7 @@ class FlameGraphRenderer {
             this.update();
         });
 
-        this.eventBus.subscribe('nodeStructureChanged', () => {
+        this.eventBus.subscribe('nodeCompressionTriggered', () => {
             this.update();
         });
     }

@@ -9,8 +9,8 @@ export const eventNames = {
   changeCurrentFocusedNodeForStepByStep: 'changeCurrentFocusedNodeForStepByStep',
 
   viewModeChanged: 'viewModeChanged',
-  nodeDataChanged: 'nodeDataChanged',
-  scrollToFocusedNode: 'scrollToFocusedNode',
+  specialNodeConfigChanged: 'specialNodeConfigChanged',
+  scrollToNodeClickedInFlameChart: 'scrollToNodeClickedInFlameChart',
   changeLogicalStyle: 'changeLogicalStyle',
   changeTraceMode: 'changeTraceMode',
   // classviz relavant events
@@ -21,7 +21,7 @@ export const eventNames = {
   // trace mode 
   switchTraceMode: 'switchTraceMode',
   // recursive compression
-  nodeStructureChanged: 'nodeStructureChanged',
+  nodeCompressionTriggered: 'nodeCompressionTriggered',
 
   // explanation
   explanationCompleted: 'explanationCompleted',

@@ -393,7 +393,7 @@ class DataStore {
 
       // Trigger update event
       if (this.eventBus) {
-        this.eventBus.publish('nodeStructureChanged', {
+        this.eventBus.publish('nodeCompressionTriggered', {
           nodeId,
           compressed: true
         });
@@ -426,7 +426,7 @@ class DataStore {
 
       // Trigger update event
       if (this.eventBus) {
-        this.eventBus.publish('nodeStructureChanged', {
+        this.eventBus.publish('nodeCompressionTriggered', {
           nodeId,
           compressed: false
         });

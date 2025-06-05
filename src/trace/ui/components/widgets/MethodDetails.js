@@ -130,7 +130,7 @@ class MethodDetails {
     
     // If there's an event bus, notify other components that data has been updated
     if (this.eventBus) {
-      this.eventBus.publish('nodeDataChanged', {
+      this.eventBus.publish('specialNodeConfigChanged', {
         nodeId: this.data.current,
         field: property,
         value: value
