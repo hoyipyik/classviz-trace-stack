@@ -12,7 +12,7 @@ export class StepByStepPlayController {
             console.error(`Container element not found: ${containerSelector}`);
             return;
         }
-        
+
         this.currentPlayingThread = null; // Track which thread is currently playing
         this.playInterval = null; // Single interval for the currently playing thread
 
@@ -25,14 +25,17 @@ export class StepByStepPlayController {
 
         this.eventBus.subscribe('changeClassvizFocus', () => {
             this.refresh();
+            this.onModeToggle(this.classvizManager.stepByStepMode);
         });
 
         this.eventBus.subscribe('changeSingleMethodByIdToClassviz', () => {
             this.refresh();
+            //   this.onModeToggle(this.classvizManager.stepByStepMode);
         });
 
         this.eventBus.subscribe('changeMultiMethodByIdsToClassviz', () => {
             this.refresh();
+            //   this.onModeToggle(this.classvizManager.stepByStepMode);
         });
 
         this.eventBus.subscribe('switchStepByStepMode', ({ flag }) => {
@@ -44,7 +47,7 @@ export class StepByStepPlayController {
     init() {
         // Store current playing thread before clearing
         const wasPlaying = this.currentPlayingThread;
-        
+
         // Stop current playback
         this.stopPlayback();
         this.container.innerHTML = '';
@@ -62,7 +65,7 @@ export class StepByStepPlayController {
 
             this.createPlayerUI(threadName, methodNodes, currentIndex, maxIndex);
         });
-        
+
         // Restore playing thread if it was playing
         if (wasPlaying) {
             this.startPlayback(wasPlaying);
@@ -234,7 +237,7 @@ export class StepByStepPlayController {
         controlsRow.appendChild(methodDisplay);
 
         // Step forward button
-        const stepForwardBtn = this.createButton('▶▶', 'Jumpt to next method',  () => this.stepForward(threadName));
+        const stepForwardBtn = this.createButton('▶▶', 'Jumpt to next method', () => this.stepForward(threadName));
         controlsRow.appendChild(stepForwardBtn);
 
         // Skip to end button
@@ -345,7 +348,7 @@ export class StepByStepPlayController {
             const methodNodes = this.classvizManager.threadToMethodNodesInOrder.get(threadName) || [];
             const currentIndex = this.classvizManager.currentIndexByThread.get(threadName) || 0;
             const maxIndex = methodNodes.length - 1;
-            
+
             if (currentIndex < maxIndex) {
                 this.stepForward(threadName);
             } else {
@@ -364,7 +367,7 @@ export class StepByStepPlayController {
             clearInterval(this.playInterval);
             this.playInterval = null;
         }
-        
+
         if (this.currentPlayingThread) {
             this.updatePlayPauseButton(this.currentPlayingThread, false);
             this.currentPlayingThread = null;
@@ -374,7 +377,7 @@ export class StepByStepPlayController {
     updatePlayPauseButton(threadName, isPlaying) {
         const buttonId = `play-btn-${threadName.replace(/[^a-zA-Z0-9]/g, '-')}`;
         const button = document.getElementById(buttonId);
-        
+
         if (button) {
             button.textContent = isPlaying ? '⏸' : '▶';
             button.style.backgroundColor = '#e8f4f8';
@@ -453,7 +456,7 @@ export class StepByStepPlayController {
             this.classvizManager.currentIndexByThread.set(threadName, 0);
             return;
         }
-        
+
         const currentNodeId = threadNodes[newIndex].originalId;
         this.data.current = currentNodeId;
 
@@ -467,7 +470,7 @@ export class StepByStepPlayController {
         if (!on) {
             // Stop all playback when step-by-step mode is turned off
             this.stopPlayback();
-            
+
             // Reset all thread nodes to their original colors
             for (const [threadName, nodes] of this.classvizManager.threadToMethodNodesInOrder.entries()) {
                 nodes.forEach(node => {
