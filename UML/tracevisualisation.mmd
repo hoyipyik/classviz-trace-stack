@@ -1,0 +1,171 @@
+classDiagram
+    class FlameGraphRenderer {
+        -dataStore
+        -container
+        -eventBus
+        -explainer
+        -patternManager: FlameGraphPatternManager
+        -eventHandler: FlameGraphEventHandler
+        -flameGraph
+        -graphData
+        +init()
+        +createFlameGraph()
+        +handleNodeClick()
+        +handleOnHover()
+        +getNodeColor()
+        +update()
+        +show()
+        +hide()
+        +destroy()
+    }
+
+    class FlameGraphPatternManager {
+        -patterns: Map
+        -_patternContainer
+        +init()
+        +getPatternForNode()
+        +hasSpecialStatus()
+        +determinePatternType()
+        +createPattern()
+        +clear()
+    }
+
+    class FlameGraphEventHandler {
+        -eventBus
+        -renderer: FlameGraphRenderer
+        -subscriptions: Map
+        -_resizeTimer
+        +init()
+        +subscribeToEvents()
+        +handleViewModeChange()
+        +publishEvent()
+        +destroy()
+    }
+
+    class Renderer {
+        -data: dataStore
+        -container
+        -eventBus
+        -explainer
+        -classvizManager
+        -elementFactory: NodeElementFactory
+        -eventManager: NodeEventManager
+        -hoverManager: HoverCardManager
+        -uiUpdater: NodeUIUpdater
+        -batchMode
+        -pendingUpdates
+        +renderTree()
+        +createNodeElement()
+        +updateNodeUI()
+        +setCurrentNode()
+        +publishFocusEvents()
+        +handleToggleClick()
+        +handleUnselectCurrentNode()
+        +scrollToNode()
+    }
+
+    class NodeElementFactory {
+        -data: dataStore
+        +createNodeElement()
+        +renderMethodName()
+        -_createItemDiv()
+        -_applyNodeStyling()
+        -_attachNodeComponents()
+        -_createCheckbox()
+        -_createToggleButton()
+        -_createChildrenContainer()
+    }
+
+    class NodeEventManager {
+        -data: dataStore
+        -eventBus
+        -renderer: Renderer
+        +bindNodeEvents()
+        -_bindMainClickEvent()
+        -_bindCheckboxEvent()
+        -_bindToggleEvent()
+        -_bindChildrenEvents()
+    }
+
+    class NodeUIUpdater {
+        -data: dataStore
+        -elementFactory: NodeElementFactory
+        -eventManager: NodeEventManager
+        -batchMode: boolean
+        -pendingUpdates: Set
+        +toggleNodeExpansion()
+        +updateNodeUI()
+        +batchUpdateNodes()
+        +updateCurrentNodeFocusUI()
+        +updateCurrentMethodDisplay()
+        +ensureNodeVisible()
+    }
+
+    class HoverCardManager {
+        -data: dataStore
+        -explainer
+        +attachHoverEvents()
+        -_createHoverCardElement()
+        -_shouldIgnoreHover()
+        -_isSpecialNode()
+        -_showHoverCard()
+    }
+
+    class ViewSwitcher {
+        -data: dataStore
+        -flameGraph: flameGraphRenderer
+        -eventBus
+        +init()
+        +switchTabActive()
+        +switchViewMode()
+        +toggleFlameGraphMode()
+        +getCurrentViewMode()
+    }
+
+    class colorUtils {
+        <<utility>>
+        +darkenColor()
+        +lightenColor()
+    }
+
+    class dataStore {
+        <<external>>
+        +getNodeDataById()
+        +getNodeState()
+        +setCurrent()
+    }
+
+    class eventBus {
+        <<external>>
+        +publish()
+        +subscribe()
+    }
+
+    ViewSwitcher ..> dataStore
+    ViewSwitcher ..> FlameGraphRenderer
+    ViewSwitcher ..> eventBus
+
+    FlameGraphRenderer *-- FlameGraphPatternManager
+    FlameGraphRenderer *-- FlameGraphEventHandler
+    FlameGraphEventHandler --> FlameGraphRenderer
+
+    Renderer *-- NodeElementFactory
+    Renderer *-- NodeEventManager
+    Renderer *-- HoverCardManager
+    Renderer *-- NodeUIUpdater
+
+    NodeEventManager --> Renderer
+    NodeUIUpdater --> NodeElementFactory
+    NodeUIUpdater --> NodeEventManager
+
+    FlameGraphRenderer ..> dataStore
+    FlameGraphRenderer ..> eventBus
+    FlameGraphPatternManager ..> colorUtils
+
+    Renderer ..> dataStore
+    Renderer ..> eventBus
+    NodeElementFactory ..> dataStore
+    NodeEventManager ..> dataStore
+    NodeEventManager ..> eventBus
+    NodeUIUpdater ..> dataStore
+    HoverCardManager ..> dataStore

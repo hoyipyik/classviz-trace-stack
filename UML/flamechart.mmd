@@ -1,0 +1,65 @@
+classDiagram
+    class FlameGraphRenderer {
+        -dataStore
+        -container
+        -eventBus
+        -explainer
+        -patternManager: FlameGraphPatternManager
+        -eventHandler: FlameGraphEventHandler
+        -flameGraph
+        -graphData
+        +init()
+        +createFlameGraph()
+        +handleNodeClick()
+        +handleOnHover()
+        +getNodeColor()
+        +update()
+        +show()
+        +hide()
+        +destroy()
+    }
+
+    class FlameGraphPatternManager {
+        -patterns: Map
+        -_patternContainer
+        +init()
+        +getPatternForNode()
+        +hasSpecialStatus()
+        +determinePatternType()
+        +createPattern()
+        +clear()
+    }
+
+    class FlameGraphEventHandler {
+        -eventBus
+        -renderer: FlameGraphRenderer
+        -subscriptions: Map
+        -_resizeTimer
+        +init()
+        +subscribeToEvents()
+        +handleViewModeChange()
+        +publishEvent()
+        +destroy()
+    }
+
+    class colorUtils {
+        <<utility>>
+        +darkenColor()
+        +lightenColor()
+    }
+
+    %% Dependencies (imports)
+    FlameGraphRenderer ..> colorUtils : uses
+    FlameGraphPatternManager ..> colorUtils : uses
+
+    %% Composition relationships
+    FlameGraphRenderer *-- FlameGraphPatternManager : contains
+    FlameGraphRenderer *-- FlameGraphEventHandler : contains
+
+    %% Association (bidirectional reference)
+    FlameGraphEventHandler --> FlameGraphRenderer : renderer
+
+    %% External dependencies (shown as interfaces)
+    FlameGraphRenderer ..> dataStore : depends on
+    FlameGraphRenderer ..> eventBus : depends on
+    FlameGraphEventHandler ..> eventBus : depends on

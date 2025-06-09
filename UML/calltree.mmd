@@ -1,0 +1,118 @@
+classDiagram
+    class Renderer {
+        -data: dataStore
+        -container
+        -eventBus
+        -explainer
+        -classvizManager
+        -elementFactory: NodeElementFactory
+        -eventManager: NodeEventManager
+        -hoverManager: HoverCardManager
+        -uiUpdater: NodeUIUpdater
+        -batchMode
+        -pendingUpdates
+        +renderTree()
+        +createNodeElement()
+        +updateNodeUI()
+        +setCurrentNode()
+        +publishFocusEvents()
+        +handleToggleClick()
+        +handleUnselectCurrentNode()
+        +showStepByStepSnackbar()
+        +scrollToNode()
+    }
+
+    class NodeElementFactory {
+        -data: dataStore
+        +createNodeElement()
+        +renderMethodName()
+        -_createItemDiv()
+        -_applyNodeStyling()
+        -_attachNodeComponents()
+        -_createCheckbox()
+        -_createToggleButton()
+        -_createPercentageElement()
+        -_createExecutionTimeElement()
+        -_createChildrenContainer()
+    }
+
+    class NodeEventManager {
+        -data: dataStore
+        -eventBus
+        -renderer: Renderer
+        +bindNodeEvents()
+        -_bindMainClickEvent()
+        -_bindCheckboxEvent()
+        -_bindToggleEvent()
+        -_bindChildrenEvents()
+        -_shouldIgnoreClick()
+        -_shouldBlockFocusChange()
+    }
+
+    class NodeUIUpdater {
+        -data: dataStore
+        -elementFactory: NodeElementFactory
+        -eventManager: NodeEventManager
+        -batchMode: boolean
+        -pendingUpdates: Set
+        +toggleNodeExpansion()
+        +updateNodeUI()
+        +batchUpdateNodes()
+        +updateCurrentNodeFocusUI()
+        +updateCurrentMethodDisplay()
+        +updateNodeExpansion()
+        +ensureNodeVisible()
+        -_collapseNode()
+        -_expandNode()
+        -_updateNodeCheckboxUI()
+        -_updateNodeHighlightUI()
+        -_updateNodeFocusUI()
+    }
+
+    class HoverCardManager {
+        -data: dataStore
+        -explainer
+        +attachHoverEvents()
+        -_createHoverCardElement()
+        -_shouldIgnoreHover()
+        -_isSpecialNode()
+        -_showHoverCard()
+        -_calculateHoverPosition()
+    }
+
+    %% External dependencies
+    class dataStore {
+        <<external>>
+        +getNodeDataById()
+        +getNodeState()
+        +setCurrent()
+        +select()
+        +expand()
+        +toggleExpand()
+    }
+
+    class eventBus {
+        <<external>>
+        +publish()
+        +subscribe()
+    }
+
+    %% Composition relationships - Renderer owns these components
+    Renderer *-- NodeElementFactory : contains
+    Renderer *-- NodeEventManager : contains  
+    Renderer *-- HoverCardManager : contains
+    Renderer *-- NodeUIUpdater : contains
+
+    %% Association relationships - components reference each other
+    NodeEventManager --> Renderer : renderer
+    NodeUIUpdater --> NodeElementFactory : elementFactory
+    NodeUIUpdater --> NodeEventManager : eventManager
+
+    %% Dependency relationships - all components depend on dataStore
+    Renderer ..> dataStore : depends on
+    Renderer ..> eventBus : depends on
+    NodeElementFactory ..> dataStore : depends on
+    NodeEventManager ..> dataStore : depends on
+    NodeEventManager ..> eventBus : depends on
+    NodeUIUpdater ..> dataStore : depends on
+    HoverCardManager ..> dataStore : depends on
