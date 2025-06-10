@@ -47,6 +47,7 @@ export class ClassvizManager {
 
         this.eventBus.subscribe('changeSingleMethodByIdToClassviz', (
             { nodeId, selected }) => {
+            this.eventBus.publish('stopRegionFocusMode');
             if (selected) {
                 this.insertSingleMethodById(nodeId);
             } else {
@@ -64,6 +65,7 @@ export class ClassvizManager {
 
         this.eventBus.subscribe('changeMultiMethodByIdsToClassviz', (
             { nodeIds, selected }) => {
+            this.eventBus.publish('stopRegionFocusMode');
             if (selected) {
                 // nodeIds.forEach((nodeId) => {
                 //     this.insertSingleMethodById(nodeId);

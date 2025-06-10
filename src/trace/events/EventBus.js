@@ -30,7 +30,10 @@ export const eventNames = {
   // search for detailed behaviour summary
   fuzzySearchFromDetailedBehaviour: 'fuzzySearchFromDetailedBehaviour',
 
-  switchStepByStepMode: 'switchStepByStepMode'
+  switchStepByStepMode: 'switchStepByStepMode',
+  hightlightFocus: 'hightlightFocus',
+  stopStepByStepMode: 'stopStepByStepMode',
+  stopRegionFocusMode: 'stopRegionFocusMode'
 }
 
 class EventBus {

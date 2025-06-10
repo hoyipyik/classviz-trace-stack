@@ -42,6 +42,12 @@ export class StepByStepPlayController {
             this.classvizManager.stepByStepMode = flag;
             this.onModeToggle(flag);
         });
+
+        this.eventBus.subscribe('stopStepByStepMode', () => {
+            this.classvizManager.stepByStepMode = false;
+            this.onModeToggle(false);   
+        })
+
     }
 
     init() {
@@ -487,6 +493,7 @@ export class StepByStepPlayController {
                 });
             }
         } else {
+            this.eventBus.publish('stopRegionFocusMode');
             // When turned on, apply step-by-step coloring
             const threadEntries = Array.from(this.classvizManager.currentIndexByThread.entries());
             const currentThreadName = this.data.currentThreadName;

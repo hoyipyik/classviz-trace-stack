@@ -5,11 +5,10 @@ import { DEEPSEEK_API_KEY, DEEPSEEK_URL } from "../../../../../config.js";
  * Manages explanation options and display of results
  */
 export class ExplanationUIController {
-    constructor(explainer, eventBus, containerId = 'llmExplanation') {
+    constructor(explainer, eventBus, regionFocusManager, containerId = 'llmExplanation') {
         this.explainer = explainer;
         this.eventBus = eventBus;
-        this.currentSelectedTreeId = null;
-        this.currentSelectedRegionId = null;
+        this.regionFocusManager = regionFocusManager;
 
         this.container = document.getElementById(containerId);
         if (!this.container) {
@@ -32,18 +31,27 @@ export class ExplanationUIController {
 
         this.initUI();
 
+        this.eventBus.subscribe('stopRegionFocusMode', () => {
+            const highlightInput = document.getElementById('highlightInputElement');
+            if (highlightInput) {
+                highlightInput.checked = false;
+                this.regionFocusManager.regionFocusMode = false;
+                this.updateHighlightSwitchUI(false);
+            }
+        });
+
         // Subscribe to the explanationCompleted event
         this.eventBus.subscribe('explanationCompleted', ({ backData }) => {
             this.loadingContainer.style.display = 'none';
             this.loadExplanations();
         });
-        
+
         // Subscribe to the changeRegionFocus event
         this.eventBus.subscribe('changeRegionFocus', ({ focusedRegionId }) => {
             this.handleRegionFocus(focusedRegionId);
             console.log(`Explanation: Region focus changed to ${focusedRegionId}`)
         });
-        
+
         // Check for current LLM settings if available
         if (this.explainer.llmService) {
             setTimeout(() => {
@@ -66,14 +74,14 @@ export class ExplanationUIController {
      */
     handleRegionFocus(focusedRegionId) {
         if (!focusedRegionId) return;
-        
+
         // Check if the region exists in our available regions
         const regionData = this.explainer.regions.get(focusedRegionId);
         if (!regionData || !regionData.explained) {
             // console.warn(`Region ${focusedRegionId} not found or not explained yet`);
             return;
         }
-        
+
         // Find which tree this region belongs to
         let foundTreeId = null;
         for (const [treeId, regionIds] of this.explainer.traceToRegion.entries()) {
@@ -82,22 +90,22 @@ export class ExplanationUIController {
                 break;
             }
         }
-        
+
         if (!foundTreeId) {
             console.warn(`Could not find tree containing region ${focusedRegionId}`);
             return;
         }
-        
+
         // Change tree selection if needed
-        if (foundTreeId !== this.currentSelectedTreeId) {
-            this.currentSelectedTreeId = foundTreeId;
+        if (foundTreeId !== this.regionFocusManager.currentSelectedTreeId) {
+            this.regionFocusManager.currentSelectedTreeId = foundTreeId;
             this.treeSelector.value = foundTreeId;
             this.loadRegionsForTree();
         }
-        
+
         // Change region selection
         this.regionSelector.value = focusedRegionId;
-        this.currentSelectedRegionId = focusedRegionId;
+        this.regionFocusManager.currentSelectedRegionId = focusedRegionId;
         this.updateDisplayedRegionData();
     }
 
@@ -112,6 +120,8 @@ export class ExplanationUIController {
         if (textContent !== null) element.textContent = textContent;
         return element;
     }
+
+
 
     createCheckboxOption(id, label, checked, title, changeHandler) {
         const container = this.createElement('div', 'option-item', {
@@ -202,6 +212,20 @@ export class ExplanationUIController {
         return { section, content, contentWrapper };
     }
 
+    updateHighlightSwitchUI(enabled) {
+        const highlightInput = document.getElementById('highlightInputElement');
+        if (highlightInput) {
+            const highlightSlider = highlightInput.nextElementSibling;
+            const highlightSliderButton = highlightSlider?.querySelector('span');
+
+            if (highlightSlider && highlightSliderButton) {
+                highlightSlider.style.backgroundColor = enabled ? '#4a86e8' : '#ccc';
+                highlightSliderButton.style.transform = enabled ? 'translateX(16px)' : 'translateX(0px)';
+            }
+        }
+    }
+
+
     initUI() {
         // Options container
         const optionsContainer = this.createElement('div', 'explanation-options', {
@@ -211,7 +235,7 @@ export class ExplanationUIController {
             height: 'auto',
             width: '100%'
         });
-        
+
         // LLM Settings section
         const llmSettingsContainer = this.createElement('div', 'llm-settings-container', {
             marginBottom: '15px',
@@ -219,7 +243,7 @@ export class ExplanationUIController {
             borderRadius: '4px',
             overflow: 'hidden'
         });
-        
+
         const llmSettingsHeader = this.createElement('div', 'llm-settings-header', {
             padding: '8px 12px',
             backgroundColor: '#f5f5f5',
@@ -229,36 +253,36 @@ export class ExplanationUIController {
             justifyContent: 'space-between',
             alignItems: 'center'
         });
-        
+
         const llmSettingsTitle = this.createElement('span', null, {
             fontSize: '12px'
         }, 'LLM Settings');
-        
+
         const llmSettingsToggle = this.createElement('span', null, {
             transition: 'transform 0.3s'
         });
         llmSettingsToggle.innerHTML = '&#9660;';
-        
+
         llmSettingsHeader.appendChild(llmSettingsTitle);
         llmSettingsHeader.appendChild(llmSettingsToggle);
-        
+
         const llmSettingsContent = this.createElement('div', 'llm-settings-content', {
             padding: '12px',
             display: 'none'
         });
-        
+
         // Model selection
         const modelContainer = this.createElement('div', 'model-selection', {
             marginBottom: '10px'
         });
-        
+
         const modelLabel = this.createElement('label', null, {
             display: 'block',
             marginBottom: '4px',
             fontSize: '13px'
         }, 'Model:');
         modelLabel.htmlFor = 'modelSelector';
-        
+
         const modelSelector = this.createElement('select', null, {
             width: '100%',
             padding: '6px',
@@ -267,35 +291,35 @@ export class ExplanationUIController {
             fontSize: '13px'
         });
         modelSelector.id = 'modelSelector';
-        
+
         // Add model options
         const deepseekOption = document.createElement('option');
         deepseekOption.value = 'deepseek-chat';
         deepseekOption.textContent = 'DeepSeek Chat';
-        
+
         const gemmaOption = document.createElement('option');
         gemmaOption.value = 'gemma3';
         gemmaOption.textContent = 'Gemma 3';
-        
+
         modelSelector.appendChild(deepseekOption);
         modelSelector.appendChild(gemmaOption);
         modelSelector.value = 'deepseek-chat';
-        
+
         modelContainer.appendChild(modelLabel);
         modelContainer.appendChild(modelSelector);
-        
+
         // API URL input
         const urlContainer = this.createElement('div', 'api-url-container', {
             marginBottom: '10px'
         });
-        
+
         const urlLabel = this.createElement('label', null, {
             display: 'block',
             marginBottom: '4px',
             fontSize: '13px'
         }, 'API URL:');
         urlLabel.htmlFor = 'apiUrlInput';
-        
+
         const urlInput = this.createElement('input', null, {
             width: '100%',
             padding: '6px',
@@ -308,22 +332,22 @@ export class ExplanationUIController {
         urlInput.type = 'text';
         urlInput.placeholder = 'Enter API URL';
         urlInput.value = DEEPSEEK_URL;
-        
+
         urlContainer.appendChild(urlLabel);
         urlContainer.appendChild(urlInput);
-        
+
         // API Key input
         const keyContainer = this.createElement('div', 'api-key-container', {
             marginBottom: '10px'
         });
-        
+
         const keyLabel = this.createElement('label', null, {
             display: 'block',
             marginBottom: '4px',
             fontSize: '13px'
         }, 'API Key:');
         keyLabel.htmlFor = 'apiKeyInput';
-        
+
         const keyInput = this.createElement('input', null, {
             width: '100%',
             padding: '6px',
@@ -336,10 +360,10 @@ export class ExplanationUIController {
         keyInput.type = 'password';
         keyInput.placeholder = 'Enter API Key';
         keyInput.value = DEEPSEEK_API_KEY;
-        
+
         keyContainer.appendChild(keyLabel);
         keyContainer.appendChild(keyInput);
-        
+
         // Apply settings button
         const applyButton = this.createElement('button', null, {
             padding: '6px 12px',
@@ -351,22 +375,22 @@ export class ExplanationUIController {
             fontSize: '13px',
             width: '100%'
         }, 'Apply Settings');
-        
+
         applyButton.addEventListener('click', () => {
             const model = modelSelector.value;
             const url = urlInput.value;
             const key = keyInput.value;
-            
+
             this.eventBus.publish('changeLLMServiceProvider', { model, url, key });
             this.explainer.model = model;
             alert('LLM settings updated successfully!');
         });
-        
+
         llmSettingsContent.appendChild(modelContainer);
         llmSettingsContent.appendChild(urlContainer);
         llmSettingsContent.appendChild(keyContainer);
         llmSettingsContent.appendChild(applyButton);
-        
+
         llmSettingsHeader.addEventListener('click', () => {
             if (llmSettingsContent.style.display === 'none') {
                 llmSettingsContent.style.display = 'block';
@@ -376,15 +400,15 @@ export class ExplanationUIController {
                 llmSettingsToggle.style.transform = 'rotate(-90deg)';
             }
         });
-        
+
         llmSettingsContainer.appendChild(llmSettingsHeader);
         llmSettingsContainer.appendChild(llmSettingsContent);
         optionsContainer.appendChild(llmSettingsContainer);
-        
+
         this.modelSelector = modelSelector;
         this.apiUrlInput = urlInput;
         this.apiKeyInput = keyInput;
-        
+
         // Quick Mode checkbox
         const quickModeContainer = this.createCheckboxOption(
             'quickMode',
@@ -451,9 +475,14 @@ export class ExplanationUIController {
         treeSelector.id = 'treeSelector';
 
         treeSelector.addEventListener('change', (e) => {
-            this.currentSelectedTreeId = e.target.value;
+            this.regionFocusManager.currentSelectedTreeId = e.target.value;
             this.updateDisplayedData();
             this.loadRegionsForTree();
+            this.eventBus.publish('hightlightFocus', {
+                enabled: this.regionFocusManager.regionFocusMode,
+                highlightRegion: this.regionFocusManager.currentSelectedRegionId !== "whole_trace",
+                regionId: this.regionFocusManager.currentSelectedRegionId
+            });
         });
 
         treeSelectionContainer.appendChild(treeSelectionLabel);
@@ -478,17 +507,129 @@ export class ExplanationUIController {
             maxWidth: '250px',
             padding: '6px',
             borderRadius: '4px',
-            border: '1px solid #ddd'
+            border: '1px solid #ddd',
+            marginBottom: '10px'
         });
         regionSelector.id = 'regionSelector';
 
         regionSelector.addEventListener('change', (e) => {
-            this.currentSelectedRegionId = e.target.value;
+            this.regionFocusManager.currentSelectedRegionId = e.target.value;
             this.updateDisplayedRegionData();
+            this.updateHighlightDescription();
+            this.eventBus.publish('hightlightFocus', {
+                enabled: this.regionFocusManager.regionFocusMode,
+                highlightRegion: this.regionFocusManager.currentSelectedRegionId !== "whole_trace",
+                regionId: this.regionFocusManager.currentSelectedRegionId
+            });
         });
 
         regionSelectionContainer.appendChild(regionSelectionLabel);
         regionSelectionContainer.appendChild(regionSelector);
+
+        // Highlight switch container
+        const highlightSwitchContainer = this.createElement('div', 'highlight-switch-container', {
+            display: 'flex',
+            alignItems: 'center',
+            marginBottom: '8px'
+        });
+
+        const highlightSwitch = this.createElement('label', 'switch', {
+            position: 'relative',
+            display: 'inline-block',
+            width: '36px',
+            height: '18px',
+            marginRight: '8px',
+            flexShrink: '0'
+        });
+
+        const highlightInput = this.createElement('input');
+        highlightInput.type = 'checkbox';
+        highlightInput.id = 'highlightInputElement';
+        highlightInput.checked = this.regionFocusManager.regionFocusMode;
+        this.applyStyles(highlightInput, {
+            opacity: '0',
+            width: '0',
+            height: '0',
+            position: 'absolute'
+        });
+
+        const highlightSlider = this.createElement('span', 'slider', {
+            position: 'absolute',
+            cursor: 'pointer',
+            top: '0',
+            left: '0',
+            right: '0',
+            bottom: '0',
+            backgroundColor: this.regionFocusManager.regionFocusMode ? '#4a86e8' : '#ccc',
+            transition: 'background-color 0.3s',
+            borderRadius: '18px',
+            border: '1px solid #ddd'
+        });
+
+        const highlightSliderButton = this.createElement('span', null, {
+            position: 'absolute',
+            height: '14px',
+            width: '14px',
+            left: '1px',
+            top: '1px',
+            backgroundColor: 'white',
+            transition: 'transform 0.3s',
+            borderRadius: '50%',
+            transform: this.regionFocusManager.regionFocusMode ? 'translateX(16px)' : 'translateX(0px)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+        });
+
+        highlightSlider.appendChild(highlightSliderButton);
+        highlightSwitch.appendChild(highlightInput);
+        highlightSwitch.appendChild(highlightSlider);
+
+        const highlightLabel = this.createElement('span', null, {
+            fontSize: '13px',
+            fontWeight: 'normal',
+            flexShrink: '0'
+        }, 'Focus Nodes');
+
+        highlightSwitchContainer.appendChild(highlightSwitch);
+        highlightSwitchContainer.appendChild(highlightLabel);
+
+        // Highlight description
+        const highlightDescription = this.createElement('div', 'highlight-description', {
+            fontSize: '11px',
+            color: '#666',
+            fontStyle: 'italic',
+            marginBottom: '0',
+            lineHeight: '1.3',
+            wordWrap: 'break-word',
+            whiteSpace: 'normal',
+            maxWidth: '100%',
+            overflow: 'hidden'
+        });
+
+        highlightInput.addEventListener('change', (e) => {
+            this.regionFocusManager.regionFocusMode = e.target.checked;
+            if (e.target.checked) {
+                highlightSlider.style.backgroundColor = '#4a86e8';
+                highlightSliderButton.style.transform = 'translateX(16px)';
+            } else {
+                highlightSlider.style.backgroundColor = '#ccc';
+                highlightSliderButton.style.transform = 'translateX(0px)';
+            }
+            // Publish highlight toggle event
+            this.eventBus.publish('hightlightFocus', {
+                enabled: e.target.checked,
+                highlightRegion: this.regionFocusManager.currentSelectedRegionId !== "whole_trace",
+                regionId: this.regionFocusManager.currentSelectedRegionId
+            });
+
+        });
+
+        regionSelectionContainer.appendChild(highlightSwitchContainer);
+        regionSelectionContainer.appendChild(highlightDescription);
+
+
+
+        // Store reference for later updates
+        this.highlightDescription = highlightDescription;
 
         // Loading bar (hidden by default)
         const loadingContainer = this.createElement('div', 'loading-container', {
@@ -564,6 +705,19 @@ export class ExplanationUIController {
         explainButton.addEventListener('click', () => this.runExplanation());
     }
 
+    /**
+     * Updates the highlight description text based on current selection
+     */
+    updateHighlightDescription() {
+        if (!this.highlightDescription) return;
+
+        if (this.regionFocusManager.currentSelectedRegionId === "whole_trace") {
+            this.highlightDescription.textContent = "If enabled, key nodes will be highlighted.";
+        } else {
+            this.highlightDescription.textContent = "If enabled, all nodes in that region will be highlighted.";
+        }
+    }
+
     runExplanation() {
         this.explainButton.disabled = true;
         this.loadingContainer.style.display = 'block';
@@ -629,22 +783,22 @@ export class ExplanationUIController {
             this.treeSelector.appendChild(option);
         }
 
-        this.currentSelectedTreeId = this.treeSelector.options[0].value;
+        this.regionFocusManager.currentSelectedTreeId = this.treeSelector.options[0].value;
         this.treeSelectionContainer.style.display = 'block';
         this.updateDisplayedData();
         this.loadRegionsForTree();
     }
 
     updateDisplayedData() {
-        if (!this.currentSelectedTreeId) return;
+        if (!this.regionFocusManager.currentSelectedTreeId) return;
         this.regionSummarySection.style.display = 'none';
         this.updateDisplayedTreeData();
     }
 
     updateDisplayedTreeData() {
-        if (!this.currentSelectedTreeId) return;
+        if (!this.regionFocusManager.currentSelectedTreeId) return;
 
-        const treeData = this.explainer.selectedTrees.get(this.currentSelectedTreeId);
+        const treeData = this.explainer.selectedTrees.get(this.regionFocusManager.currentSelectedTreeId);
         if (!treeData) return;
 
         const quickSummary = this.formatExplanationData(treeData.explanation.quickSummary);
@@ -702,12 +856,12 @@ export class ExplanationUIController {
     }
 
     loadRegionsForTree() {
-        if (!this.currentSelectedTreeId) return;
+        if (!this.regionFocusManager.currentSelectedTreeId) return;
 
         this.regionSelector.innerHTML = '';
         this.regionSummarySection.style.display = 'none';
 
-        const regionIds = this.explainer.traceToRegion.get(this.currentSelectedTreeId) || [];
+        const regionIds = this.explainer.traceToRegion.get(this.regionFocusManager.currentSelectedTreeId) || [];
 
         const wholeTraceOption = document.createElement('option');
         wholeTraceOption.value = "whole_trace";
@@ -735,24 +889,26 @@ export class ExplanationUIController {
         }
 
         this.regionSelectionContainer.style.display = 'block';
+        this.regionSelectionContainer.style.maxWidth = '250px';
         this.regionSelector.value = "whole_trace";
-        this.currentSelectedRegionId = "whole_trace";
+        this.regionFocusManager.currentSelectedRegionId = "whole_trace";
         this.updateDisplayedRegionData();
+        this.updateHighlightDescription();
     }
 
     updateDisplayedRegionData() {
-        if (!this.currentSelectedRegionId) {
+        if (!this.regionFocusManager.currentSelectedRegionId) {
             this.regionSummarySection.style.display = 'none';
             return;
         }
 
-        if (this.currentSelectedRegionId === "whole_trace") {
+        if (this.regionFocusManager.currentSelectedRegionId === "whole_trace") {
             this.updateDisplayedTreeData();
             this.regionSummarySection.style.display = 'none';
             return;
         }
 
-        const regionData = this.explainer.regions.get(this.currentSelectedRegionId);
+        const regionData = this.explainer.regions.get(this.regionFocusManager.currentSelectedRegionId);
         if (!regionData || !regionData.explained) {
             this.regionSummarySection.style.display = 'none';
             return;
@@ -782,7 +938,7 @@ export class ExplanationUIController {
   */
     identifyMethodNames(text) {
         if (!text) return text;
-        const threadName = this.explainer.selectedTrees.get(this.currentSelectedTreeId).threadName;
+        const threadName = this.explainer.selectedTrees.get(this.regionFocusManager.currentSelectedTreeId).threadName;
 
         // Store reference to this for use in the event handler
         const self = this;
