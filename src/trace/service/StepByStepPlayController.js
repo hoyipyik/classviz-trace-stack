@@ -44,8 +44,7 @@ export class StepByStepPlayController {
         });
 
         this.eventBus.subscribe('stopStepByStepMode', () => {
-            this.classvizManager.stepByStepMode = false;
-            this.onModeToggle(false);   
+            this.stopPlayback();
         })
 
     }

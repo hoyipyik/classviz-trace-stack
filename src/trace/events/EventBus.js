@@ -31,9 +31,8 @@ export const eventNames = {
   fuzzySearchFromDetailedBehaviour: 'fuzzySearchFromDetailedBehaviour',
 
   switchStepByStepMode: 'switchStepByStepMode',
-  hightlightFocus: 'hightlightFocus',
-  stopStepByStepMode: 'stopStepByStepMode',
-  stopRegionFocusMode: 'stopRegionFocusMode'
+  stopRegionFocusMode: 'stopRegionFocusMode',
+  refreshRegionFocus: 'refreshRegionFocus'
 }
 
 class EventBus {

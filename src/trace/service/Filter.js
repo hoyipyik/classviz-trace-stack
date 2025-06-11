@@ -142,10 +142,12 @@ class Filter {
 
     traceBtn.addEventListener('change', (event) => {
       traceModeSwitcher(event.target.value);
+      this.eventBus.publish('refreshRegionFocus', {stopStepByStepMode: false});
     });
 
     graphBtn.addEventListener('change', (event) => {
       traceModeSwitcher(event.target.value);
+      this.eventBus.publish('refreshRegionFocus', {stopStepByStepMode: false});
     });
 
     const traceModeSwitcher = (value) => {

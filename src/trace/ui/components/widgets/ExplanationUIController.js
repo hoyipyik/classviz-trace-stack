@@ -31,12 +31,14 @@ export class ExplanationUIController {
 
         this.initUI();
 
+
         this.eventBus.subscribe('stopRegionFocusMode', () => {
             const highlightInput = document.getElementById('highlightInputElement');
             if (highlightInput) {
                 highlightInput.checked = false;
                 this.regionFocusManager.regionFocusMode = false;
                 this.updateHighlightSwitchUI(false);
+                this.eventBus.publish('refreshRegionFocus', { stopStepByStepMode: false });
             }
         });
 
@@ -478,10 +480,8 @@ export class ExplanationUIController {
             this.regionFocusManager.currentSelectedTreeId = e.target.value;
             this.updateDisplayedData();
             this.loadRegionsForTree();
-            this.eventBus.publish('hightlightFocus', {
-                enabled: this.regionFocusManager.regionFocusMode,
-                highlightRegion: this.regionFocusManager.currentSelectedRegionId !== "whole_trace",
-                regionId: this.regionFocusManager.currentSelectedRegionId
+            this.eventBus.publish('refreshRegionFocus', {
+                stopStepByStepMode: true
             });
         });
 
@@ -516,10 +516,8 @@ export class ExplanationUIController {
             this.regionFocusManager.currentSelectedRegionId = e.target.value;
             this.updateDisplayedRegionData();
             this.updateHighlightDescription();
-            this.eventBus.publish('hightlightFocus', {
-                enabled: this.regionFocusManager.regionFocusMode,
-                highlightRegion: this.regionFocusManager.currentSelectedRegionId !== "whole_trace",
-                regionId: this.regionFocusManager.currentSelectedRegionId
+            this.eventBus.publish('refreshRegionFocus', {
+                stopStepByStepMode: true
             });
         });
 
@@ -615,10 +613,9 @@ export class ExplanationUIController {
                 highlightSliderButton.style.transform = 'translateX(0px)';
             }
             // Publish highlight toggle event
-            this.eventBus.publish('hightlightFocus', {
-                enabled: e.target.checked,
-                highlightRegion: this.regionFocusManager.currentSelectedRegionId !== "whole_trace",
-                regionId: this.regionFocusManager.currentSelectedRegionId
+            this.regionFocusManager.regionFocusMode = e.target.checked;
+            this.eventBus.publish('refreshRegionFocus', {
+                stopStepByStepMode: true
             });
 
         });

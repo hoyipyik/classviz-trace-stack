@@ -47,7 +47,7 @@ export class ClassvizManager {
 
         this.eventBus.subscribe('changeSingleMethodByIdToClassviz', (
             { nodeId, selected }) => {
-            this.eventBus.publish('stopRegionFocusMode');
+            this.eventBus.publish('refreshRegionFocus', { stopStepByStepMode: false });
             if (selected) {
                 this.insertSingleMethodById(nodeId);
             } else {
@@ -65,7 +65,7 @@ export class ClassvizManager {
 
         this.eventBus.subscribe('changeMultiMethodByIdsToClassviz', (
             { nodeIds, selected }) => {
-            this.eventBus.publish('stopRegionFocusMode');
+            this.eventBus.publish('refreshRegionFocus', { stopStepByStepMode: false });
             if (selected) {
                 // nodeIds.forEach((nodeId) => {
                 //     this.insertSingleMethodById(nodeId);
@@ -361,7 +361,7 @@ export class ClassvizManager {
      * @param {String|null} lastSelectedParentId - Last selected parent node ID
      * @param {String|null} lastSelectedParentLabel - Last selected parent node label
      */
-    traverseTreeAndCreateNumberedEdges(node, depthColors, visited = new Set(), depth = 0, lastSelectedParentId = null, lastSelectedParentLabel = null) {
+    traverseTreeAndCreateNumberedEdges(node, depthColors = "", visited = new Set(), depth = 0, lastSelectedParentId = null, lastSelectedParentLabel = null) {
         if (!node || !node.id || visited.has(node.id)) return;
         visited.add(node.id);
 
