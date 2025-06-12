@@ -80,6 +80,7 @@ export class ExplanationUIController {
         // Check if the region exists in our available regions
         const regionData = this.explainer.regions.get(focusedRegionId);
         if (!regionData || !regionData.explained) {
+            this.eventBus.publish('refreshRegionFocus', {topStepByStepMode: true});
             // console.warn(`Region ${focusedRegionId} not found or not explained yet`);
             return;
         }
@@ -109,6 +110,7 @@ export class ExplanationUIController {
         this.regionSelector.value = focusedRegionId;
         this.regionFocusManager.currentSelectedRegionId = focusedRegionId;
         this.updateDisplayedRegionData();
+        this.eventBus.publish('refreshRegionFocus', {topStepByStepMode: true});
     }
 
     applyStyles(element, styles) {
