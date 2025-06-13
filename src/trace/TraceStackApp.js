@@ -16,6 +16,7 @@ import { Explainer } from './service/Explainer.js';
 import { AiService } from './service/AiService.js';
 import { ExplanationUIController } from './ui/components/widgets/ExplanationUIController.js';
 import { RegionFocusManager } from './service/RegionFocusManager.js';
+import { EdgeLifterController } from './service/EdgeLifterController.js';
 
 /**
  * Call Tree Visualization Application Main Entry
@@ -44,6 +45,7 @@ class TraceStackApp {
     this.resizeManager = new ResizeManager(); // Draggable resize manager
     this.explanationUIController = null; // ExplanationUIController instance
     this.regionFocusManager = null;  // Region focus manager
+    this.edgeLifter = null; // Edge lifter service
 
     // Create event bus
     this.eventBus = new EventBus();
@@ -111,6 +113,7 @@ class TraceStackApp {
     this.methodDetails = new MethodDetails(this.data, this.eventBus);
 
     this.explanationUIController = new ExplanationUIController(this.explainer, this.eventBus, this.regionFocusManager);
+    this.edgeLifter = new EdgeLifterController(this.eventBus, this.classvizManager);
 
     // Subscribe to view mode changes to update sidebar UI (new)
     this.eventBus.subscribe('viewModeChanged', (data) => {
