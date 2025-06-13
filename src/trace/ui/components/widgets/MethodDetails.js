@@ -3,38 +3,38 @@ class MethodDetails {
   constructor(dataStore, eventBus) {
     // Data store reference
     this.data = dataStore;
-    
+
     // Event bus
     this.eventBus = eventBus;
-    
+
     // Initialize
     this.init();
   }
-  
+
   // Initialize the component
   init() {
     // Set up modal and tabs
     this.setupModal();
-    
+
     // Set up the view details button
     this.setupViewButton();
-  
+
   }
-  
+
   // Set up modal and tabs
   setupModal() {
     // Get modal elements
     const modal = document.getElementById('methodDetailsModal');
     const closeBtn = document.getElementById('closeMethodDetails');
     const tabs = document.querySelectorAll('.method-detail-tab');
-    
+
     // Set up close button
     if (closeBtn) {
       closeBtn.addEventListener('click', () => {
         this.hideModal();
       });
     }
-    
+
     // Set up tabs
     if (tabs) {
       tabs.forEach(tab => {
@@ -44,7 +44,7 @@ class MethodDetails {
         });
       });
     }
-    
+
     // Close modal when clicking outside content
     if (modal) {
       modal.addEventListener('click', (e) => {
@@ -54,7 +54,7 @@ class MethodDetails {
       });
     }
   }
-  
+
   // Set up view details button
   setupViewButton() {
     const viewBtn = document.getElementById('viewMethodDetailsBtn');
@@ -67,7 +67,7 @@ class MethodDetails {
       });
     }
   }
-  
+
   // Show the modal
   showModal() {
     const modal = document.getElementById('methodDetailsModal');
@@ -75,7 +75,7 @@ class MethodDetails {
       modal.classList.add('active');
     }
   }
-  
+
   // Hide the modal
   hideModal() {
     const modal = document.getElementById('methodDetailsModal');
@@ -83,35 +83,35 @@ class MethodDetails {
       modal.classList.remove('active');
     }
   }
-  
+
   // Switch to a specific tab
   switchTab(tabId) {
     // Get all tabs and content
     const tabs = document.querySelectorAll('.method-detail-tab');
     const contents = document.querySelectorAll('.method-details-tab-content');
-    
+
     // Remove active class from all
     tabs.forEach(tab => tab.classList.remove('active'));
     contents.forEach(content => content.classList.remove('active'));
-    
+
     // Add active class to selected tab and content
     const selectedTab = document.querySelector(`.method-detail-tab[data-tab="${tabId}"]`);
     const selectedContent = document.getElementById(`${tabId}Tab`);
-    
+
     if (selectedTab) selectedTab.classList.add('active');
     if (selectedContent) selectedContent.classList.add('active');
   }
-  
+
   // Update boolean status
   updateBooleanStatus(fieldId, value) {
     if (!this.data.current) return;
-    
+
     const nodeData = this.data.getNodeDataById(this.data.current);
     if (!nodeData || !nodeData.status) return;
-    
+
     // Determine which property to update based on field ID
     let property = '';
-    switch(fieldId) {
+    switch (fieldId) {
       case 'methodFanOut':
         property = 'fanOut';
         break;
@@ -124,10 +124,10 @@ class MethodDetails {
       default:
         return;
     }
-    
+
     // Update node data
     nodeData.status[property] = value;
-    
+
     // If there's an event bus, notify other components that data has been updated
     if (this.eventBus) {
       this.eventBus.publish('specialNodeConfigChanged', {
@@ -137,14 +137,14 @@ class MethodDetails {
       });
     }
   }
-  
+
   // Update method details display
   updateMethodDetails(nodeId) {
     const nodeData = this.data.getNodeDataById(nodeId);
     if (!nodeData) {
       return;
     }
-    
+
     // Simple values
     this.updateField('methodId', nodeData.id || '-');
     this.updateField('methodParentId', nodeData.parentId || '-');
@@ -158,14 +158,14 @@ class MethodDetails {
     this.updateField('methodBriefSummary', nodeData.briefSummary || '-');
     this.updateField('methodTime', this.formatTime(nodeData.time) || '-');
     this.updateField('methodSelfTime', this.formatTime(nodeData.selfTime) || '-');
-    
+
     // Tree stats
     const treeStats = nodeData.treeStats || {};
     this.updateField('methodDirectChildren', treeStats.directChildrenCount || '-');
     this.updateField('methodTotalDescendants', treeStats.totalDescendants || '-');
     this.updateField('methodSubtreeDepth', treeStats.subtreeDepth || '-');
     this.updateField('methodLevel', treeStats.level || '-');
-    
+
     // Status flags - use checkboxes instead of text display
     const status = nodeData.status || {};
     this.updateCheckbox('methodFanOut', status.fanOut);
@@ -173,7 +173,7 @@ class MethodDetails {
     this.updateCheckbox('methodChainStartPoint', status.chainStartPoint);
     this.updateCheckbox('methodRecursiveEntryPoint', status.recursiveEntryPoint);
     this.updateField('methodIsSummarised', this.getBooleanDisplay(status.isSummarised));
-    
+
     // Multiline fields
     this.updateField('methodDetailedBehavior', nodeData.detailedBehavior || '-');
     this.updateField('methodSourceCode', nodeData.sourceCode || '-');
@@ -182,27 +182,28 @@ class MethodDetails {
       const compressedContainer = document.getElementById('iscompressed-container');
       if (compressedContainer) {
         compressedContainer.style.display = 'flex';
-        
+
         const checkboxContainer = document.getElementById('iscompressed');
         if (checkboxContainer) {
-     
+
           checkboxContainer.innerHTML = '';
-          
-         
+
+
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
-          checkbox.checked = !!nodeData.compressed; 
+          checkbox.checked = !!nodeData.compressed;
           checkbox.className = 'status-checkbox';
-          
-       
+
+
           checkbox.addEventListener('change', (e) => {
             // this.data.deselect(this.data.current);
             this.data.deselectAllChildren(this.data.current);
-            this.data.compressRecursiveTree(this.data.current, e.target.checked); 
+            this.data.compressRecursiveTree(this.data.current, e.target.checked);
+            this.eventBus.publish('refreshFlame', {});
             console.log(e.target.checked, "clicked compression");
           });
-          
-        
+
+
           checkboxContainer.appendChild(checkbox);
         }
       }
@@ -215,7 +216,7 @@ class MethodDetails {
     }
 
   }
-  
+
   // Helper method to update a field
   updateField(elementId, value) {
     const element = document.getElementById(elementId);
@@ -223,67 +224,67 @@ class MethodDetails {
       element.textContent = value;
     }
   }
-  
+
   // Helper method to update a checkbox
   updateCheckbox(elementId, value) {
     const checkboxContainer = document.getElementById(elementId);
     if (!checkboxContainer) return;
-    
+
     // Ensure the container is empty
     checkboxContainer.innerHTML = '';
-    
+
     // Create checkbox
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.checked = !!value; // Ensure value is boolean
     checkbox.className = 'status-checkbox';
-    
+
     // Add event listener
     checkbox.addEventListener('change', (e) => {
       this.updateBooleanStatus(elementId, e.target.checked);
 
-    // Special handling for recursiveEntryPoint
-    if (elementId === 'methodRecursiveEntryPoint') {
-      const compressedContainer = document.getElementById('iscompressed-container');
-      if (compressedContainer) {
-        // Show/hide the container based on checkbox state
-        compressedContainer.style.display = e.target.checked ? 'flex' : 'none';
-        
-        // If checked, ensure the compressed checkbox exists
-        if (e.target.checked) {
-          const isCompressedCheckbox = document.getElementById('iscompressed');
-          if (isCompressedCheckbox && isCompressedCheckbox.children.length === 0) {
-            // Create the compressed checkbox if it doesn't exist
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.checked = false; // Default to unchecked
-            checkbox.className = 'status-checkbox';
-            
-            // Add event listener for the compressed checkbox if needed
-            checkbox.addEventListener('change', (e) => {
-              // this.data.deselect(this.data.current);
-              this.data.deselectAllChildren(this.data.current);
-              this.data.compressRecursiveTree(this.data.current, e.target.checked);
-              console.log(e.target.checked, "clicked compression");
-            });
-            
-            isCompressedCheckbox.appendChild(checkbox);
+      // Special handling for recursiveEntryPoint
+      if (elementId === 'methodRecursiveEntryPoint') {
+        const compressedContainer = document.getElementById('iscompressed-container');
+        if (compressedContainer) {
+          // Show/hide the container based on checkbox state
+          compressedContainer.style.display = e.target.checked ? 'flex' : 'none';
+
+          // If checked, ensure the compressed checkbox exists
+          if (e.target.checked) {
+            const isCompressedCheckbox = document.getElementById('iscompressed');
+            if (isCompressedCheckbox && isCompressedCheckbox.children.length === 0) {
+              // Create the compressed checkbox if it doesn't exist
+              const checkbox = document.createElement('input');
+              checkbox.type = 'checkbox';
+              checkbox.checked = false; // Default to unchecked
+              checkbox.className = 'status-checkbox';
+
+              // Add event listener for the compressed checkbox if needed
+              checkbox.addEventListener('change', (e) => {
+                // this.data.deselect(this.data.current);
+                this.data.deselectAllChildren(this.data.current);
+                this.data.compressRecursiveTree(this.data.current, e.target.checked);
+                console.log(e.target.checked, "clicked compression");
+              });
+
+              isCompressedCheckbox.appendChild(checkbox);
+            }
           }
         }
       }
-    }
     });
-    
+
     // Add the checkbox to the container
     checkboxContainer.appendChild(checkbox);
   }
-  
+
   // Helper to format time
   formatTime(timeInNanos) {
     if (!timeInNanos) return '-';
     return parseFloat(timeInNanos).toLocaleString() + 'ns';
   }
-  
+
   // Helper to display boolean values (for non-checkbox booleans)
   getBooleanDisplay(value) {
     if (value === true) return '✓';
