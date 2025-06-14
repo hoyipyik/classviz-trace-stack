@@ -2,13 +2,19 @@ export class EdgeLifterController {
     constructor(eventBus, classvizManager) {
         this.eventBus = eventBus;
         this.classvizManager = classvizManager;
-       
+
         this.init();
     }
 
     init() {
         // Initialize the edge lifter
         this.setupLiftEdgesButton();
+        this.eventBus.subscribe('refreshLiftEdges', ({ newLiftedEdgeMode }) => {
+            this.classvizManager.liftedEdgesMode = newLiftedEdgeMode;
+            const inputCheckbox = document.getElementById('liftEdges');
+            inputCheckbox.checked = this.classvizManager.liftedEdgesMode;
+            this.liftEdges(newLiftedEdgeMode, false);
+        });
     }
 
     setupLiftEdgesButton() {
@@ -19,13 +25,15 @@ export class EdgeLifterController {
         });
     }
 
-    liftEdges(isChecked) {
+    liftEdges(isChecked, stopFocusMode=true) {
         this.classvizManager.liftedEdgesMode = isChecked;
 
-        if(isChecked){
+        if (isChecked) {
             this.classvizManager.liftEdges();
-        }else{
-           
+        } else {
+            if (stopFocusMode) {
+                this.eventBus.publish('stopRegionFocusModeAndRender');
+            }
             this.classvizManager.switchTraceMode();
         }
     }

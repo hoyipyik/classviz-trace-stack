@@ -32,7 +32,11 @@ export const eventNames = {
 
   switchStepByStepMode: 'switchStepByStepMode',
   stopRegionFocusMode: 'stopRegionFocusMode',
-  refreshRegionFocus: 'refreshRegionFocus'
+  refreshRegionFocus: 'refreshRegionFocus',
+
+  refreshLiftEdges: 'refreshLiftEdges',
+
+  stopRegionFocusModeAndRender: 'stopRegionFocusModeAndRender'
 }
 
 class EventBus {

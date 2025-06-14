@@ -16,7 +16,14 @@ export class RegionFocusManager {
     initEventListeners() {
         if (!this.eventBus) return;
 
-        this.eventBus.subscribe('refreshRegionFocus', ({stopStepByStepMode}) => {
+        this.eventBus.subscribe('stopRegionFocusModeAndRender', () => {
+            this.regionFocusMode = false;
+            this.eventBus.publish('stopRegionFocusMode');
+            this.resetNodeColours();
+
+        });
+
+        this.eventBus.subscribe('refreshRegionFocus', ({ stopStepByStepMode }) => {
             const enabled = this.regionFocusMode;
             const highlightRegion = this.currentSelectedRegionId !== "whole_trace";
             const regionId = this.currentSelectedRegionId;
@@ -27,10 +34,12 @@ export class RegionFocusManager {
     highlightFocusHandler(enabled, highlightRegion, regionId, stopStepByStepMode) {
         this.stopStepByStepMode(stopStepByStepMode);
         this.classvizManager.switchTraceMode(this.data.traceMode, this.classvizManager.useNumberedEdges);
-        if( !enabled ) {
+        if (!enabled) {
+            // this.stopEdgeLifting();
             console.log("turned off region focus mode");
             return
         }
+        this.stopEdgeLifting();
         if (highlightRegion) {
             this.highlightRegion(regionId);
         } else {
@@ -38,12 +47,16 @@ export class RegionFocusManager {
         }
     }
 
+    stopEdgeLifting() {
+       this.eventBus.publish('refreshLiftEdges', { newLiftedEdgeMode: false });
+    }
+
     stopStepByStepMode(stopStepByStepMode) {
         if (stopStepByStepMode) {
             this.classvizManager.stepByStepMode = false;
             this.eventBus.publish('changeClassvizFocus');
         }
-        
+
     }
 
     highlightRegion(regionId) {
@@ -115,7 +128,7 @@ export class RegionFocusManager {
     }
 
     highlightKeyNode() {
-        
+
         // Highlight nodes based on their key status
         for (const [threadName, nodes] of this.classvizManager.threadToMethodNodesInOrder.entries()) {
             nodes.forEach(node => {
