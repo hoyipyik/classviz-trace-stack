@@ -1,2 +1,2 @@
- mmdc -i simplified-flame-tree.mmd -o simplified-flame-tree.png -w 4800 -H 3200 --backgroundColor white
+ mmdc -i dataStore.mmd -o dataStore.png -w 4800 -H 3200 --backgroundColor white
 

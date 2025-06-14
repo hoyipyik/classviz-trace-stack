@@ -1,0 +1,105 @@
+classDiagram
+    class DataStore {
+        -threadsData: Object
+        -eventBus: EventBus
+        -currentViewMode: string
+        -showLogical: boolean
+        -traceMode: boolean
+        -settings: Object
+        -threadManager: ThreadManager
+        -nodeStateManager: NodeStateManager
+        -packageManager: PackageManager
+        -selectionManager: SelectionManager
+        -treeOperations: TreeOperations
+        +constructor(threadsData, eventBus)
+        +rebuildDataStructures()
+        +setShowLogical(showLogical)
+        +setTraceMode(traceMode)
+        +formatTime(timeInNanos) string
+        <<facade pattern>>
+        <<delegates to managers>>
+    }
+
+    class ThreadManager {
+        -threadsData: Object
+        -currentThreadName: string
+        -originalIdToThreadMap: Map
+        -threadToNodesMap: Map
+        -threadToPackageMap: Map
+        -allThreadsNodes: Map
+        +initAllThreadsNodes()
+        +switchThread(threadName) boolean
+        +getAllThreadNames() Array
+        +getThreadForNodeId(nodeId) string
+        +getAllNodeIdsForThread(threadName) Array
+    }
+
+    class NodeStateManager {
+        -nodes: Map
+        -state: Map
+        -parents: Map
+        -children: Map
+        -selected: Set
+        -current: string
+        +addNode(node, parentId) boolean
+        +getNodeState(nodeId) Object
+        +getChildrenIds(nodeId) Array
+        +updateSelection(nodeId, selected) boolean
+        +updateExpansion(nodeId, expanded) boolean
+        +setCurrent(nodeId) boolean
+        +highlight(nodeId, highlighted) boolean
+        +setNodeElement(nodeId, element) boolean
+    }
+
+    class PackageManager {
+        -packageInfo: Map
+        -packageIDs: Map
+        -packageSelectedIDs: Map
+        +initPackageForNode(node)
+        +selectByPackage(packageName, selected) Array
+        +getPackageSelectionState(packageName) boolean
+        +getAllPackages() Array
+        +getPackageColor(packageName) string
+    }
+
+    class SelectionManager {
+        +select(nodeId, selected, batch) boolean
+        +selectChildren(nodeId) Array
+        +selectAllChildren(nodeId) Array
+        +selectAncestors(nodeId) Array
+        +selectAll() Array
+        +selectByPackage(packageName, selected) Array
+        <<orchestrates selection operations>>
+    }
+
+    class TreeOperations {
+        +expand(nodeId) boolean
+        +collapse(nodeId) boolean
+        +toggleExpand(nodeId) boolean
+        +expandAllDescendants(nodeId) Array
+        +compressRecursiveTree(nodeId, compress) boolean
+        <<handles tree structure changes>>
+    }
+
+    class EventBus {
+        +publish(event, data)
+        <<observer pattern>>
+    }
+
+    DataStore *-- ThreadManager : "manages threads"
+    DataStore *-- NodeStateManager : "manages node states"
+    DataStore *-- PackageManager : "manages packages"
+    DataStore *-- SelectionManager : "manages selections"
+    DataStore *-- TreeOperations : "manages tree ops"
+
+    SelectionManager --> NodeStateManager : "updates states"
+    SelectionManager --> PackageManager : "updates packages"
+    SelectionManager --> ThreadManager : "queries threads"
+    PackageManager --> ThreadManager : "queries threads"
+    TreeOperations --> NodeStateManager : "updates states"
+
+    ThreadManager ..> EventBus : "publishes events"
+    NodeStateManager ..> EventBus : "publishes events"
+    PackageManager ..> EventBus : "publishes events"
+    SelectionManager ..> EventBus : "publishes events"
+    TreeOperations ..> EventBus : "publishes events"
