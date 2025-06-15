@@ -36,7 +36,9 @@ export const eventNames = {
 
   refreshLiftEdges: 'refreshLiftEdges',
 
-  stopRegionFocusModeAndRender: 'stopRegionFocusModeAndRender'
+  stopRegionFocusModeAndRender: 'stopRegionFocusModeAndRender',
+
+  controlTraceDiagram: 'controlTraceDiagram'
 }
 
 class EventBus {
