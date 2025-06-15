@@ -111,25 +111,46 @@ export class RegionFocusManager {
     }
 
     colorNodesInRegion(regionIdSet) {
+        console.log("Coloring nodes in region", regionIdSet);
+        
+        const regionNodeColors = new Map(); // Store region node color information
+        
+        // First pass: process all nodes and collect region node colors
         for (const [threadName, nodes] of this.classvizManager.threadToMethodNodesInOrder.entries()) {
             nodes.forEach(node => {
                 const nodeId = node.originalId;
                 const nodeData = this.data.getNodeDataByThreadAndId(threadName, nodeId);
-
-                if (nodeData && regionIdSet.has(nodeData.id)) {
-                    // Highlight nodes in region with original color
-                    this.classvizManager.changeColorOfNodeById(nodeId, nodeData.originalColor, false);
+              
+                if (nodeData && regionIdSet.has(nodeId)) {
+                    console.log("Collecting region node:", nodeId);
+                    console.log("Original color:", nodeData.originalColor);
+                    // Store region node color information for later application
+                    regionNodeColors.set(nodeId, nodeData.originalColor);
                 } else {
-                    // Dim nodes outside region
-                    this.classvizManager.changeColorOfNodeById(nodeId, "#DDDDDD", true, nodeData.originalColor);
+                    console.log("Dimming node outside region:", nodeId);
+                    if (nodeData) {
+                        console.log("Original color:", nodeData.originalColor);
+                        // Dim nodes outside region
+                        this.classvizManager.changeColorOfNodeById(nodeId, "#DDDDDD", true, nodeData.originalColor);
+                    }
                 }
             });
+        }
+        
+        // Second pass: apply colors to region nodes to ensure they aren't overridden
+        console.log("Applying final colors to region nodes");
+        for (const [nodeId, originalColor] of regionNodeColors) {
+            console.log("Final coloring for region node:", nodeId, "color:", originalColor);
+            this.classvizManager.changeColorOfNodeById(nodeId, originalColor, false);
         }
     }
 
     highlightKeyNode() {
-
-        // Highlight nodes based on their key status
+        console.log("Highlighting key nodes");
+        
+        const keyNodeColors = new Map(); // Store key node color information
+        
+        // First pass: process all nodes and collect key node colors
         for (const [threadName, nodes] of this.classvizManager.threadToMethodNodesInOrder.entries()) {
             nodes.forEach(node => {
                 const nodeId = node.originalId;
@@ -142,13 +163,22 @@ export class RegionFocusManager {
                 );
 
                 if (isKeyNode) {
-                    // Highlight key nodes with original color
-                    this.classvizManager.changeColorOfNodeById(nodeId, nodeData.originalColor, false);
-                } else {
+                    console.log("Collecting key node:", nodeId);
+                    // Store key node color information for later application
+                    keyNodeColors.set(nodeId, nodeData.originalColor);
+                } else if (nodeData) {
+                    console.log("Dimming non-key node:", nodeId);
                     // Dim non-key nodes
                     this.classvizManager.changeColorOfNodeById(nodeId, "#DDDDDD", true, nodeData.originalColor);
                 }
             });
+        }
+        
+        // Second pass: apply colors to key nodes to ensure they aren't overridden
+        console.log("Applying final colors to key nodes");
+        for (const [nodeId, originalColor] of keyNodeColors) {
+            console.log("Final coloring for key node:", nodeId, "color:", originalColor);
+            this.classvizManager.changeColorOfNodeById(nodeId, originalColor, false);
         }
     }
 

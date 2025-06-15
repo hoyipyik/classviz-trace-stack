@@ -79,9 +79,10 @@ export class FlameGraphRenderer {
 
         const nodeId = d.data.id;
         
-        this.eventHandler.publishEvent('changeRegionFocus', { focusedRegionId: nodeId });
+        
         this.eventHandler.publishEvent('changeCurrentFocusedNode', { nodeId: nodeId });
         this.eventHandler.publishEvent('changeClassvizFocus', { nodeId: nodeId });
+        this.eventHandler.publishEvent('changeRegionFocus', { focusedRegionId: nodeId });
 
         console.info("Clicked on:", d.data);
         this.data.setCurrent(nodeId);

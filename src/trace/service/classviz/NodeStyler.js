@@ -33,6 +33,7 @@ export class NodeStyler {
     changeColorOfNodeById(id, color, bordered = false, borderColor = 'grey') {
         const nodeLabel = this.data.getNodeDataById(id).label;
         const node = this.cy.$id(nodeLabel);
+        // console.log(`Changing color of node ${nodeLabel} (${id}) to ${color}`);
         if (node) {
             const styleOptions = {
                 'background-color': color
