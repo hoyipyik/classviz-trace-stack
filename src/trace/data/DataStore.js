@@ -1,14 +1,14 @@
-// DataStore.js - Refactored with component architecture
-import { ThreadManager } from './subManager/ThreadManager.js';
-import { NodeStateManager } from './subManager/NodeStateManager.js';
-import { PackageManager } from './subManager/PackageManager.js';
-import { SelectionManager } from './subManager/SelectionManager.js';
-import { TreeOperations } from './subManager/TreeOperations.js';
+// DataStore.js - Simple reference version maintaining API compatibility
+
+import { NodeStateManager } from "./subManager/NodeStateManager.js";
+import { PackageManager } from "./subManager/PackageManager.js";
+import { SelectionManager } from "./subManager/SelectionManager.js";
+import { ThreadManager } from "./subManager/ThreadManager.js";
+import { TreeOperations } from "./subManager/TreeOperations.js";
 
 /**
  * Data Storage Management Class
- * Responsible for managing all node data, states, and relationships
- * Now uses a component-based architecture while maintaining the same API
+ * Using simple references to maintain API compatibility
  */
 class DataStore {
   constructor(threadsData, eventBus) {
@@ -36,8 +36,7 @@ class DataStore {
       autoExpand: true, // Default auto-expand nodes
     };
 
-    // ===== API COMPATIBILITY PROPERTIES =====
-    // These provide direct access to maintain API compatibility
+    // ===== SIMPLE REFERENCES FOR API COMPATIBILITY =====
     this.nodes = this.nodeStateManager.nodes;
     this.state = this.nodeStateManager.state;
     this.parents = this.nodeStateManager.parents;
@@ -60,6 +59,28 @@ class DataStore {
     if (threadNames.length > 0) {
       this.switchThread(threadNames[0]);
     }
+  }
+
+  // ===== CURRENT NODE PROPERTY =====
+  get current() {
+    return this.nodeStateManager.getCurrent();
+  }
+
+  set current(nodeId) {
+    this.nodeStateManager.setCurrent(nodeId);
+    // Trigger UI update event for StepByStep synchronization
+    if (this.eventBus) {
+      this.eventBus.publish('currentNodeChanged', { nodeId });
+    }
+  }
+
+  // ===== THREAD PROPERTIES =====
+  get currentThreadName() {
+    return this.threadManager.getCurrentThreadName();
+  }
+
+  get tree() {
+    return this.threadManager.tree;
   }
 
   // ===============================================
@@ -104,6 +125,9 @@ class DataStore {
   rebuildDataStructures() {
     // Save DOM element references
     const savedElements = this.nodeStateManager.saveElementReferences();
+    
+    // Save current state
+    const currentNodeId = this.current;
 
     // Clear all managers
     this.threadManager.resetMappings();
@@ -114,9 +138,28 @@ class DataStore {
     this.initAllThreadsNodes();
     this.initAllThreadsData();
 
+    // ===== CRITICAL: Re-establish references after rebuild =====
+    this.nodes = this.nodeStateManager.nodes;
+    this.state = this.nodeStateManager.state;
+    this.parents = this.nodeStateManager.parents;
+    this.children = this.nodeStateManager.children;
+    this.selected = this.nodeStateManager.selected;
+    this.originalIdToThreadMap = this.threadManager.originalIdToThreadMap;
+    this.threadToNodesMap = this.threadManager.threadToNodesMap;
+    this.packageInfo = this.packageManager.packageInfo;
+    this.packageIDs = this.packageManager.packageIDs;
+    this.packageSelectedIDs = this.packageManager.packageSelectedIDs;
+    this.threadToPackageMap = this.threadManager.threadToPackageMap;
+    this.allThreadsNodes = this.threadManager.allThreadsNodes;
+
     // Restore the current thread
     if (this.currentThreadName) {
       this.switchThread(this.currentThreadName);
+    }
+
+    // Restore current node
+    if (currentNodeId) {
+      this.current = currentNodeId;
     }
 
     // Restore DOM element references
@@ -134,7 +177,18 @@ class DataStore {
   }
 
   getNodeDataByThreadAndId(threadName, nodeId) {
-    return this.threadManager.getNodeDataByThreadAndId(threadName, nodeId);
+    const result = this.threadManager.getNodeDataByThreadAndId(threadName, nodeId);
+    
+    // Enhanced for StepByStep: ensure we also check the main nodes mapping
+    if (!result && this.nodeStateManager.hasNode(nodeId)) {
+      const nodeData = this.nodeStateManager.getNodeDataById(nodeId);
+      // Verify this node belongs to the requested thread
+      if (this.threadManager.getThreadForNodeId(nodeId) === threadName) {
+        return nodeData;
+      }
+    }
+    
+    return result;
   }
 
   getAllNodeIdsForThread(threadName) {
@@ -167,14 +221,6 @@ class DataStore {
 
   getCurrentThreadName() {
     return this.threadManager.getCurrentThreadName();
-  }
-
-  get currentThreadName() {
-    return this.threadManager.getCurrentThreadName();
-  }
-
-  get tree() {
-    return this.threadManager.tree;
   }
 
   switchThread(threadName) {
@@ -326,10 +372,6 @@ class DataStore {
     return this.nodeStateManager.setCurrent(nodeId);
   }
 
-  get current() {
-    return this.nodeStateManager.getCurrent();
-  }
-
   highlight(nodeId, highlighted = true) {
     return this.nodeStateManager.highlight(nodeId, highlighted);
   }
@@ -357,11 +399,6 @@ class DataStore {
   formatTime(timeInNanos) {
     if (!timeInNanos) return '';
     return parseFloat(timeInNanos) + 'ns';
-    // Alternative implementation:
-    // const timeInMs = Math.round(timeInNanos / 1000000);
-    // return timeInMs >= 1000 ? 
-    //   `${(timeInMs / 1000).toFixed(2)}s` : 
-    //   `${timeInMs}ms`;
   }
 }
 
