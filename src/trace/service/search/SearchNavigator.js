@@ -59,6 +59,7 @@ export class SearchNavigator {
         console.log("!!!!focus changed, start lassviz focus change event")
         this.search.eventBus.publish('changeCurrentFocusedNodeForStepByStep', { nodeId: nodeId });
         this.search.eventBus.publish('changeClassvizFocus', { nodeId: nodeId });
+        this.eventBus.publish('changeRegionFocus', { focusedRegionId: nodeId });
         this.search.view.updateCurrentNodeFocusUI(nodeId);
         this.search.view.updateCurrentMethodDisplay(result.data.label);
 
