@@ -1,0 +1,108 @@
+
+classDiagram
+    class Search {
+        -dataStore
+        -renderer
+        -eventBus
+        -viewSwitcher
+        -searchResults[]
+        -currentResultIndex
+        -totalResultsCount
+        -currentThreadResultsCount
+        -highlightAll
+        -eventManager
+        -highlighter
+        -navigator
+        -uiController
+        +constructor(dataStore, renderer, eventBus, viewSwitcher)
+        +find(query)
+        +clearSearch()
+        +searchNodes(query)
+        +navigateNext()
+        +navigatePrev()
+        +setupSearch()
+        +updateCounters()
+        +publishSearchEvent()
+    }
+
+    class SearchEventManager {
+        -search
+        -eventListenersInitialized
+        -handlers
+        +constructor(search)
+        +setupSearch()
+        +cleanupEventListeners()
+    }
+
+    class SearchHighlighter {
+        -search
+        +constructor(search)
+        +highlightAllResults()
+        +applyHighlighting(nodeId, preserveOtherHighlights, threadSwitched)
+        +clearHighlights()
+        +clearAllHighlights()
+    }
+
+    class SearchNavigator {
+        -search
+        +constructor(search)
+        +navigateNext()
+        +navigatePrev()
+        +navigateToCurrentResult(preserveOtherHighlights)
+        +resetToFirstResultInCurrentThread()
+    }
+
+    class SearchUIController {
+        -search
+        +constructor(search)
+        +switchThreadUI(threadName)
+        +toggleStepByStepMode(enabled)
+        +updateResultsDisplay(threadName)
+    }
+
+    class DataStore {
+        +nodes
+        +getCurrentThreadName()
+        +switchThread(threadName)
+        +getThreadForNodeId(nodeId)
+        +getAncestorIds(nodeId)
+        +highlight(nodeId, state)
+        +setCurrent(nodeId)
+        +clearAllHighlights()
+        +getNodeElement(nodeId)
+    }
+
+    class EventBus {
+        +subscribe(event, callback)
+        +publish(event, data)
+    }
+
+    class Renderer {
+        +renderTree()
+        +ensureNodeVisible(nodeId)
+        +updateNodeUI(nodeId)
+        +batchUpdateNodes(nodeIds)
+        +updateCurrentNodeFocusUI(nodeId)
+        +updateCurrentMethodDisplay(label)
+        +scrollToNode(nodeId)
+    }
+
+    class ViewSwitcher {
+        +switchViewMode(mode)
+        +switchTabActive(tab)
+    }
+
+    Search --> DataStore : uses
+    Search --> EventBus : uses
+    Search --> Renderer : uses
+    Search --> ViewSwitcher : uses
+    
+    Search *-- SearchEventManager : contains
+    Search *-- SearchHighlighter : contains
+    Search *-- SearchNavigator : contains
+    Search *-- SearchUIController : contains
+    
+    SearchEventManager --> Search : delegates to
+    SearchHighlighter --> Search : accesses
+    SearchNavigator --> Search : accesses
+    SearchUIController --> Search : accesses
