@@ -42,7 +42,7 @@ class TraceStackApp {
     this.sidebar = null; // SidebarController instance
     this.aiService = null; // AiService instance
     this.explainer = null; // Explainer instance
-    this.resizeManager = new ResizeManager(); // Draggable resize manager
+    this.resizeManager = null // Draggable resize manager
     this.explanationUIController = null; // ExplanationUIController instance
     this.regionFocusManager = null;  // Region focus manager
     this.edgeLifter = null; // Edge lifter service
@@ -71,6 +71,8 @@ class TraceStackApp {
     // Load data
     // const threadsData = this.loadData();
     const threadsData = this.rawData;
+
+    this.resizeManager = new ResizeManager(this.eventBus);
 
     // Initialize data store
     this.data = new DataStore(threadsData, this.eventBus);
