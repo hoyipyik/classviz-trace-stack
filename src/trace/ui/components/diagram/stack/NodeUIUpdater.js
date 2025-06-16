@@ -34,12 +34,10 @@ export class NodeUIUpdater {
         let childUl = li.querySelector('ul');
 
         if (!childUl) {
-            // 创建子容器
             childUl = this.elementFactory._createChildrenContainer(nodeId);
             li.appendChild(childUl);
 
-            // 为新创建的子节点绑定事件
-            const newElements = childUl.querySelectorAll('li');
+            const newElements = childUl.querySelectorAll(':scope > li');
             newElements.forEach(childLi => {
                 const childNodeId = childLi.dataset.nodeId;
                 if (childNodeId) {

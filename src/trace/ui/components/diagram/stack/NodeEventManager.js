@@ -9,7 +9,10 @@ export class NodeEventManager {
 
     bindNodeEvents(element, nodeId) {
         const itemDiv = element.querySelector('.call-item');
-        if (!itemDiv) return;
+        if (!itemDiv) {
+            console.warn(`No .call-item found for node ${nodeId}`);
+            return;
+        }
 
         const nodeData = this.data.getNodeDataById(nodeId);
 
@@ -19,7 +22,8 @@ export class NodeEventManager {
 
         this.renderer.hoverManager.attachHoverEvents(itemDiv, nodeId);
 
-        this._bindChildrenEvents(element);
+        // 递归绑定子节点事件
+        this._bindChildrenEventsRecursive(element);
     }
 
     _bindMainClickEvent(itemDiv, nodeId, nodeData) {
@@ -80,20 +84,15 @@ export class NodeEventManager {
         });
     }
 
-    _bindChildrenEvents(element) {
-        const childItemDivs = element.querySelectorAll('.call-item');
-        childItemDivs.forEach(itemDiv => {
-            // skip if this is the main itemDiv
-            if (itemDiv === element.querySelector('.call-item')) return;
+    _bindChildrenEventsRecursive(element) {
+        const childUl = element.querySelector(':scope > ul');
+        if (!childUl) return;
 
-            const nodeId = itemDiv.dataset.nodeId;
-            if (nodeId) {
-                const nodeData = this.data.getNodeDataById(nodeId);
-                this._bindMainClickEvent(itemDiv, nodeId, nodeData);
-                this._bindCheckboxEvent(itemDiv, nodeId, nodeData);
-                this._bindToggleEvent(itemDiv, nodeId, nodeData);
-                
-                this.renderer.hoverManager.attachHoverEvents(itemDiv, nodeId);
+        const childLis = childUl.querySelectorAll(':scope > li');
+        childLis.forEach(childLi => {
+            const childNodeId = childLi.dataset.nodeId;
+            if (childNodeId) {
+                this.bindNodeEvents(childLi, childNodeId);
             }
         });
     }
