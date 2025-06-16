@@ -31,8 +31,8 @@ export class CallTreeManager {
     rebuildNumberedCallTreeEdges(threadToMethodNodesInOrder) {
         this.edgeManager.clearAllEdges();
 
-        const maxDepth = this.calculateMaxDepth(threadToMethodNodesInOrder);
-        const depthColors = this.generateDepthColors(maxDepth);
+        // const maxDepth = this.calculateMaxDepth(threadToMethodNodesInOrder);
+        // const depthColors = this.generateDepthColors(maxDepth);
 
         threadToMethodNodesInOrder.forEach((_, threadName) => {
             const treeData = this.data.threadsData[threadName];
@@ -41,7 +41,7 @@ export class CallTreeManager {
             const rootNode = treeData;
             if (!rootNode) return;
 
-            this.traverseTreeAndCreateNumberedEdges(rootNode, depthColors);
+            this.traverseTreeAndCreateNumberedEdges(rootNode);
         });
     }
 
