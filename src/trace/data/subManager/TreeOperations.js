@@ -127,186 +127,137 @@ class TreeOperations {
       return false;
     }
 
-    // Get the current node's children
-    const children = nodeData.children || [];
-
-    // Get recursive node's label (method name)
-    const recursiveLabel = nodeData.label;
-
-    // If it's a compression operation
     if (compress) {
-      // Already compressed, no need to operate again
-      if (nodeData._originalChildren) {
-        return false;
-      }
-
-      // Deep copy the original children structure for future restoration
-      nodeData._originalChildren = JSON.parse(JSON.stringify(children));
-
-      // For storing merged direct children
-      // Key is the child tree's call path signature, value is the child tree node
-      const mergedDirectChildren = new Map();
-
-      // For storing exit nodes (leaf nodes without recursive calls)
-      const exitNodes = [];
-
-      // For storing node IDs that need to be deselected
-      const nodesToDeselect = new Set();
-
-      // Collect all non-recursive direct children and exit nodes, also record all visited nodes
-      const collectNodes = (nodes, isDirectChild = true) => {
-        for (const child of nodes) {
-          // Record current node ID for later deselection
-          nodesToDeselect.add(child.id);
-
-          // Check if the node is a recursive exit node
-          const isExitNode = (node) => {
-            // Must be a recursive label
-            if (node.label !== recursiveLabel) {
-              return false;
-            }
-
-            // If no children, it's an exit node
-            if (!node.children || node.children.length === 0) {
-              return true;
-            }
-
-            // Check if there are recursive calls in the children
-            for (const childNode of node.children || []) {
-              if (childNode.label === recursiveLabel) {
-                return false; // Has recursive calls, not an exit node
-              }
-            }
-
-            return true; // Is a recursive label, and children don't contain recursive calls, so it's an exit node
-          };
-
-          if (isExitNode(child)) {
-            // It's an exit node, keep it entirely
-            const exitNode = JSON.parse(JSON.stringify(child));
-            exitNode.isExit = true;
-            // Set correct parentId
-            exitNode.parentId = nodeId;
-            exitNodes.push(exitNode);
-          } else if (child.label === recursiveLabel) {
-            // This is a recursive call but not an exit node, continue looking downward
-            collectNodes(child.children || [], false);
-          } else {
-            // Non-recursive label node, generate path signature and merge
-            const pathSignature = this._generatePathSignature(child, recursiveLabel);
-
-            if (mergedDirectChildren.has(pathSignature)) {
-              // Node with the same path signature already exists, merge
-              const existingNode = mergedDirectChildren.get(pathSignature);
-              const currentNode = JSON.parse(JSON.stringify(child));
-
-              // Set correct parentId
-              currentNode.parentId = nodeId;
-
-              // Use the node with the smaller ID as the preserved node
-              let targetNode, sourceNode;
-              if (parseInt(existingNode.id) < parseInt(currentNode.id)) {
-                targetNode = existingNode;
-                sourceNode = currentNode;
-              } else {
-                targetNode = currentNode;
-                sourceNode = existingNode;
-                // Update the node in the Map
-                mergedDirectChildren.set(pathSignature, targetNode);
-              }
-
-              // Merge frequency
-              targetNode.freq = (targetNode.freq || 1) + (sourceNode.freq || 1);
-            } else {
-              // First time encountering this path signature
-              const clonedChild = JSON.parse(JSON.stringify(child));
-              // Set correct parentId
-              clonedChild.parentId = nodeId;
-              clonedChild.freq = clonedChild.freq || 1;
-              mergedDirectChildren.set(pathSignature, clonedChild);
-            }
-          }
-
-          // Recursively process children, collect more nodes that need to be deselected
-          if (child.children && child.children.length > 0) {
-            // Recursively traverse all child nodes, record node IDs
-            this._collectChildrenIds(child.children, nodesToDeselect);
-          }
-        }
-      };
-
-      // Start collecting from the current node's children
-      collectNodes(children);
-
-      // Convert merged direct children to an array
-      const mergedChildrenArray = Array.from(mergedDirectChildren.values());
-
-      // Merge direct children and exit nodes
-      const newChildren = [...mergedChildrenArray, ...exitNodes];
-
-      // Update the node's children to the compressed result
-      nodeData.children = newChildren.sort((a, b) => parseInt(a.id) - parseInt(b.id));
-
-      // Update node's compression state
-      nodeData.compressed = true;
-
-      // Rebuild all data relationships if callback provided
-      if (rebuildCallback) {
-        rebuildCallback();
-      }
-
-      // Trigger update event
-      if (this.eventBus) {
-        this.eventBus.publish('nodeCompressionTriggered', {
-          nodeId,
-          compressed: true
-        });
-      }
-
-      return true;
+      return this._performCompression(nodeData, nodeId, rebuildCallback);
     } else {
-      // Restoration operation
-
-      // If no saved original structure, cannot restore
-      if (!nodeData._originalChildren) {
-        return false;
-      }
-
-      // Restore original children structure
-      nodeData.children = JSON.parse(JSON.stringify(nodeData._originalChildren));
-
-      // Clear saved original structure
-      delete nodeData._originalChildren;
-
-      // Update node's compression state
-      nodeData.compressed = false;
-
-      // Rebuild all data relationships if callback provided
-      if (rebuildCallback) {
-        rebuildCallback();
-      }
-
-      // Trigger update event
-      if (this.eventBus) {
-        this.eventBus.publish('nodeCompressionTriggered', {
-          nodeId,
-          compressed: false
-        });
-      }
-
-      return true;
+      return this._performDecompression(nodeData, nodeId, rebuildCallback);
     }
   }
 
   /**
-   * Helper function: recursively collect all child node IDs
+   * Perform compression operation
    */
-  _collectChildrenIds(nodes, idSet) {
-    for (const node of nodes) {
-      idSet.add(node.id);
-      if (node.children && node.children.length > 0) {
-        this._collectChildrenIds(node.children, idSet);
+  _performCompression(nodeData, nodeId, rebuildCallback) {
+    // Already compressed, no need to operate again
+    if (nodeData._originalChildren) {
+      return false;
+    }
+
+    // Step 1: Setup - record recursive label and original children
+    const recursiveLabel = nodeData.label;
+    const originalChildren = nodeData.children || [];
+    
+    // Save original for restoration
+    nodeData._originalChildren = JSON.parse(JSON.stringify(originalChildren));
+
+    // Step 2: Initialize collections
+    const exitNodes = [];
+    const subtreeMap = new Map(); // signature -> {frequency, subtree}
+    const processingQueue = [...originalChildren]; // nodes to process
+
+    // Step 3: Process all children (traverse the tree)
+    while (processingQueue.length > 0) {
+      const currentNode = processingQueue.shift();
+
+      if (currentNode.label === recursiveLabel) {
+        // This is a recursive node - check if it's an exit node
+        const hasRecursiveChildren = (currentNode.children || []).some(
+          child => child.label === recursiveLabel
+        );
+
+        if (hasRecursiveChildren) {
+          // Continue traversing deeper - add children to queue
+          processingQueue.push(...(currentNode.children || []));
+        } else {
+          // This is an exit node - preserve completely
+          const exitNode = JSON.parse(JSON.stringify(currentNode));
+          exitNode.isExit = true;
+          exitNode.parentId = nodeId;
+          exitNodes.push(exitNode);
+        }
+      } else {
+        // This is a regular subtree - generate signature and merge
+        const signature = this._generatePathSignature(currentNode, recursiveLabel);
+        
+        if (subtreeMap.has(signature)) {
+          // Merge: increment frequency
+          const existing = subtreeMap.get(signature);
+          existing.frequency += 1;
+        } else {
+          // New pattern: add to map
+          const subtree = JSON.parse(JSON.stringify(currentNode));
+          subtree.parentId = nodeId;
+          subtreeMap.set(signature, {
+            frequency: 1,
+            subtree: subtree
+          });
+        }
       }
+    }
+
+    // Step 4: Reconstruct compressed tree
+    const compressedChildren = [];
+
+    // Add all merged subtrees from map
+    for (const entry of subtreeMap.values()) {
+      entry.subtree.freq = entry.frequency;
+      compressedChildren.push(entry.subtree);
+    }
+
+    // Add all exit nodes
+    for (const exitNode of exitNodes) {
+      compressedChildren.push(exitNode);
+    }
+
+    // Step 5: Update entry node
+    nodeData.children = compressedChildren.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+    nodeData.compressed = true;
+
+    // Handle completion
+    this._handleCompressionComplete(nodeId, true, rebuildCallback);
+    
+    return true;
+  }
+
+  /**
+   * Perform decompression operation
+   */
+  _performDecompression(nodeData, nodeId, rebuildCallback) {
+    // If no saved original structure, cannot restore
+    if (!nodeData._originalChildren) {
+      return false;
+    }
+
+    // Restore original children structure
+    nodeData.children = JSON.parse(JSON.stringify(nodeData._originalChildren));
+
+    // Clear saved original structure
+    delete nodeData._originalChildren;
+
+    // Update node's compression state
+    nodeData.compressed = false;
+
+    // Handle completion
+    this._handleCompressionComplete(nodeId, false, rebuildCallback);
+
+    return true;
+  }
+
+  /**
+   * Handle completion of compression/decompression
+   */
+  _handleCompressionComplete(nodeId, compressed, rebuildCallback) {
+    // Rebuild all data relationships if callback provided
+    if (rebuildCallback) {
+      rebuildCallback();
+    }
+
+    // Trigger update event
+    if (this.eventBus) {
+      this.eventBus.publish('nodeCompressionTriggered', {
+        nodeId,
+        compressed
+      });
     }
   }
 
