@@ -1,0 +1,100 @@
+classDiagram
+    class StepByStepPlayController {
+        -eventBus
+        -dataStore
+        -classvizManager
+        -uiBuilder: StepByStepUIBuilder
+        -playbackManager: PlaybackManager
+        -threadStateManager: ThreadStateManager
+        -modeToggleInput
+        +constructor(eventBus, dataStore, classvizManager, containerSelector)
+        +init()
+        +refresh()
+        +enableStepByStepMode()
+        +disableStepByStepMode()
+        -_createThreadCallbacks(threadName)
+        -_stepThread(threadName, direction)
+        -_updateThreadIndex(threadName, newIndex)
+        -_toggleThreadPlayback(threadName)
+        -_startThreadPlayback(threadName)
+        -_playbackStep(threadName)
+        -_handleModeToggle(enabled)
+        -_applyStepByStepMode()
+        -_setupEventListeners()
+    }
+
+    class StepByStepUIBuilder {
+        -container
+        +constructor(containerSelector)
+        +clear()
+        +createModeToggle(isEnabled, onToggle)
+        +createPlayerCard(threadData, callbacks)
+        +updatePlayButton(threadName, isPlaying)
+        -_initializeContainer()
+        -_createToggleSwitch(isEnabled, onToggle)
+        -_createToggleSlider(isEnabled)
+        -_updateToggleVisual(toggleInput, toggleSlider)
+        -_createThreadTitle(threadName, borderColor)
+        -_createControlsRow(threadName, currentMethod, callbacks)
+        -_createMethodDisplay(currentMethod)
+        -_createSliderRow(currentIndex, maxIndex, onSliderChange)
+        -_createCounterDisplay(currentIndex, maxIndex)
+        -_createButton(text, title, onClick)
+        -_extractClassAndMethod(str)
+    }
+
+    class PlaybackManager {
+        -currentPlayingThread
+        -playInterval
+        -playbackSpeed: 500
+        +constructor()
+        +isPlaying(threadName)
+        +startPlayback(threadName, onStep, onComplete)
+        +stopPlayback()
+        +togglePlayback(threadName, onStep, onComplete)
+    }
+
+    class ThreadStateManager {
+        -classvizManager
+        -dataStore
+        +constructor(classvizManager, dataStore)
+        +getThreadData(threadName)
+        +getAllThreadNames()
+        +updateThreadIndex(threadName, newIndex)
+        +resetAllThreadColors()
+        -_updateVisualization(threadName, methodNodes, currentIndex, borderColor)
+    }
+
+    class EventBus {
+        <<external>>
+        +publish(event, data)
+        +subscribe(event, callback)
+    }
+
+    class DataStore {
+        <<external>>
+        +current
+        +currentThreadName
+        +getNodeDataByThreadAndId(threadName, nodeId)
+    }
+
+    class ClassvizManager {
+        <<external>>
+        +stepByStepMode
+        +currentIndexByThread
+        +threadToMethodNodesInOrder
+        +threadToFocusedBorderColour
+        +changeColorOfNodeById(nodeId, color, preserve, originalColor)
+    }
+
+    %% Composition relationships
+    StepByStepPlayController *-- StepByStepUIBuilder : creates
+    StepByStepPlayController *-- PlaybackManager : creates
+    StepByStepPlayController *-- ThreadStateManager : creates
+
+    %% Dependency relationships
+    StepByStepPlayController --> EventBus : uses
+    StepByStepPlayController --> DataStore : uses
+    StepByStepPlayController --> ClassvizManager : uses
+    ThreadStateManager --> ClassvizManager : uses
+    ThreadStateManager --> DataStore : uses
