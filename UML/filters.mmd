@@ -1,0 +1,112 @@
+classDiagram
+    class Filter {
+        -dataStore
+        -renderer
+        -eventBus
+        -search
+        -threadFilter: ThreadFilter
+        -packageFilter: PackageFilter
+        -searchResultsFilter: SearchResultsFilter
+        +constructor(dataStore, renderer, eventBus, search)
+        +setupEventListeners()
+        +setupFilters()
+        +setupFlameChartStyleFilter()
+        +handleFlameStyleChange(value)
+        +setupTraceModeSwitcher()
+        +handleTraceModeChange(value)
+        +filterByMethodName(query)
+        +resetFilter()
+        +setNodesVisibility(nodeIds, visible)
+    }
+
+    class ThreadFilter {
+        -data
+        -view
+        -eventBus
+        -search
+        +constructor(dataStore, renderer, eventBus, search)
+        +setup()
+        +createUI(container, threadNames)
+        +switchThread(threadName)
+        +updateUI(currentThreadName)
+    }
+
+    class PackageFilter {
+        -data
+        -view
+        -eventBus
+        +constructor(dataStore, renderer, eventBus)
+        +setup()
+        +createUI(container, packageNames)
+        +toggleSelection(packageName)
+        +updateAllStates()
+        +updateCheckboxUI(packageName)
+        +filterByPackage(packageName, visible)
+        +setNodesVisibility(nodeIds, visible)
+    }
+
+    class SearchResultsFilter {
+        -data
+        -view
+        -eventBus
+        -currentSearchResults: Array
+        +constructor(dataStore, renderer, eventBus)
+        +setup()
+        +setSearchResults(searchResults)
+        +setupAllSearchedItems()
+        +setupCurrentThreadSearchedItems()
+        +toggleAllSelection()
+        +toggleCurrentThreadSelection()
+        +getSearchResults()
+        +getSelectionState(searchResults)
+        +updateAllUI()
+        +updateAllSearchedItemsUI()
+        +updateCurrentThreadSearchedItemsUI()
+    }
+
+    %% External dependencies (not fully defined in the provided code)
+    class DataStore {
+        <<interface>>
+    }
+
+    class Renderer {
+        <<interface>>
+    }
+
+    class EventBus {
+        <<interface>>
+    }
+
+    class Search {
+        <<interface>>
+    }
+
+    %% Composition relationships
+    Filter *-- ThreadFilter : contains
+    Filter *-- PackageFilter : contains
+    Filter *-- SearchResultsFilter : contains
+
+    %% Dependency relationships
+    Filter ..> DataStore : uses
+    Filter ..> Renderer : uses
+    Filter ..> EventBus : uses
+    Filter ..> Search : uses
+
+    ThreadFilter ..> DataStore : uses
+    ThreadFilter ..> Renderer : uses
+    ThreadFilter ..> EventBus : uses
+    ThreadFilter ..> Search : uses
+
+    PackageFilter ..> DataStore : uses
+    PackageFilter ..> Renderer : uses
+    PackageFilter ..> EventBus : uses
+
+    SearchResultsFilter ..> DataStore : uses
+    SearchResultsFilter ..> Renderer : uses
+    SearchResultsFilter ..> EventBus : uses
+
+    %% Notes
+    note for Filter "Main filter coordinator class that manages all sub-filters"
+    note for ThreadFilter "Handles thread switching and filtering UI"
+    note for PackageFilter "Manages package-based filtering with tri-state checkboxes"
+    note for SearchResultsFilter "Handles search results selection and filtering"

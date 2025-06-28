@@ -1,5 +1,5 @@
-
 classDiagram
+
     class Search {
         -dataStore
         -renderer
@@ -25,40 +25,6 @@ classDiagram
         +publishSearchEvent()
     }
 
-    class SearchEventManager {
-        -search
-        -eventListenersInitialized
-        -handlers
-        +constructor(search)
-        +setupSearch()
-        +cleanupEventListeners()
-    }
-
-    class SearchHighlighter {
-        -search
-        +constructor(search)
-        +highlightAllResults()
-        +applyHighlighting(nodeId, preserveOtherHighlights, threadSwitched)
-        +clearHighlights()
-        +clearAllHighlights()
-    }
-
-    class SearchNavigator {
-        -search
-        +constructor(search)
-        +navigateNext()
-        +navigatePrev()
-        +navigateToCurrentResult(preserveOtherHighlights)
-        +resetToFirstResultInCurrentThread()
-    }
-
-    class SearchUIController {
-        -search
-        +constructor(search)
-        +switchThreadUI(threadName)
-        +toggleStepByStepMode(enabled)
-        +updateResultsDisplay(threadName)
-    }
 
     class DataStore {
         +nodes
@@ -72,10 +38,21 @@ classDiagram
         +getNodeElement(nodeId)
     }
 
+
+    class SearchEventManager {
+        -search
+        -eventListenersInitialized
+        -handlers
+        +constructor(search)
+        +setupSearch()
+        +cleanupEventListeners()
+    }
+
     class EventBus {
         +subscribe(event, callback)
         +publish(event, data)
     }
+
 
     class Renderer {
         +renderTree()
@@ -87,22 +64,49 @@ classDiagram
         +scrollToNode(nodeId)
     }
 
+
+    class SearchHighlighter {
+        -search
+        +constructor(search)
+        +highlightAllResults()
+        +applyHighlighting(nodeId, preserveOtherHighlights, threadSwitched)
+        +clearHighlights()
+        +clearAllHighlights()
+    }
+
     class ViewSwitcher {
         +switchViewMode(mode)
         +switchTabActive(tab)
     }
 
+    class SearchNavigator {
+        -search
+        +constructor(search)
+        +navigateNext()
+        +navigatePrev()
+        +navigateToCurrentResult(preserveOtherHighlights)
+        +resetToFirstResultInCurrentThread()
+    }
+
+
+    class SearchUIController {
+        -search
+        +constructor(search)
+        +switchThreadUI(threadName)
+        +toggleStepByStepMode(enabled)
+        +updateResultsDisplay(threadName)
+    }
+
     Search --> DataStore : uses
-    Search --> EventBus : uses
-    Search --> Renderer : uses
-    Search --> ViewSwitcher : uses
+    DataStore --> SearchEventManager : triggers
+    SearchEventManager --> EventBus : uses
+    EventBus --> Renderer : notifies
+    Renderer --> SearchHighlighter : coordinates
+    SearchHighlighter --> ViewSwitcher : updates
+    ViewSwitcher --> SearchNavigator : switches
+    SearchNavigator --> SearchUIController : controls
     
     Search *-- SearchEventManager : contains
     Search *-- SearchHighlighter : contains
     Search *-- SearchNavigator : contains
     Search *-- SearchUIController : contains
-    
-    SearchEventManager --> Search : delegates to
-    SearchHighlighter --> Search : accesses
-    SearchNavigator --> Search : accesses
-    SearchUIController --> Search : accesses

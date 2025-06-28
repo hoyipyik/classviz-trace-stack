@@ -1,0 +1,157 @@
+classDiagram
+    class Explainer {
+        -boolean quickMode
+        -boolean parallel
+        -DataStore data
+        -EventBus eventBus
+        -AIService aiService
+        -Map selectedTrees
+        -Map traceToRegion
+        -ExplanationStorage storage
+        -TreeBuilder treeBuilder
+        -RecursiveCallProcessor recursiveProcessor
+        -RegionManager regionManager
+        +constructor()
+        +get regions()
+        +explainCurrentRegion()
+        +saveToLocalStorage()
+        +loadFromLocalStorage()
+        +getSavedExplanations()
+        +deleteSavedExplanation()
+        +buildSelectedTrees()
+        +explainSelectedTraces()
+        -_performQuickExplanation()
+        -_performDetailedExplanation()
+        -_generateConsolidatedExplanation()
+        -_removeStatusFromData()
+    }
+
+    class TreeBuilder {
+        +findSelectedRoots()
+        +buildSelectedSubtree()
+        +buildKNT()
+        -_createEssentialNode()
+        -_createKNTNode()
+        -_isSpecialNode()
+    }
+
+    class RecursiveCallProcessor {
+        +compressRecursiveCalls()
+        +compressRecursiveNode()
+        -_createEssentialNode()
+        -_copyChildrenRecursive()
+        -_generatePathSignature()
+    }
+
+    class RegionManager {
+        -Map regions
+        +constructor()
+        +identifyRegions()
+        +explainRegion()
+        +augmentKNTWithRegionSummaries()
+        -_extractRegion()
+        -_isSpecialNode()
+        -_createEssentialNode()
+        -_removeStatusFromData()
+    }
+
+    class ExplanationStorage {
+        -EventBus eventBus
+        +constructor()
+        +save()
+        +load()
+        +getSavedExplanations()
+        +delete()
+    }
+
+    class TreeData {
+        <<value object>>
+        +Object tree
+        +Object KNT
+        +ExplanationData explanation
+        +string threadName
+    }
+
+    class ExplanationData {
+        <<value object>>
+        +string quickSummary
+        +string summaryAfterThinking
+    }
+
+    class RegionData {
+        <<value object>>
+        +Object data
+        +boolean explained
+        +string detailedBehaviour
+        +string flowRepresentation
+        +string briefSummary
+    }
+
+    class TreeNode {
+        <<value object>>
+        +string id
+        +string label
+        +string description
+        +Array children
+        +StatusData status
+        +number freq
+        +boolean isExit
+        +boolean compressed
+        +boolean selected
+        +boolean isSpecialNode
+    }
+
+    class StatusData {
+        <<value object>>
+        +boolean fanOut
+        +boolean implementationEntryPoint
+        +boolean recursiveEntryPoint
+    }
+
+    class DataStore {
+        <<external>>
+        +Object threadsData
+    }
+
+    class EventBus {
+        <<external>>
+        +publish()
+    }
+
+    class AIService {
+        <<external>>
+        +explainRegion()
+        +explainPureKNT()
+        +explainKNTWithData()
+    }
+
+    %% Composition relationships
+    Explainer *-- TreeBuilder : owns
+    Explainer *-- RecursiveCallProcessor : owns
+    Explainer *-- RegionManager : owns
+    Explainer *-- ExplanationStorage : owns
+
+    %% Aggregation relationships
+    Explainer o-- DataStore : uses
+    Explainer o-- EventBus : uses
+    Explainer o-- AIService : uses
+
+    %% Association relationships
+    ExplanationStorage --> EventBus : notifies
+    RegionManager ..> AIService : calls
+
+    %% Data relationships
+    Explainer --> TreeData : stores in selectedTrees
+    TreeData *-- ExplanationData : contains
+    RegionManager --> RegionData : stores in regions
+    TreeNode *-- StatusData : contains
+    TreeNode --> TreeNode : parent-child
+
+    %% Processing relationships
+    TreeBuilder ..> TreeNode : creates/transforms
+    RecursiveCallProcessor ..> TreeNode : compresses
+    RegionManager ..> TreeNode : extracts regions from
+
+    %% Method delegation
+    Explainer ..> RegionManager : delegates region operations
+    Explainer ..> ExplanationStorage : delegates storage operations

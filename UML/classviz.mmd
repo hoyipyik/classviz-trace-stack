@@ -1,0 +1,181 @@
+classDiagram
+    class ClassvizManager {
+        -stepByStepMode
+        -useNumberedEdges
+        -liftedEdgesMode
+        -ALLOWED_LIB_METHODS
+        -data
+        -cy
+        -eventBus
+        -idRangeByThreadMap
+        -threadToFocusedBorderColour
+        -threadToMethodNodesInOrder
+        -currentIndexByThread
+        -originalDimensions
+        -insertedNodes
+        -insertedEdges
+        -classToMethodsMap
+        -methodLabelToOriginalIds
+        -originalIdToSourceEdges
+        -originalIdToTargetEdges
+        +initializeControls()
+        +setupEventSubscriptions()
+        +insertSingleMethodById()
+        +removeSingleMethodById()
+        +insertMultipleMethodByIds()
+        +removeMultipleMethodByIds()
+        +switchTraceMode()
+        +toggleEdgeNumbering()
+        +changeAllMethodNodesColor()
+        +changeColorOfNodeById()
+        +liftEdges()
+    }
+
+    class NodeFactory {
+        -cy
+        -data
+        -ALLOWED_LIB_METHODS
+        -insertedNodes
+        -methodLabelToOriginalIds
+        -classLayoutManager
+        -nodeStyler
+        +getMethodLabelById()
+        +findClassNodeByNodeLabel()
+        +createMethodNode()
+        +createLibraryMethodNode()
+        +createRegularMethodNode()
+        +nodeExists()
+        +getExistingNode()
+        +removeMethodNode()
+    }
+
+    class EdgeManager {
+        -cy
+        -data
+        -insertedEdges
+        -originalIdToSourceEdges
+        -originalIdToTargetEdges
+        -nodeFactory
+        -nodeStyler
+        +createEdge()
+        +createNumberedEdge()
+        +createParentEdge()
+        +removeEdgeFromMappings()
+        +trackEdgeInMappings()
+        +removeAllEdgesFromNode()
+        +clearAllEdges()
+        +handleNodeEdges()
+        +reconnectParentToChildren()
+        +createSequentialEdges()
+        +createNumberedSequentialEdges()
+        +getParentNodeColors()
+    }
+
+    class CallTreeManager {
+        -data
+        -edgeManager
+        -nodeFactory
+        +rebuildCallTreeEdges()
+        +rebuildNumberedCallTreeEdges()
+        +traverseTreeAndCreateEdges()
+        +traverseTreeAndCreateNumberedEdges()
+        +calculateMaxDepth()
+        +generateDepthColors()
+        +findFirstSelectedParent()
+        +traverseDownAndCreateEdges()
+        +createEdgesForNode()
+    }
+
+    class ClassLayoutManager {
+        -cy
+        -originalDimensions
+        -classToMethodsMap
+        +storeOriginalDimensions()
+        +adjustClassForMethods()
+        +calculateMethodPosition()
+        +calculateLibraryMethodPosition()
+        +restoreClassOriginalDimensions()
+        +adjustClassSize()
+        +repositionMethodsInClass()
+        +addMethodToClass()
+        +removeMethodFromClass()
+    }
+
+    class EdgeLifter {
+        -cy
+        -data
+        -ALLOWED_LIB_METHODS
+        -edgeManager
+        -nodeStyler
+        +liftEdges()
+    }
+
+    class NodeStyler {
+        -cy
+        -insertedNodes
+        -data
+        +changeAllMethodNodesColor()
+        +changeColorOfNodeById()
+        +applyLibraryMethodStyle()
+        +applyRegularMethodStyle()
+        +applyBasicEdgeStyle()
+        +applyNumberedEdgeStyle()
+        +applyLiftedEdgeStyle()
+        +updateLiftedEdgeThickness()
+    }
+
+    class ThreadManager {
+        -idRangeByThreadMap
+        -threadToFocusedBorderColour
+        -threadToMethodNodesInOrder
+        -currentIndexByThread
+        +initFocusedBorderColors()
+        +initThreadMaps()
+        +addToThreadMethodNodes()
+        +removeFromThreadMethodNodes()
+        +updateCurrentIndexByNodeId()
+        +getSelectedNodesForThread()
+        +getAllThreadNames()
+        +getFocusedBorderColor()
+        +reset()
+        +getMethodNodesInOrder()
+        +getCurrentIndex()
+        +setCurrentIndex()
+    }
+
+    %% Composition relationships
+    ClassvizManager *-- NodeFactory : creates
+    ClassvizManager *-- EdgeManager : creates
+    ClassvizManager *-- CallTreeManager : creates
+    ClassvizManager *-- ClassLayoutManager : creates
+    ClassvizManager *-- EdgeLifter : creates
+    ClassvizManager *-- NodeStyler : creates
+    ClassvizManager *-- ThreadManager : creates
+
+    %% Dependencies between managers
+    NodeFactory --> ClassLayoutManager : uses
+    NodeFactory --> NodeStyler : uses
+    EdgeManager --> NodeFactory : uses
+    EdgeManager --> NodeStyler : uses
+    CallTreeManager --> EdgeManager : uses
+    CallTreeManager --> NodeFactory : uses
+    EdgeLifter --> EdgeManager : uses
+    EdgeLifter --> NodeStyler : uses
+
+    %% External dependencies
+    ClassvizManager --> Cytoscape : cy
+    ClassvizManager --> EventBus : eventBus
+    ClassvizManager --> DataStore : data
+
+    class Cytoscape {
+        <<external>>
+    }
+
+    class EventBus {
+        <<external>>
+    }
+
+    class DataStore {
+        <<external>>
+    }
+    

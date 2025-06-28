@@ -1,0 +1,106 @@
+graph TD
+    %% Core Components
+    EB[EventBus]:::core
+    DS[DataStore]:::core
+    CV[ClassvizManager]:::primary
+    EX[Explainer]:::primary
+
+    %% Controllers
+    RN[Renderer]:::controller
+    FL[Filter]:::controller
+    SE[Search]:::controller
+    FG[FlameGraphRenderer]:::controller
+    
+    %% UI Controllers
+    SP[StepByStepPlayController]:::ui
+    RF[RegionFocusManager]:::ui
+    EU[ExplanationUIController]:::ui
+    
+    %% Action Controllers
+    AC[Actions]:::action
+    EL[EdgeLifterController]:::action
+    RM[ResizeManager]:::action
+
+    %% DataStore Components
+    TM[ThreadManager]:::sub
+    NS[NodeStateManager]:::sub
+    PM[PackageManager]:::sub
+
+    %% ClassvizManager Components
+    NF[NodeFactory]:::sub
+    EM[EdgeManager]:::sub
+    CT[CallTreeManager]:::sub
+
+    %% Renderer Components
+    NE[NodeElementFactory]:::sub
+    NO[NodeEventManager]:::sub
+    HM[HoverCardManager]:::sub
+
+    %% Explainer Components
+    TB[TreeBuilder]:::sub
+    RM_EX[RegionManager]:::sub
+    ES[ExplanationStorage]:::sub
+
+    %% Filter Components
+    TF[ThreadFilter]:::sub
+    PF[PackageFilter]:::sub
+
+    %% Search Components
+    SH[SearchHighlighter]:::sub
+    SN[SearchNavigator]:::sub
+
+    %% UI Components
+    EC[ExplanationContentRenderer]:::sub
+    RS[RegionSelectionManager]:::sub
+    UF[UIElementFactory]:::sub
+
+    %% Dependencies
+    CV --> DS
+    EX --> DS
+    RN --> DS
+    FL --> DS
+    SE --> DS
+    FG --> DS
+    
+    SP --> CV
+    RF --> CV
+    RF --> EX
+    EU --> EX
+    
+    AC --> DS
+    EL --> CV
+    RM --> EB
+
+    %% Compositions
+    DS -.-> TM
+    DS -.-> NS
+    DS -.-> PM
+    
+    CV -.-> NF
+    CV -.-> EM
+    CV -.-> CT
+    
+    RN -.-> NE
+    RN -.-> NO
+    RN -.-> HM
+    
+    EX -.-> TB
+    EX -.-> RM_EX
+    EX -.-> ES
+    
+    FL -.-> TF
+    FL -.-> PF
+    
+    SE -.-> SH
+    SE -.-> SN
+    
+    EU -.-> EC
+    EU -.-> RS
+
+    %% Class definitions with colors
+    classDef core fill:#667eea,stroke:#333,stroke-width:3px,color:#fff
+    classDef primary fill:#764ba2,stroke:#333,stroke-width:3px,color:#fff
+    classDef controller fill:#11998e,stroke:#333,stroke-width:2px,color:#fff
+    classDef ui fill:#f093fb,stroke:#333,stroke-width:2px,color:#fff
+    classDef action fill:#4facfe,stroke:#333,stroke-width:2px,color:#fff
+    classDef sub fill:#95a5a6,stroke:#333,stroke-width:1px,color:#fff

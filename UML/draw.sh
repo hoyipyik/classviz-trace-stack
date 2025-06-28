@@ -1,2 +1,2 @@
- mmdc -i stepbystepplay.mmd -o stepbystepplay.png -w 4800 -H 3200 --backgroundColor white
+ mmdc -i search.mmd -o search.png -w 4800 -H 3200 --backgroundColor white
 
